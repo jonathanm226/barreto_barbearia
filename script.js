@@ -247,15 +247,10 @@ async function checkAvailableTimes() {
 
 async function buscarClientePorTelefone() {
     const telefoneInput = document.getElementById("client-phone").value.trim();
-    
-    if (!telefoneInput) {
-        return;
-    }
+    if (!telefoneInput) return;
 
     const telefoneLimpo = telefoneInput.replace(/\D/g, '');
-    if (telefoneLimpo.length < 8) {
-        return;
-    }
+    if (telefoneLimpo.length < 8) return;
 
     try {
         const { data, error } = await _supabase
@@ -266,7 +261,6 @@ async function buscarClientePorTelefone() {
 
         if (data && data.length > 0) {
             const registrosCliente = data.filter(item => item.telefone && item.telefone.replace(/\D/g, '') === telefoneLimpo);
-            
             if (registrosCliente.length > 0) {
                 const comNome = registrosCliente.find(item => item.cliente);
                 if (comNome && comNome.cliente) {
@@ -394,27 +388,26 @@ async function sendToWhatsapp() {
     const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
     try {
+        const payload = {
+            cliente: name,
+            telefone: phone,
+            barbeiro: selectedBarber,
+            servico: listaNomesServicos,
+            preco_total: precoTotal,
+            data: date,
+            horario: time,
+            status: 'ativo'
+        };
+
         const { error } = await _supabase
             .from("agendamentos_barreto")
-            .insert([
-                {
-                    cliente: name,
-                    telefone: phone,
-                    barbeiro: selectedBarber,
-                    servico: listaNomesServicos,
-                    preco_total: precoTotal,
-                    data: date,
-                    horario: time,
-                    status: 'ativo'
-                }
-            ]);
+            .insert([payload]);
 
         if (error) {
-            console.error("Erro no Supabase:", error);
-            alert("Atenção: O seu agendamento foi direcionado para o WhatsApp, mas houve um problema ao guardar no banco de dados.");
+            console.error("Detalhe completo do erro do Supabase:", JSON.stringify(error, null, 2));
         }
     } catch (err) {
-        console.error(err);
+        console.error("Erro crítico na requisição:", err);
     }
 
     await checkAvailableTimes();
