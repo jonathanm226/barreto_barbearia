@@ -12,6 +12,13 @@ let requisicaoHorariosAtual = 0;
 const HORARIO_EMERGENCIAL_INICIO = "19:30";
 const VALOR_CORTE_EMERGENCIAL = 50;
 
+// Telefones específicos de cada barbeiro da Barbearia do Barreto
+const telefonesBarbeiros = {
+    "Matheus": "5531997193193",
+    "Yann": "5531993789798",
+    "Rafael": "5531975460879"
+};
+
 function isHorarioEmergencial(horario) {
     return !!horario && horario >= HORARIO_EMERGENCIAL_INICIO;
 }
@@ -377,7 +384,9 @@ async function sendToWhatsapp() {
     }
 
     const formattedDate = date.split("-").reverse().join("/");
-    const whatsappNumber = "5531994951564";
+    
+    // Busca o WhatsApp específico do barbeiro selecionado, ou usa o padrão caso ocorra algum imprevisto
+    const whatsappNumber = telefonesBarbeiros[selectedBarber] || "5531997193193";
 
     const avisoEmergencial = emergencial
         ? `🚨 *HORÁRIO EMERGENCIAL (fora do expediente normal)* 🚨\n\n`
