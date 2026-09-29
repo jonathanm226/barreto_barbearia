@@ -73,9 +73,10 @@
             </div>
         </section>
 
+        <!-- Dashboard do Barbeiro Individual -->
         <section id="dashboard-barbeiro" class="section" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h2 id="titulo-agenda-barbeiro">Minha Agenda Semanal</h2>
+                <h2 id="titulo-agenda-barbeiro">Minha Agenda</h2>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button onclick="abrirModalSenha()" class="btn-whatsapp" style="width: auto; padding: 8px 12px; font-size: 0.85rem; background: #333; color: #FFF;">
                         <i class="fa-solid fa-key"></i> Senha
@@ -133,9 +134,10 @@
             <div id="grade-semanal-container" class="week-grid" style="grid-template-columns: 1fr;"></div>
         </section>
 
+        <!-- Dashboard Admin Geral -->
         <section id="dashboard-admin" class="section" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Resumo Administrativo</h2>
+                <h2>Resumo Administrativo (Geral)</h2>
                 <div style="display: flex; gap: 8px;">
                     <button onclick="carregarResumoAdmin()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
@@ -170,6 +172,7 @@
 
     </div>
 
+    <!-- Modais -->
     <div id="custom-action-modal" class="custom-modal-overlay">
         <div class="custom-modal">
             <h3>Gerenciar Atendimento</h3>
@@ -217,11 +220,11 @@
         let diaAtivoIso = null; 
         
         const horariosPadrao = [
-            "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", 
+            "08:00", "08:30", "09:00", "09:30", 
             "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", 
             "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", 
-            "19:00", "19:30", "20:00", "20:30", "21:00"
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", 
+            "19:30", "20:00", "20:30", "21:00"
         ];
 
         function mostrarAlertaPersonalizado(titulo, mensagem) {
@@ -274,7 +277,7 @@
                 carregarAgendaSemanal();
                 carregarFaturamentoBarbeiro();
             } else {
-                mostrarAlertaPersonalizado("Erro", "Usuário não encontrado!");
+                mostrarAlertaPersonalizado("Erro", "Usuário não encontrado! Use Matheus, Yann, Rafael ou admin.");
             }
         }
 
@@ -355,7 +358,6 @@
             }
 
             try {
-                // Consulta direcionada exclusivamente à tabela agendamentos_barreto
                 const { data, error } = await _supabase
                     .from("agendamentos_barreto")
                     .select("*")
@@ -397,7 +399,7 @@
             const lblPeriodo = document.getElementById("label-periodo-semana");
             const seletorDias = document.getElementById("seletor-dias");
             
-            container.innerHTML = "<p style='color: #888; text-align: center;'>Carregando...</p>";
+            container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
             const diasSemana = obterDiasDaSemana(offsetSemana);
             lblPeriodo.textContent = `${diasSemana[0].label} até ${diasSemana[diasSemana.length - 1].label}`;
 
@@ -406,7 +408,6 @@
             }
 
             try {
-                // Consulta à agendamentos_barreto e bloqueios_barreto
                 const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("*").eq("barbeiro", usuarioLogado).gte("data", diasSemana[0].iso).lte("data", diasSemana[diasSemana.length - 1].iso);
                 const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("*").eq("barbeiro", usuarioLogado).gte("data", diasSemana[0].iso).lte("data", diasSemana[diasSemana.length - 1].iso);
 
@@ -560,7 +561,7 @@
         async function carregarResumoAdmin() {
             const dataFiltro = document.getElementById("filter-date-admin").value;
             const container = document.getElementById("agendamentos-list-admin");
-            container.innerHTML = "<p style='color:#888; text-align:center;'>Carregando...</p>";
+            container.innerHTML = "<p style='color:#888; text-align:center;'>A carregar...</p>";
             
             let query = _supabase.from("agendamentos_barreto").select("*").order("horario", { ascending: true });
             if (dataFiltro) query = query.eq("data", dataFiltro);
