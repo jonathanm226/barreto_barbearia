@@ -73,7 +73,7 @@
             </div>
         </section>
 
-        <!-- Dashboard do Barbeiro Individual -->
+        <!-- Dashboard Individual do Barbeiro -->
         <section id="dashboard-barbeiro" class="section" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2 id="titulo-agenda-barbeiro">Minha Agenda</h2>
@@ -527,21 +527,31 @@
         }
 
         async function alternarBloqueioDia(dataIso, bloqueado) {
-            if (bloqueado) {
-                await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", "TODOS");
-            } else {
-                await _supabase.from("bloqueios_barreto").upsert({ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }, { onConflict: 'barbeiro,data,horario' });
+            try {
+                if (bloqueado) {
+                    await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", "TODOS");
+                } else {
+                    await _supabase.from("bloqueios_barreto").upsert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }], { onConflict: 'barbeiro,data,horario' });
+                }
+                carregarAgendaSemanal();
+            } catch (err) {
+                console.error("Erro ao alternar bloqueio do dia:", err);
+                mostrarAlertaPersonalizado("Erro", "Não foi possível alterar o bloqueio. Verifique o console.");
             }
-            carregarAgendaSemanal();
         }
 
         async function alternarBloqueioHorario(dataIso, horario, bloqueado) {
-            if (bloqueado) {
-                await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario);
-            } else {
-                await _supabase.from("bloqueios_barreto").upsert({ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }, { onConflict: 'barbeiro,data,horario' });
+            try {
+                if (bloqueado) {
+                    await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario);
+                } else {
+                    await _supabase.from("bloqueios_barreto").upsert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }], { onConflict: 'barbeiro,data,horario' });
+                }
+                carregarAgendaSemanal();
+            } catch (err) {
+                console.error("Erro ao alternar bloqueio do horário:", err);
+                mostrarAlertaPersonalizado("Erro", "Não foi possível alterar o bloqueio. Verifique o console.");
             }
-            carregarAgendaSemanal();
         }
 
         function abrirModalSenha() {
