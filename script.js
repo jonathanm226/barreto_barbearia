@@ -91,17 +91,17 @@ function getTimesForDate(dateString) {
     if (diaSemana === 0) { // Domingo
         return [];
     } else if (diaSemana === 6) { // Sábado
-        for (let h = 5; h < 13; h++) {
+        for (let h = 8; h < 19; h++) {
             horarios.push(h < 10 ? `0${h}:00` : `${h}:00`);
             horarios.push(h < 10 ? `0${h}:30` : `${h}:30`);
         }
-        horarios.push("13:00");
+        horarios.push("19:00");
     } else { // Segunda a Sexta
-        for (let h = 7; h < 21; h++) {
+        for (let h = 8; h < 19; h++) {
             horarios.push(h < 10 ? `0${h}:00` : `${h}:00`);
             horarios.push(h < 10 ? `0${h}:30` : `${h}:30`);
         }
-        horarios.push("21:00");
+        horarios.push("19:00");
     }
 
     const agora = new Date();
@@ -147,7 +147,6 @@ async function checkAvailableTimes() {
     timeSelect.appendChild(optionCarregando);
 
     try {
-        // Consulta direcionada à nova tabela agendamentos_barreto
         const { data: agendamentos, error: errAgendamentos } = await _supabase
             .from("agendamentos_barreto")
             .select("horario, status, servico")
@@ -157,7 +156,6 @@ async function checkAvailableTimes() {
         if (errAgendamentos) throw errAgendamentos;
         if (minhaRequisicao !== requisicaoHorariosAtual) return;
 
-        // Consulta direcionada à nova tabela bloqueios_barreto
         const { data: bloqueios, error: errBloqueios } = await _supabase
             .from("bloqueios_barreto")
             .select("horario")
@@ -249,23 +247,20 @@ async function checkAvailableTimes() {
 
 async function buscarClientePorTelefone() {
     const telefoneInput = document.getElementById("client-phone").value.trim();
-    const groupNasc = document.getElementById("group-nascimento");
     
     if (!telefoneInput) {
-        if (groupNasc) groupNasc.style.display = "block";
         return;
     }
 
     const telefoneLimpo = telefoneInput.replace(/\D/g, '');
     if (telefoneLimpo.length < 8) {
-        if (groupNasc) groupNasc.style.display = "block";
         return;
     }
 
     try {
         const { data, error } = await _supabase
             .from("agendamentos_barreto")
-            .select("cliente, telefone, nascimento");
+            .select("cliente, telefone");
 
         if (error) throw error;
 
@@ -277,23 +272,10 @@ async function buscarClientePorTelefone() {
                 if (comNome && comNome.cliente) {
                     document.getElementById("client-name").value = comNome.cliente;
                 }
-
-                const comNascimento = registrosCliente.find(item => item.nascimento);
-                if (comNascimento && comNascimento.nascimento) {
-                    document.getElementById("client-nascimento").value = comNascimento.nascimento;
-                    if (groupNasc) groupNasc.style.display = "none";
-                } else {
-                    if (groupNasc) groupNasc.style.display = "block";
-                }
-            } else {
-                if (groupNasc) groupNasc.style.display = "block";
             }
-        } else {
-            if (groupNasc) groupNasc.style.display = "block";
         }
     } catch (err) {
         console.error("Erro ao buscar cliente:", err);
-        if (groupNasc) groupNasc.style.display = "block";
     }
 }
 
@@ -375,14 +357,12 @@ async function confirmarEEnviar() {
 async function sendToWhatsapp() {
     const nameInput = document.getElementById("client-name");
     const phoneInput = document.getElementById("client-phone");
-    const nascimentoInput = document.getElementById("client-nascimento");
     const dateInput = document.getElementById("date");
     const timeSelect = document.getElementById("time");
     const btnAgendar = document.getElementById("btn-continuar") || document.getElementById("btn-agendar");
 
     const name = nameInput ? nameInput.value.trim() : "";
     const phone = phoneInput ? phoneInput.value.trim() : "";
-    const nascimento = nascimentoInput ? nascimentoInput.value : null; 
     const date = dateInput ? dateInput.value : "";
     const time = timeSelect ? timeSelect.value : "";
 
@@ -403,7 +383,7 @@ async function sendToWhatsapp() {
     }
 
     const formattedDate = date.split("-").reverse().join("/");
-    const whatsappNumber = "5531975552202";
+    const whatsappNumber = "5531994951564"; // Número correto unificado para testes[cite: 32]
 
     const avisoEmergencial = emergencial
         ? `🚨 *HORÁRIO EMERGENCIAL (fora do expediente normal)* 🚨\n\n`
@@ -414,14 +394,13 @@ async function sendToWhatsapp() {
     const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
     try {
-        // Inserção na tabela específica agendamentos_barreto
         const { error } = await _supabase
             .from("agendamentos_barreto")
             .insert([
                 {
                     cliente: name,
                     telefone: phone,
-                    nascimento: nascimento,
+                    nascimento: null,
                     barbeiro: selectedBarber,
                     servico: listaNomesServicos,
                     preco_total: precoTotal,
