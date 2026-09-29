@@ -35,6 +35,7 @@
         .btn-modal-confirmar { background: #FF6600; color: #FFF; }
         .btn-modal-atendido { background: #25D366; color: #FFF; }
         .btn-modal-whatsapp { background: #25D366; color: #FFF; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+        .btn-modal-voltar { background: #333; color: #FFF; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
         .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
         .week-grid { display: grid; gap: 15px; margin-top: 15px; }
         .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -455,7 +456,7 @@
 
                             if (blq) {
                                 itemSlot.className = "slot-item blocked";
-                                itemSlot.innerHTML = `<span><i class="fa-solid fa-ban" style="color: #e74c3c;"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${diaAtivo.iso}', '${horario}', true)" style="background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Desbloquear</button>`;
+                                itemSlot.innerHTML = `<span><i class="fa-solid fa-ban" style="color: #e74c3c;"></i> ${horario} (Bloqueado)</span><button onclick="alternarBloqueioHorario('${diaAtivo.iso}', '${horario}', true)" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">Desbloquear</button>`;
                             } else if (ag) {
                                 const isConcluido = ag.status === 'concluido';
                                 itemSlot.className = "slot-item booked";
@@ -493,7 +494,6 @@
             paymentBox.style.display = "none";
             buttonsBox.innerHTML = "";
 
-            // Botão de Enviar Lembrete via WhatsApp para o cliente
             const telefoneLimpo = data.telefone.replace(/\D/g, '');
             const mensagemLembrete = `Olá ${data.cliente}! Aqui é da Barreto Barbearia. Passando para confirmar o seu agendamento:\n\n💈 Barbeiro: ${data.barbeiro}\n✂️ Serviços: ${data.servico}\n💰 Valor Final: R$ ${precoFinal},00\n📅 Data: ${dataFormatada} às ${data.horario}\n\nTe esperamos!`;
             const linkWhatsapp = `https://wa.me/55${telefoneLimpo}?text=${encodeURIComponent(mensagemLembrete)}`;
@@ -511,7 +511,6 @@
                 btnAtendido.innerHTML = 'Validar como Atendido';
                 btnAtendido.onclick = () => {
                     paymentBox.style.display = "block";
-                    // Mantém o botão do WhatsApp e insere o botão de confirmar pagamento abaixo
                     const btnSalvar = document.createElement("button");
                     btnSalvar.className = "custom-modal-btn btn-modal-confirmar";
                     btnSalvar.textContent = "Confirmar Pagamento";
@@ -538,6 +537,16 @@
                 };
                 buttonsBox.appendChild(btnCancelar);
             }
+
+            // Botão Voltar para fechar o modal sem realizar nenhuma ação
+            const btnVoltar = document.createElement("button");
+            btnVoltar.className = "custom-modal-btn btn-modal-voltar";
+            btnVoltar.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Voltar';
+            btnVoltar.onclick = () => {
+                modal.classList.remove("active");
+            };
+            buttonsBox.appendChild(btnVoltar);
+
             modal.classList.add("active");
         }
 
