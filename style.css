@@ -1,0 +1,341 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #121212;
+    color: #FFFFFF;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 480px;
+    background-color: #1A1A1A;
+    padding: 20px;
+    padding-bottom: 130px;
+    box-shadow: 0 0 30px rgba(255, 102, 0, 0.15);
+    border-left: 1px solid #333333;
+    border-right: 1px solid #333333;
+}
+
+.barber-header {
+    border-bottom: 1px solid #333333;
+    padding-bottom: 18px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.brand-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-info h1 {
+    font-size: 1.6rem;
+    letter-spacing: 1.5px;
+    color: #FFFFFF;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.brand-info p {
+    font-size: 0.75rem;
+    color: #FF6600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.section {
+    margin-bottom: 25px;
+}
+
+.section h2 {
+    font-size: 1.05rem;
+    margin-bottom: 12px;
+    color: #FFFFFF;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-left: 3px solid #FF6600;
+    padding-left: 8px;
+}
+
+/* Cards de Barbeiros */
+.barbers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+}
+
+.barber-card {
+    background: #242424;
+    border: 1px solid #333333;
+    border-radius: 6px;
+    padding: 12px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.barber-card.active {
+    border-color: #FF6600;
+    background: #2D221B;
+}
+
+.barber-card h3 {
+    font-size: 0.9rem;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+/* Grade de Serviços */
+.services-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.service-card {
+    background: #242424;
+    border: 1px solid #333333;
+    border-radius: 6px;
+    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    cursor: pointer;
+    transition: 0.2s;
+    gap: 8px;
+}
+
+.service-card.active {
+    border-color: #FF6600;
+    background: #2D221B;
+}
+
+.service-info {
+    width: 100%;
+}
+
+.service-info h3 {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+    color: #FFFFFF;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.3;
+}
+
+.service-info span {
+    font-size: 0.78rem;
+    color: #AAAAAA;
+}
+
+.price {
+    font-weight: bold;
+    color: #FF6600;
+    font-size: 0.85rem;
+    background: #1A1A1A;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #333333;
+    width: 100%;
+    text-align: center;
+    margin-top: auto;
+}
+
+.datetime-inputs, .client-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.input-group label {
+    font-size: 0.85rem;
+    color: #CCCCCC;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    background: #242424;
+    border: 1px solid #444444;
+    border-radius: 6px;
+    color: #FFFFFF;
+    font-size: 1rem;
+    outline: none;
+    transition: 0.2s;
+}
+
+input:focus, select:focus {
+    border-color: #FF6600;
+    background: #1A1A1A;
+}
+
+.footer-action {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    padding: 15px 20px;
+    background: #1A1A1A;
+    border-top: 1px solid #333333;
+    z-index: 99;
+}
+
+.btn-whatsapp {
+    width: 100%;
+    padding: 15px;
+    background-color: #FF6600;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.05rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    transition: 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-whatsapp:hover {
+    background-color: #E55C00;
+}
+
+.landing-container {
+    text-align: center;
+    padding-bottom: 40px;
+}
+
+.landing-header {
+    padding: 30px 0 20px 0;
+    border-bottom: 1px solid #333333;
+    margin-bottom: 25px;
+}
+
+.brand-logo-container {
+    width: 90px;
+    height: 90px;
+    background: #242424;
+    border: 2px solid #FF6600;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px auto;
+    overflow: hidden;
+}
+
+.landing-header h1 {
+    font-size: 1.8rem;
+    color: #FFFFFF;
+    margin-bottom: 5px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.tagline {
+    font-size: 0.8rem;
+    color: #FF6600;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+}
+
+.about-section {
+    text-align: left;
+    background: #242424;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border: 1px solid #333333;
+}
+
+.about-section p {
+    font-size: 0.9rem;
+    color: #CCCCCC;
+    line-height: 1.5;
+}
+
+.info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+.info-card {
+    background: #242424;
+    padding: 12px 15px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    text-align: left;
+    border: 1px solid #333333;
+}
+
+.info-card i {
+    font-size: 1.4rem;
+    color: #FF6600;
+}
+
+.info-card h3 {
+    font-size: 0.95rem;
+    color: #FFFFFF;
+    margin-bottom: 3px;
+}
+
+.info-card p {
+    font-size: 0.8rem;
+    color: #AAAAAA;
+}
+
+.btn-primary-action {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px;
+    background-color: #FF6600;
+    color: #FFFFFF;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 1.05rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: 0.2s;
+}
+
+.btn-primary-action:hover {
+    background-color: #E55C00;
+}
+
+.landing-footer {
+    margin-top: 30px;
+    font-size: 0.75rem;
+    color: #777777;
+}

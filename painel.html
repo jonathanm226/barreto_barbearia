@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Agenda Pro. Barreto Barbearia</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Barreto Barbearia">
+    <link rel="apple-touch-icon" href="logo.jpg.jpg">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        html, body { height: 100%; overscroll-behavior-y: none; background: #121212; color: #FFF; }
+        .barber-header { text-align: center; padding: 20px 10px; margin-bottom: 20px; border-bottom: 1px solid #333; }
+        .brand-logo-container { width: 100px; height: 100px; margin: 0 auto 15px auto; border-radius: 50%; overflow: hidden; box-shadow: 0 4px 10px rgba(255,102,0,0.2); border: 2px solid #FF6600; }
+        .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
+        .barber-header h1 { font-size: 1.5rem; color: #FFF; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
+        .barber-header p { font-size: 0.85rem; color: #FF6600; text-transform: uppercase; letter-spacing: 1px; }
+        #login-section { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; }
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
+        .custom-modal-overlay.active { opacity: 1; visibility: visible; }
+        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 25px; width: 90%; max-width: 420px; text-align: center; }
+        .custom-modal h3 { color: #FFF; font-size: 1.1rem; margin-bottom: 12px; text-transform: uppercase; }
+        .custom-modal p { color: #CCC; font-size: 0.9rem; margin-bottom: 20px; }
+        .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; font-size: 1rem; margin-bottom: 15px; outline: none; }
+        .custom-modal-buttons { display: flex; gap: 10px; }
+        .custom-modal-btn { flex: 1; padding: 12px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; }
+        .btn-modal-cancelar { background: #333; color: #FFF; }
+        .btn-modal-confirmar { background: #FF6600; color: #FFF; }
+        .btn-modal-atendido { background: #25D366; color: #FFF; }
+        .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
+        .week-grid { display: grid; gap: 15px; margin-top: 15px; }
+        .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .day-header { font-size: 0.95rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .slot-item { background: #242424; padding: 8px 10px; border-radius: 6px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; border-left: 4px solid #555; color: #FFF; }
+        .slot-item.booked { border-left-color: #25D366; background: #152219; }
+        .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
+        .slot-item.available { border-left-color: #FF6600; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" style="max-width: 1000px;">
+        
+        <header class="barber-header">
+            <div class="brand-logo-container">
+                <img src="logo.jpg.jpg" alt="Logo Barreto Barbearia">
+            </div>
+            <div>
+                <h1>Agenda Pro. Barreto</h1>
+                <p>Painel de Gerenciamento</p>
+            </div>
+        </header>
+
+        <section id="login-section" class="section">
+            <h2 style="border-left: 3px solid #FF6600; padding-left: 10px;">ACESSO AO PAINEL</h2>
+            <div class="datetime-inputs">
+                <div class="input-group">
+                    <label for="login-usuario">Login (Matheus, Yann, Rafael ou admin):</label>
+                    <input type="text" id="login-usuario">
+                </div>
+                <div class="input-group">
+                    <label for="login-senha">Senha:</label>
+                    <input type="password" id="login-senha">
+                </div>
+                <button class="btn-primary-action" onclick="fazerLogin()" style="background: #FF6600; color: #FFF; font-weight: bold; letter-spacing: 1px; padding: 15px;">ENTRAR</button>
+            </div>
+        </section>
+
+        <section id="dashboard-barbeiro" class="section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h2 id="titulo-agenda-barbeiro">Minha Agenda Semanal</h2>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button onclick="abrirModalSenha()" class="btn-whatsapp" style="width: auto; padding: 8px 12px; font-size: 0.85rem; background: #333; color: #FFF;">
+                        <i class="fa-solid fa-key"></i> Senha
+                    </button>
+                    <button onclick="carregarAgendaSemanal(); carregarFaturamentoBarbeiro();" class="btn-whatsapp" style="width: auto; padding: 8px 12px; font-size: 0.85rem; background: #FF6600; color: #FFF;">
+                        <i class="fa-solid fa-rotate"></i> Atualizar
+                    </button>
+                    <button onclick="fazerLogout()" class="btn-whatsapp" style="width: auto; padding: 8px 12px; font-size: 0.85rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair
+                    </button>
+                </div>
+            </div>
+
+            <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                    <h3 style="color: #FFF; font-size: 1rem; margin: 0;"><i class="fa-solid fa-wallet"></i> Extrato de Faturamento</h3>
+                    <select id="select-periodo-faturamento" onchange="carregarFaturamentoBarbeiro()" style="width: auto; padding: 6px 10px; font-size: 0.85rem; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF;">
+                        <option value="dia">Hoje (Dia)</option>
+                        <option value="semana">Esta Semana</option>
+                        <option value="mes">Este Mês</option>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 12px;">
+                    <div style="background: #242424; border: 1px solid #333; padding: 10px; border-radius: 6px;">
+                        <span style="color: #888; display: block; font-size: 0.75rem;">Atendimentos</span>
+                        <strong id="barber-resumo-qtd" style="font-size: 1.2rem; color: #FFF;">0</strong>
+                    </div>
+                    <div style="background: #242424; border: 1px solid #333; padding: 10px; border-radius: 6px;">
+                        <span style="color: #888; display: block; font-size: 0.75rem;">Total Recebido</span>
+                        <strong id="barber-resumo-total" style="font-size: 1.2rem; color: #25D366;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <div style="background: #242424; border: 1px solid #333; padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #DDD;" id="barber-detalhes-pagamento">
+                    <strong>Por Forma de Pagamento:</strong><br>
+                    💵 Dinheiro: R$ 0,00 | 📱 Pix: R$ 0,00<br>
+                    💳 Débito: R$ 0,00 | 💳 Crédito: R$ 0,00
+                </div>
+            </div>
+
+            <div style="background: #1A1A1A; border: 1px solid #333; padding: 14px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                <div style="font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Período da Agenda</div>
+                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 1rem; display: block; margin-bottom: 12px;"></span>
+                <div style="display: flex; justify-content: space-between; gap: 10px;">
+                    <button onclick="mudarSemana(-1)" class="btn-whatsapp" style="flex: 1; padding: 10px; font-size: 0.85rem; border: 1px solid #444; background: #242424; color: #FFF;">
+                        <i class="fa-solid fa-chevron-left"></i> Anterior
+                    </button>
+                    <button onclick="mudarSemana(1)" class="btn-whatsapp" style="flex: 1; padding: 10px; font-size: 0.85rem; border: 1px solid #444; background: #242424; color: #FFF;">
+                        Próxima <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #FFF; text-align: center;">Agenda Diária</h3>
+            <div id="seletor-dias" style="display: flex; gap: 4px; justify-content: space-between; width: 100%; margin-bottom: 15px;"></div>
+            <div id="grade-semanal-container" class="week-grid" style="grid-template-columns: 1fr;"></div>
+        </section>
+
+        <section id="dashboard-admin" class="section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Resumo Administrativo</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="carregarResumoAdmin()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #FF6600; color: #FFF;">
+                        <i class="fa-solid fa-rotate"></i> Atualizar
+                    </button>
+                    <button onclick="fazerLogout()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair
+                    </button>
+                </div>
+            </div>
+
+            <div class="input-group" style="margin-bottom: 20px;">
+                <label for="filter-date-admin">Selecionar Data:</label>
+                <input type="date" id="filter-date-admin" onchange="carregarResumoAdmin()">
+            </div>
+
+            <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
+                <h3 style="color: #FFF; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 8px;"><i class="fa-solid fa-chart-pie"></i> Fechamento Geral</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
+                    <div style="background: #242424; border: 1px solid #333; padding: 12px; border-radius: 6px;">
+                        <span style="color: #888; display: block; font-size: 0.8rem; margin-bottom: 4px;">Atendimentos</span>
+                        <strong id="admin-resumo-qtd" style="font-size: 1.3rem; color: #FFF;">0</strong>
+                    </div>
+                    <div style="background: #242424; border: 1px solid #333; padding: 12px; border-radius: 6px;">
+                        <span style="color: #888; display: block; font-size: 0.8rem; margin-bottom: 4px;">Faturamento</span>
+                        <strong id="admin-resumo-total" style="font-size: 1.3rem; color: #25D366;">R$ 0,00</strong>
+                    </div>
+                </div>
+                <div style="background: #242424; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 0.9rem; color: #DDD;" id="admin-detalhes-pagamento"></div>
+            </div>
+            <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </section>
+
+    </div>
+
+    <div id="custom-action-modal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <h3>Gerenciar Atendimento</h3>
+            <div id="action-modal-details" style="text-align: left; background: #242424; padding: 12px; border-radius: 6px; border: 1px solid #444; margin-bottom: 15px; font-size: 0.9rem; color: #DDD;"></div>
+            <div id="payment-box" style="display: none; text-align: left; margin-bottom: 15px;">
+                <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 5px;">Forma de Pagamento:</label>
+                <select id="select-forma-pagamento">
+                    <option value="Pix">Pix</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Crédito">Crédito</option>
+                </select>
+            </div>
+            <div class="custom-modal-buttons" id="action-modal-buttons" style="flex-direction: column; gap: 8px;"></div>
+        </div>
+    </div>
+
+    <div id="custom-alert-modal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <h3 id="alert-modal-title">Informação</h3>
+            <p id="alert-modal-message" style="color: #DDD; font-size: 0.95rem; text-align: left; background: #242424; padding: 12px; border-radius: 6px; border: 1px solid #444; margin-bottom: 20px;"></p>
+            <button id="alert-btn-ok" class="custom-modal-btn" style="background: #FF6600; color: #FFF; width: 100%;">OK</button>
+        </div>
+    </div>
+
+    <div id="custom-password-modal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <h3>Alterar Senha</h3>
+            <p id="password-modal-user">Nova senha:</p>
+            <input type="password" id="input-nova-senha" placeholder="Nova senha">
+            <div class="custom-modal-buttons">
+                <button id="pass-btn-cancelar" class="custom-modal-btn btn-modal-cancelar">Cancelar</button>
+                <button id="pass-btn-salvar" class="custom-modal-btn btn-modal-confirmar">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let usuarioLogado = "";
+        let offsetSemana = 0; 
+        let diaAtivoIso = null; 
+        
+        const horariosPadrao = [
+            "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", 
+            "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", 
+            "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", 
+            "19:00", "19:30", "20:00", "20:30", "21:00"
+        ];
+
+        function mostrarAlertaPersonalizado(titulo, mensagem) {
+            const modal = document.getElementById("custom-alert-modal");
+            document.getElementById("alert-modal-title").textContent = titulo;
+            document.getElementById("alert-modal-message").textContent = mensagem;
+            modal.classList.add("active");
+            document.getElementById("alert-btn-ok").onclick = () => modal.classList.remove("active");
+        }
+
+        function obterSenhaUsuario(user) {
+            const senhaSalva = localStorage.getItem(`senha_${user.toLowerCase()}`);
+            if (senhaSalva) return senhaSalva;
+            if (user.toLowerCase() === 'admin') return 'admin123';
+            return user.toLowerCase() + '123';
+        }
+
+        function fazerLogin() {
+            const usuarioInput = document.getElementById("login-usuario").value.trim();
+            const senhaInput = document.getElementById("login-senha").value;
+
+            if (!usuarioInput || !senhaInput) {
+                mostrarAlertaPersonalizado("Atenção", "Preencha o login e a senha.");
+                return;
+            }
+
+            const userLower = usuarioInput.toLowerCase();
+            const senhaCorreta = obterSenhaUsuario(usuarioInput);
+
+            if (senhaInput !== senhaCorreta) {
+                mostrarAlertaPersonalizado("Erro", "Login ou senha incorretos!");
+                return;
+            }
+
+            document.getElementById("login-usuario").value = "";
+            document.getElementById("login-senha").value = "";
+
+            if (userLower === 'admin') {
+                usuarioLogado = "Admin";
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard-admin").style.display = "block";
+                document.getElementById("filter-date-admin").value = new Date().toISOString().split("T")[0];
+                carregarResumoAdmin();
+            } else if (userLower === 'matheus' || userLower === 'yann' || userLower === 'rafael') {
+                usuarioLogado = usuarioInput.charAt(0).toUpperCase() + usuarioInput.slice(1).toLowerCase();
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("dashboard-barbeiro").style.display = "block";
+                document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda: ${usuarioLogado}`;
+                offsetSemana = 0;
+                carregarAgendaSemanal();
+                carregarFaturamentoBarbeiro();
+            } else {
+                mostrarAlertaPersonalizado("Erro", "Usuário não encontrado!");
+            }
+        }
+
+        function fazerLogout() {
+            usuarioLogado = "";
+            document.getElementById("dashboard-barbeiro").style.display = "none";
+            document.getElementById("dashboard-admin").style.display = "none";
+            document.getElementById("login-section").style.display = "block";
+        }
+
+        function mudarSemana(direcao) {
+            offsetSemana += direcao;
+            carregarAgendaSemanal();
+        }
+
+        function obterDiasDaSemana(offset) {
+            const dias = [];
+            const hoje = new Date();
+            const diaSemana = hoje.getDay(); 
+            const diffParaSegunda = (diaSemana === 0 ? -6 : 1) - diaSemana + (offset * 7);
+            const segunda = new Date(hoje);
+            segunda.setDate(hoje.getDate() + diffParaSegunda);
+
+            for (let i = 0; i < 6; i++) { 
+                const d = new Date(segunda);
+                d.setDate(segunda.getDate() + i);
+                dias.push({ iso: d.toISOString().split("T")[0], label: d.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' }) });
+            }
+            return dias;
+        }
+
+        const precosTabela = {
+            "corte": 35, "barba": 30, "sobrancelha": 10, "hidratacao profunda": 30,
+            "relaxamento": 40, "escova": 25, "luzes": 120, "platinado": 150,
+            "botox (selagem)": 90, "coloracao": 100, "pigmentacao": 30, "pezinho simples": 10, "pezinho gourmet": 15
+        };
+
+        function calcularPrecoServico(nomeServico) {
+            if (!nomeServico) return 35;
+            const nomeNorm = nomeServico.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            if (precosTabela[nomeNorm]) return precosTabela[nomeNorm];
+            let total = 0;
+            nomeServico.split(",").forEach(parte => {
+                total += precosTabela[parte.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()] || 35;
+            });
+            return total > 0 ? total : 35;
+        }
+
+        function obterPrecoAgendamento(item) {
+            if (item && item.preco_total !== null && item.preco_total !== undefined) {
+                return Number(item.preco_total);
+            }
+            return calcularPrecoServico(item ? item.servico : null);
+        }
+
+        async function carregarFaturamentoBarbeiro() {
+            const periodo = document.getElementById("select-periodo-faturamento").value;
+            const lblQtd = document.getElementById("barber-resumo-qtd");
+            const lblTotal = document.getElementById("barber-resumo-total");
+            const lblDetalhes = document.getElementById("barber-detalhes-pagamento");
+
+            const hoje = new Date();
+            let primeiraData, ultimaData;
+
+            if (periodo === 'dia') {
+                primeiraData = ultimaData = hoje.toISOString().split("T")[0];
+            } else if (periodo === 'semana') {
+                const diaSemana = hoje.getDay();
+                const segunda = new Date(hoje);
+                segunda.setDate(hoje.getDate() + ((diaSemana === 0 ? -6 : 1) - diaSemana));
+                const domingo = new Date(segunda);
+                domingo.setDate(segunda.getDate() + 6);
+                primeiraData = segunda.toISOString().split("T")[0];
+                ultimaData = domingo.toISOString().split("T")[0];
+            } else if (periodo === 'mes') {
+                primeiraData = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0];
+                ultimaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split("T")[0];
+            }
+
+            try {
+                // Consulta direcionada exclusivamente à tabela agendamentos_barreto
+                const { data, error } = await _supabase
+                    .from("agendamentos_barreto")
+                    .select("*")
+                    .eq("barbeiro", usuarioLogado)
+                    .gte("data", primeiraData)
+                    .lte("data", ultimaData)
+                    .eq("status", "concluido");
+
+                if (error) throw error;
+
+                let qtd = 0, total = 0;
+                let totaisPagamento = { Dinheiro: 0, Pix: 0, Débito: 0, Crédito: 0 };
+
+                (data || []).forEach(item => {
+                    qtd++;
+                    const preco = obterPrecoAgendamento(item);
+                    total += preco;
+                    if (item.pagamentos && totaisPagamento[item.pagamentos] !== undefined) {
+                        totaisPagamento[item.pagamentos] += preco;
+                    }
+                });
+
+                lblQtd.textContent = qtd;
+                lblTotal.textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+                lblDetalhes.innerHTML = `
+                    <strong>Por Forma de Pagamento:</strong><br>
+                    💵 Dinheiro: R$ ${totaisPagamento.Dinheiro.toFixed(2).replace(".", ",")} | 
+                    📱 Pix: R$ ${totaisPagamento.Pix.toFixed(2).replace(".", ",")}<br>
+                    💳 Débito: R$ ${totaisPagamento.Débito.toFixed(2).replace(".", ",")} | 
+                    💳 Crédito: R$ ${totaisPagamento.Crédito.toFixed(2).replace(".", ",")}
+                `;
+            } catch (err) {
+                console.error("Erro ao carregar faturamento:", err);
+            }
+        }
+
+        async function carregarAgendaSemanal() {
+            const container = document.getElementById("grade-semanal-container");
+            const lblPeriodo = document.getElementById("label-periodo-semana");
+            const seletorDias = document.getElementById("seletor-dias");
+            
+            container.innerHTML = "<p style='color: #888; text-align: center;'>Carregando...</p>";
+            const diasSemana = obterDiasDaSemana(offsetSemana);
+            lblPeriodo.textContent = `${diasSemana[0].label} até ${diasSemana[diasSemana.length - 1].label}`;
+
+            if (!diaAtivoIso || !diasSemana.find(d => d.iso === diaAtivoIso)) {
+                diaAtivoIso = diasSemana[0].iso;
+            }
+
+            try {
+                // Consulta à agendamentos_barreto e bloqueios_barreto
+                const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("*").eq("barbeiro", usuarioLogado).gte("data", diasSemana[0].iso).lte("data", diasSemana[diasSemana.length - 1].iso);
+                const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("*").eq("barbeiro", usuarioLogado).gte("data", diasSemana[0].iso).lte("data", diasSemana[diasSemana.length - 1].iso);
+
+                seletorDias.innerHTML = "";
+                diasSemana.forEach(dia => {
+                    const btnDia = document.createElement("button");
+                    btnDia.innerHTML = dia.label.split(',')[0].toUpperCase();
+                    btnDia.style.cssText = `flex: 1; min-width: 0; padding: 10px 0; font-size: 0.7rem; border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; border: 1px solid ${dia.iso === diaAtivoIso ? '#FF6600' : '#444'}; background: ${dia.iso === diaAtivoIso ? '#FF6600' : '#242424'}; color: #FFF;`;
+                    btnDia.onclick = () => { diaAtivoIso = dia.iso; renderizarDia(diasSemana, agendamentos || [], bloqueios || []); };
+                    seletorDias.appendChild(btnDia);
+                });
+
+                function renderizarDia(dias, listaAg, listaBlq) {
+                    container.innerHTML = "";
+                    const diaAtivo = dias.find(d => d.iso === diaAtivoIso);
+                    if (!diaAtivo) return;
+
+                    Array.from(seletorDias.children).forEach((btn, idx) => {
+                        btn.style.background = dias[idx].iso === diaAtivoIso ? '#FF6600' : '#242424';
+                        btn.style.borderColor = dias[idx].iso === diaAtivoIso ? '#FF6600' : '#444';
+                    });
+
+                    const coluna = document.createElement("div");
+                    coluna.className = "day-column";
+                    const blqDia = listaBlq.find(b => b.data === diaAtivo.iso && b.horario === 'TODOS');
+
+                    coluna.innerHTML = `
+                        <div class="day-header">
+                            <span>${diaAtivo.label}</span>
+                            <button onclick="alternarBloqueioDia('${diaAtivo.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+                                ${blqDia ? 'Desbloquear Dia' : 'Bloquear Dia'}
+                            </button>
+                        </div>
+                    `;
+
+                    const slotsDiv = document.createElement("div");
+                    slotsDiv.style.cssText = "display: flex; flex-direction: column; gap: 8px;";
+
+                    if (blqDia) {
+                        slotsDiv.innerHTML = `<div style="color: #e74c3c; text-align: center; font-size: 0.95rem; padding: 40px 0; font-weight: bold;"><i class="fa-solid fa-lock"></i> Dia Inteiro Bloqueado</div>`;
+                    } else {
+                        horariosPadrao.forEach(horario => {
+                            const ag = listaAg.find(a => a.data === diaAtivo.iso && a.horario === horario && a.status !== 'cancelado');
+                            const blq = listaBlq.find(b => b.data === diaAtivo.iso && b.horario === horario);
+                            const itemSlot = document.createElement("div");
+
+                            if (blq) {
+                                itemSlot.className = "slot-item blocked";
+                                itemSlot.innerHTML = `<span><i class="fa-solid fa-ban" style="color: #e74c3c;"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${diaAtivo.iso}', '${horario}', true)" style="background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Desbloquear</button>`;
+                            } else if (ag) {
+                                const isConcluido = ag.status === 'concluido';
+                                itemSlot.className = "slot-item booked";
+                                itemSlot.innerHTML = `<div><strong>${horario}</strong> ${isConcluido ? '<i class="fa-solid fa-check-circle" style="color:#3498db;"></i>' : ''}<br><span style="color:#AAA;">${ag.cliente}</span></div><button onclick="abrirGerenciadorAgendamento('${ag.id}')" style="background:${isConcluido ? '#3498db' : '#25D366'}; color:#FFF; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;"><i class="fa-solid fa-gear"></i> Ações</button>`;
+                            } else {
+                                itemSlot.className = "slot-item available";
+                                itemSlot.innerHTML = `<span><i class="fa-regular fa-clock"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${diaAtivo.iso}', '${horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Bloquear</button>`;
+                            }
+                            slotsDiv.appendChild(itemSlot);
+                        });
+                    }
+                    coluna.appendChild(slotsDiv);
+                    container.appendChild(coluna);
+                }
+
+                renderizarDia(diasSemana, agendamentos || [], bloqueios || []);
+                carregarFaturamentoBarbeiro();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function abrirGerenciadorAgendamento(id) {
+            const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
+            if (!data) return;
+
+            const modal = document.getElementById("custom-action-modal");
+            document.getElementById("action-modal-details").innerHTML = `<strong>Cliente:</strong> ${data.cliente}<br><strong>Telefone:</strong> ${data.telefone}<br><strong>Serviço:</strong> ${data.servico}<br><strong>Valor:</strong> R$ ${obterPrecoAgendamento(data)},00<br><strong>Horário:</strong> ${data.horario} (${data.data.split("-").reverse().join("/")})`;
+            
+            const paymentBox = document.getElementById("payment-box");
+            const buttonsBox = document.getElementById("action-modal-buttons");
+            paymentBox.style.display = "none";
+            buttonsBox.innerHTML = "";
+
+            if (data.status !== 'concluido') {
+                const btnAtendido = document.createElement("button");
+                btnAtendido.className = "custom-modal-btn btn-modal-atendido";
+                btnAtendido.innerHTML = 'Validar como Atendido';
+                btnAtendido.onclick = () => {
+                    paymentBox.style.display = "block";
+                    buttonsBox.innerHTML = "";
+                    const btnSalvar = document.createElement("button");
+                    btnSalvar.className = "custom-modal-btn btn-modal-confirmar";
+                    btnSalvar.textContent = "Confirmar Pagamento";
+                    btnSalvar.onclick = async () => {
+                        await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: document.getElementById("select-forma-pagamento").value }).eq("id", id);
+                        modal.classList.remove("active");
+                        carregarAgendaSemanal();
+                        carregarFaturamentoBarbeiro();
+                    };
+                    buttonsBox.appendChild(btnSalvar);
+                };
+                buttonsBox.appendChild(btnAtendido);
+
+                const btnCancelar = document.createElement("button");
+                btnCancelar.className = "custom-modal-btn btn-modal-excluir";
+                btnCancelar.textContent = "Cancelar Agendamento";
+                btnCancelar.onclick = async () => {
+                    if (confirm("Deseja cancelar?")) {
+                        await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                        modal.classList.remove("active");
+                        carregarAgendaSemanal();
+                    }
+                };
+                buttonsBox.appendChild(btnCancelar);
+            }
+            modal.classList.add("active");
+        }
+
+        async function alternarBloqueioDia(dataIso, bloqueado) {
+            if (bloqueado) {
+                await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", "TODOS");
+            } else {
+                await _supabase.from("bloqueios_barreto").upsert({ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }, { onConflict: 'barbeiro,data,horario' });
+            }
+            carregarAgendaSemanal();
+        }
+
+        async function alternarBloqueioHorario(dataIso, horario, bloqueado) {
+            if (bloqueado) {
+                await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario);
+            } else {
+                await _supabase.from("bloqueios_barreto").upsert({ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }, { onConflict: 'barbeiro,data,horario' });
+            }
+            carregarAgendaSemanal();
+        }
+
+        function abrirModalSenha() {
+            const modal = document.getElementById("custom-password-modal");
+            modal.classList.add("active");
+            document.getElementById("pass-btn-salvar").onclick = () => {
+                const nova = document.getElementById("input-nova-senha").value.trim();
+                if (nova) {
+                    localStorage.setItem(`senha_${usuarioLogado.toLowerCase()}`, nova);
+                    modal.classList.remove("active");
+                    mostrarAlertaPersonalizado("Sucesso", "Senha alterada!");
+                }
+            };
+            document.getElementById("pass-btn-cancelar").onclick = () => modal.classList.remove("active");
+        }
+
+        async function carregarResumoAdmin() {
+            const dataFiltro = document.getElementById("filter-date-admin").value;
+            const container = document.getElementById("agendamentos-list-admin");
+            container.innerHTML = "<p style='color:#888; text-align:center;'>Carregando...</p>";
+            
+            let query = _supabase.from("agendamentos_barreto").select("*").order("horario", { ascending: true });
+            if (dataFiltro) query = query.eq("data", dataFiltro);
+            const { data } = await query;
+
+            let total = 0, qtd = 0;
+            (data || []).forEach(item => {
+                if (item.status === 'concluido') {
+                    qtd++;
+                    total += obterPrecoAgendamento(item);
+                }
+            });
+
+            document.getElementById("admin-resumo-qtd").textContent = qtd;
+            document.getElementById("admin-resumo-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+            
+            container.innerHTML = "";
+            (data || []).forEach(item => {
+                const card = document.createElement("div");
+                card.style.cssText = "background: #242424; padding: 12px 15px; border-radius: 8px; border: 1px solid #333; border-left: 4px solid " + (item.status === 'concluido' ? '#3498db' : '#FF6600');
+                card.innerHTML = `<strong>${item.horario} - ${item.barbeiro}</strong><br><span style="color:#AAA;">Cliente: ${item.cliente} | Serviço: ${item.servico} | R$ ${obterPrecoAgendamento(item)},00</span>`;
+                container.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>
