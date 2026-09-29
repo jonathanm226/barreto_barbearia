@@ -216,8 +216,7 @@
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let usuarioLogado = "";
-        let offsetSemana = 0; 
-        let diaAtivoIso = null; 
+        let diaAtivoIso = new Date().toISOString().split("T")[0]; 
         
         const horariosPadrao = [
             "08:00", "08:30", "09:00", "09:30", 
@@ -273,7 +272,8 @@
                 document.getElementById("login-section").style.display = "none";
                 document.getElementById("dashboard-barbeiro").style.display = "block";
                 document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda: ${usuarioLogado}`;
-                offsetSemana = 0;
+                
+                diaAtivoIso = new Date().toISOString().split("T")[0];
                 carregarAgendaSemanal();
                 carregarFaturamentoBarbeiro();
             } else {
@@ -289,17 +289,19 @@
         }
 
         function mudarSemana(direcao) {
-            offsetSemana += direcao;
+            const dataAtual = new Date(diaAtivoIso + "T00:00:00");
+            dataAtual.setDate(dataAtual.getDate() + (direcao * 7));
+            diaAtivoIso = dataAtual.toISOString().split("T")[0];
             carregarAgendaSemanal();
         }
 
-        function obterDiasDaSemana(offset) {
+        function obterDiasDaSemanaParaData(dataIso) {
             const dias = [];
-            const hoje = new Date();
-            const diaSemana = hoje.getDay(); 
-            const diffParaSegunda = (diaSemana === 0 ? -6 : 1) - diaSemana + (offset * 7);
-            const segunda = new Date(hoje);
-            segunda.setDate(hoje.getDate() + diffParaSegunda);
+            const base = new Date(dataIso + "T00:00:00");
+            const diaSemana = base.getDay(); 
+            const diffParaSegunda = (diaSemana === 0 ? -6 : 1) - diaSemana;
+            const segunda = new Date(base);
+            segunda.setDate(base.getDate() + diffParaSegunda);
 
             for (let i = 0; i < 6; i++) { 
                 const d = new Date(segunda);
@@ -345,13 +347,9 @@
             if (periodo === 'dia') {
                 primeiraData = ultimaData = hoje.toISOString().split("T")[0];
             } else if (periodo === 'semana') {
-                const diaSemana = hoje.getDay();
-                const segunda = new Date(hoje);
-                segunda.setDate(hoje.getDate() + ((diaSemana === 0 ? -6 : 1) - diaSemana));
-                const domingo = new Date(segunda);
-                domingo.setDate(segunda.getDate() + 6);
-                primeiraData = segunda.toISOString().split("T")[0];
-                ultimaData = domingo.toISOString().split("T")[0];
+                const diasDaSemanaAtual = obterDiasDaSemanaParaData(hoje.toISOString().split("T")[0]);
+                primeiraData = diasDaSemanaAtual[0].iso;
+                ultimaData = diasDaSemanaAtual[diasDaSemanaAtual.length - 1].iso;
             } else if (periodo === 'mes') {
                 primeiraData = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0];
                 ultimaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split("T")[0];
@@ -400,10 +398,10 @@
             const seletorDias = document.getElementById("seletor-dias");
             
             container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
-            const diasSemana = obterDiasDaSemana(offsetSemana);
+            const diasSemana = obterDiasDaSemanaParaData(diaAtivoIso);
             lblPeriodo.textContent = `${diasSemana[0].label} até ${diasSemana[diasSemana.length - 1].label}`;
 
-            if (!diaAtivoIso || !diasSemana.find(d => d.iso === diaAtivoIso)) {
+            if (!diasSemana.find(d => d.iso === diaAtivoIso)) {
                 diaAtivoIso = diasSemana[0].iso;
             }
 
