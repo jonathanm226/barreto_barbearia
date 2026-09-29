@@ -383,7 +383,7 @@ async function sendToWhatsapp() {
     }
 
     const formattedDate = date.split("-").reverse().join("/");
-    const whatsappNumber = "5531994951564"; // Número correto unificado para testes[cite: 32]
+    const whatsappNumber = "5531994951564";
 
     const avisoEmergencial = emergencial
         ? `🚨 *HORÁRIO EMERGENCIAL (fora do expediente normal)* 🚨\n\n`
@@ -400,7 +400,6 @@ async function sendToWhatsapp() {
                 {
                     cliente: name,
                     telefone: phone,
-                    nascimento: null,
                     barbeiro: selectedBarber,
                     servico: listaNomesServicos,
                     preco_total: precoTotal,
