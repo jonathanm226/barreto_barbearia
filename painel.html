@@ -437,7 +437,7 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${diaAtivo.label}</span>
-                            <button onclick="alternarBloqueioDia('${diaAtivo.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;">
+                            <button onclick="alternarBloqueioDia('${diaAtivo.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold;">
                                 ${blqDia ? 'Desbloquear Dia' : 'Bloquear Dia'}
                             </button>
                         </div>
@@ -538,7 +538,6 @@
                 buttonsBox.appendChild(btnCancelar);
             }
 
-            // Botão Voltar para fechar o modal sem realizar nenhuma ação
             const btnVoltar = document.createElement("button");
             btnVoltar.className = "custom-modal-btn btn-modal-voltar";
             btnVoltar.innerHTML = '<i class="fa-solid fa-arrow-left"></i> Voltar';
@@ -553,28 +552,42 @@
         async function alternarBloqueioDia(dataIso, bloqueado) {
             try {
                 if (bloqueado) {
-                    await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", "TODOS");
+                    const { error } = await _supabase.from("bloqueios_barreto")
+                        .delete()
+                        .eq("barbeiro", usuarioLogado)
+                        .eq("data", dataIso)
+                        .eq("horario", "TODOS");
+                    if (error) throw error;
                 } else {
-                    await _supabase.from("bloqueios_barreto").upsert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }], { onConflict: 'barbeiro,data,horario' });
+                    const { error } = await _supabase.from("bloqueios_barreto")
+                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
+                    if (error) throw error;
                 }
                 carregarAgendaSemanal();
             } catch (err) {
                 console.error("Erro ao alternar bloqueio do dia:", err);
-                mostrarAlertaPersonalizado("Erro", "Não foi possível alterar o bloqueio. Verifique o console.");
+                mostrarAlertaPersonalizado("Erro", "Não foi possível alterar o bloqueio do dia.");
             }
         }
 
         async function alternarBloqueioHorario(dataIso, horario, bloqueado) {
             try {
                 if (bloqueado) {
-                    await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario);
+                    const { error } = await _supabase.from("bloqueios_barreto")
+                        .delete()
+                        .eq("barbeiro", usuarioLogado)
+                        .eq("data", dataIso)
+                        .eq("horario", horario);
+                    if (error) throw error;
                 } else {
-                    await _supabase.from("bloqueios_barreto").upsert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }], { onConflict: 'barbeiro,data,horario' });
+                    const { error } = await _supabase.from("bloqueios_barreto")
+                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
+                    if (error) throw error;
                 }
                 carregarAgendaSemanal();
             } catch (err) {
                 console.error("Erro ao alternar bloqueio do horário:", err);
-                mostrarAlertaPersonalizado("Erro", "Não foi possível alterar o bloqueio. Verifique o console.");
+                mostrarAlertaPersonalizado("Erro", "Não foi possível alterar o bloqueio do horário.");
             }
         }
 
