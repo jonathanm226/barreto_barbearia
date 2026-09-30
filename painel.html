@@ -25,6 +25,7 @@
         #login-section { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; }
         .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
         .custom-modal-overlay.active { opacity: 1; visibility: visible; }
+        #custom-alert-modal { z-index: 10000; }
         .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 25px; width: 90%; max-width: 420px; text-align: center; }
         .custom-modal h3 { color: #FFF; font-size: 1.1rem; margin-bottom: 12px; text-transform: uppercase; }
         .custom-modal p { color: #CCC; font-size: 0.9rem; margin-bottom: 20px; }
@@ -64,8 +65,8 @@
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
                 <div class="input-group">
-                    <label for="login-usuario">E-mail:</label>
-                    <input type="email" id="login-usuario" autocomplete="username" autocapitalize="none" inputmode="email">
+                    <label for="login-usuario">Login (Matheus, Yann, Rafael ou admin):</label>
+                    <input type="text" id="login-usuario" autocomplete="username" autocapitalize="none" autocorrect="off">
                 </div>
                 <div class="input-group">
                     <label for="login-senha">Senha:</label>
@@ -141,6 +142,9 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2>Painel Administrativo (Geral)</h2>
                 <div style="display: flex; gap: 8px;">
+                    <button onclick="abrirModalSenha()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #333; color: #FFF;">
+                        <i class="fa-solid fa-key"></i> Senha
+                    </button>
                     <button onclick="carregarResumoAdmin()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
                     </button>
@@ -229,9 +233,12 @@
 
     <div id="custom-password-modal" class="custom-modal-overlay">
         <div class="custom-modal">
-            <h3>Alterar Senha</h3>
+            <h3 id="password-modal-title">Alterar Senha</h3>
             <p id="password-modal-user">Nova senha:</p>
-            <input type="password" id="input-nova-senha" placeholder="Nova senha">
+            <input type="password" id="input-nova-senha" placeholder="Nova senha (mín. 8 caracteres)" autocomplete="new-password">
+            <input type="password" id="input-confirmar-senha" placeholder="Repita a nova senha" autocomplete="new-password">
+            <input type="email" id="input-email-contato" placeholder="Seu e-mail" autocomplete="email" autocapitalize="none" style="display: none;">
+            <p id="pass-erro" style="color: #e74c3c; font-size: 0.85rem; margin: -5px 0 12px 0; min-height: 1em; text-align: left;"></p>
             <div class="custom-modal-buttons">
                 <button id="pass-btn-cancelar" class="custom-modal-btn btn-modal-cancelar">Cancelar</button>
                 <button id="pass-btn-salvar" class="custom-modal-btn btn-modal-confirmar">Salvar</button>
@@ -244,7 +251,12 @@
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // O login digitado como "matheus" vira "matheus@DOMINIO_LOGIN" no Supabase Auth.
+        // Não é um e-mail real (nenhuma mensagem é enviada); precisa ser igual ao usado no SQL (PARTE 5).
+        const DOMINIO_LOGIN = "barretobarbearia.com.br";
+
         let usuarioLogado = "";
+        let perfilAtual = null; // { user_id, nome, papel, email_contato }
         let diaAtivoIso = hojeISO(); 
         let adminDiaAtivoIso = hojeISO();
         
@@ -282,6 +294,8 @@
         // ===== Autenticação (Supabase Auth) =====
         function mostrarTelaLogin() {
             usuarioLogado = "";
+            perfilAtual = null;
+            document.getElementById("custom-password-modal").classList.remove("active");
             document.getElementById("dashboard-barbeiro").style.display = "none";
             document.getElementById("dashboard-admin").style.display = "none";
             document.getElementById("login-section").style.display = "flex";
@@ -293,7 +307,7 @@
 
             const { data: perfil, error } = await _supabase
                 .from("perfis_barreto")
-                .select("nome, papel")
+                .select("user_id, nome, papel, email_contato")
                 .eq("user_id", session.user.id)
                 .maybeSingle();
 
@@ -304,6 +318,7 @@
                 return false;
             }
 
+            perfilAtual = perfil;
             document.getElementById("login-section").style.display = "none";
 
             if (perfil.papel === "admin") {
@@ -322,17 +337,23 @@
                 carregarAgendaSemanal();
                 carregarFaturamentoBarbeiro();
             }
+
+            // Primeiro acesso: exige nova senha e coleta o e-mail de contato
+            if (!perfil.email_contato) abrirModalSenha();
             return true;
         }
 
         async function fazerLogin() {
-            const email = document.getElementById("login-usuario").value.trim().toLowerCase();
+            const usuarioDigitado = document.getElementById("login-usuario").value.trim().toLowerCase();
             const senha = document.getElementById("login-senha").value;
 
-            if (!email || !senha) {
-                mostrarAlertaPersonalizado("Atenção", "Preencha o e-mail e a senha.");
+            if (!usuarioDigitado || !senha) {
+                mostrarAlertaPersonalizado("Atenção", "Preencha o login e a senha.");
                 return;
             }
+
+            // Aceita "matheus" ou um e-mail completo
+            const email = usuarioDigitado.includes("@") ? usuarioDigitado : `${usuarioDigitado}@${DOMINIO_LOGIN}`;
 
             const btn = document.getElementById("btn-login");
             btn.disabled = true;
@@ -340,7 +361,7 @@
             try {
                 const { error } = await _supabase.auth.signInWithPassword({ email: email, password: senha });
                 if (error) {
-                    mostrarAlertaPersonalizado("Erro", "E-mail ou senha incorretos!");
+                    mostrarAlertaPersonalizado("Erro", "Login ou senha incorretos!");
                     return;
                 }
                 document.getElementById("login-senha").value = "";
@@ -684,27 +705,90 @@
         }
 
         function abrirModalSenha() {
+            if (!perfilAtual) return;
+
             const modal = document.getElementById("custom-password-modal");
-            const campo = document.getElementById("input-nova-senha");
-            campo.value = "";
+            const campoSenha = document.getElementById("input-nova-senha");
+            const campoConfirma = document.getElementById("input-confirmar-senha");
+            const campoEmail = document.getElementById("input-email-contato");
+            const erro = document.getElementById("pass-erro");
+            const btnSalvar = document.getElementById("pass-btn-salvar");
+            const btnCancelar = document.getElementById("pass-btn-cancelar");
+
+            // Sem e-mail cadastrado = primeiro acesso (obrigatório)
+            const precisaEmail = !perfilAtual.email_contato;
+
+            document.getElementById("password-modal-title").textContent = precisaEmail ? "Primeiro acesso" : "Alterar Senha";
+            document.getElementById("password-modal-user").textContent = precisaEmail
+                ? "Crie uma nova senha e informe o seu e-mail. Ele será usado para contato e recuperação de acesso."
+                : "Digite a nova senha:";
+            campoEmail.style.display = precisaEmail ? "block" : "none";
+            btnCancelar.textContent = precisaEmail ? "Sair" : "Cancelar";
+
+            campoSenha.value = "";
+            campoConfirma.value = "";
+            campoEmail.value = "";
+            erro.textContent = "";
             modal.classList.add("active");
-            document.getElementById("pass-btn-salvar").onclick = async () => {
-                const nova = campo.value;
-                if (nova.length < 8) {
-                    mostrarAlertaPersonalizado("Atenção", "A senha precisa ter pelo menos 8 caracteres.");
-                    return;
-                }
-                const { error } = await _supabase.auth.updateUser({ password: nova });
-                if (error) {
-                    console.error(error);
-                    mostrarAlertaPersonalizado("Erro", "Não foi possível alterar a senha. Tente novamente.");
-                    return;
-                }
+
+            btnCancelar.onclick = () => {
                 modal.classList.remove("active");
-                campo.value = "";
-                mostrarAlertaPersonalizado("Sucesso", "Senha alterada!");
+                if (precisaEmail) fazerLogout();
             };
-            document.getElementById("pass-btn-cancelar").onclick = () => modal.classList.remove("active");
+
+            btnSalvar.onclick = async () => {
+                erro.textContent = "";
+                const nova = campoSenha.value;
+                const email = campoEmail.value.trim().toLowerCase();
+
+                if (nova.length < 8) { erro.textContent = "A senha precisa ter pelo menos 8 caracteres."; return; }
+                if (nova !== campoConfirma.value) { erro.textContent = "As senhas não conferem."; return; }
+                if (precisaEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                    erro.textContent = "Informe um e-mail válido.";
+                    return;
+                }
+
+                btnSalvar.disabled = true;
+                try {
+                    const { error } = await _supabase.auth.updateUser({ password: nova });
+                    // "mesma senha" só é aceito se for uma nova tentativa de salvar o e-mail
+                    const mesmaSenha = error && (error.code === "same_password" || /different from the old/i.test(error.message || ""));
+                    if (error && !(mesmaSenha && precisaEmail)) {
+                        console.error(error);
+                        erro.textContent = mesmaSenha
+                            ? "Escolha uma senha diferente da atual."
+                            : "Não foi possível alterar a senha. Tente novamente.";
+                        return;
+                    }
+
+                    if (precisaEmail) {
+                        const { data: linhas, error: errEmail } = await _supabase
+                            .from("perfis_barreto")
+                            .update({ email_contato: email })
+                            .eq("user_id", perfilAtual.user_id)
+                            .select("user_id");
+
+                        if (errEmail || !linhas || linhas.length === 0) {
+                            console.error(errEmail);
+                            erro.textContent = (errEmail && errEmail.code === "23505")
+                                ? "Este e-mail já está cadastrado para outro usuário."
+                                : "A senha foi alterada, mas não foi possível salvar o e-mail. Tente novamente.";
+                            return;
+                        }
+                        perfilAtual.email_contato = email;
+                    }
+
+                    modal.classList.remove("active");
+                    campoSenha.value = "";
+                    campoConfirma.value = "";
+                    mostrarAlertaPersonalizado("Sucesso", precisaEmail ? "Senha alterada e e-mail cadastrado!" : "Senha alterada!");
+                } catch (err) {
+                    console.error(err);
+                    erro.textContent = "Erro de conexão. Tente novamente.";
+                } finally {
+                    btnSalvar.disabled = false;
+                }
+            };
         }
 
         async function carregarResumoAdmin() {
