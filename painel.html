@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Pro. Barreto Barbearia</title>
     
     <link rel="manifest" href="manifest.json">
@@ -64,14 +64,14 @@
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
                 <div class="input-group">
-                    <label for="login-usuario">Login (Matheus, Yann, Rafael ou admin):</label>
-                    <input type="text" id="login-usuario">
+                    <label for="login-usuario">E-mail:</label>
+                    <input type="email" id="login-usuario" autocomplete="username" autocapitalize="none" inputmode="email">
                 </div>
                 <div class="input-group">
                     <label for="login-senha">Senha:</label>
-                    <input type="password" id="login-senha">
+                    <input type="password" id="login-senha" autocomplete="current-password">
                 </div>
-                <button class="btn-primary-action" onclick="fazerLogin()" style="background: #FF6600; color: #FFF; font-weight: bold; letter-spacing: 1px; padding: 15px;">ENTRAR</button>
+                <button class="btn-primary-action" id="btn-login" onclick="fazerLogin()" style="background: #FF6600; color: #FFF; font-weight: bold; letter-spacing: 1px; padding: 15px;">ENTRAR</button>
             </div>
         </section>
 
@@ -245,15 +245,14 @@
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let usuarioLogado = "";
-        let diaAtivoIso = new Date().toISOString().split("T")[0]; 
-        let adminDiaAtivoIso = new Date().toISOString().split("T")[0];
+        let diaAtivoIso = hojeISO(); 
+        let adminDiaAtivoIso = hojeISO();
         
         const horariosPadrao = [
             "08:00", "08:30", "09:00", "09:30", 
             "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", 
             "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", 
-            "19:30", "20:00", "20:30", "21:00"
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"
         ];
 
         function mostrarAlertaPersonalizado(titulo, mensagem) {
@@ -264,72 +263,118 @@
             document.getElementById("alert-btn-ok").onclick = () => modal.classList.remove("active");
         }
 
-        function obterSenhaUsuario(user) {
-            const senhaSalva = localStorage.getItem(`senha_${user.toLowerCase()}`);
-            if (senhaSalva) return senhaSalva;
-            if (user.toLowerCase() === 'admin') return 'admin123';
-            return user.toLowerCase() + '123';
+        // ===== Utilitários =====
+        function isoLocal(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const dia = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${dia}`;
         }
 
-        function fazerLogin() {
-            const usuarioInput = document.getElementById("login-usuario").value.trim();
-            const senhaInput = document.getElementById("login-senha").value;
+        function hojeISO() { return isoLocal(new Date()); }
 
-            if (!usuarioInput || !senhaInput) {
-                mostrarAlertaPersonalizado("Atenção", "Preencha o login e a senha.");
-                return;
-            }
-
-            const userLower = usuarioInput.toLowerCase();
-            const senhaCorreta = obterSenhaUsuario(usuarioInput);
-
-            if (senhaInput !== senhaCorreta) {
-                mostrarAlertaPersonalizado("Erro", "Login ou senha incorretos!");
-                return;
-            }
-
-            document.getElementById("login-usuario").value = "";
-            document.getElementById("login-senha").value = "";
-
-            if (userLower === 'admin') {
-                usuarioLogado = "Admin";
-                document.getElementById("login-section").style.display = "none";
-                document.getElementById("dashboard-admin").style.display = "block";
-                adminDiaAtivoIso = new Date().toISOString().split("T")[0];
-                document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
-                carregarResumoAdmin();
-            } else if (userLower === 'matheus' || userLower === 'yann' || userLower === 'rafael') {
-                usuarioLogado = usuarioInput.charAt(0).toUpperCase() + usuarioInput.slice(1).toLowerCase();
-                document.getElementById("login-section").style.display = "none";
-                document.getElementById("dashboard-barbeiro").style.display = "block";
-                document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda: ${usuarioLogado}`;
-                
-                diaAtivoIso = new Date().toISOString().split("T")[0];
-                carregarAgendaSemanal();
-                carregarFaturamentoBarbeiro();
-            } else {
-                mostrarAlertaPersonalizado("Erro", "Usuário não encontrado! Use Matheus, Yann, Rafael ou admin.");
-            }
+        function esc(valor) {
+            return String(valor ?? "")
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         }
 
-        function fazerLogout() {
+        // ===== Autenticação (Supabase Auth) =====
+        function mostrarTelaLogin() {
             usuarioLogado = "";
             document.getElementById("dashboard-barbeiro").style.display = "none";
             document.getElementById("dashboard-admin").style.display = "none";
-            document.getElementById("login-section").style.display = "block";
+            document.getElementById("login-section").style.display = "flex";
+        }
+
+        async function entrarNoPainel(silencioso) {
+            const { data: { session } } = await _supabase.auth.getSession();
+            if (!session) return false;
+
+            const { data: perfil, error } = await _supabase
+                .from("perfis_barreto")
+                .select("nome, papel")
+                .eq("user_id", session.user.id)
+                .maybeSingle();
+
+            if (error || !perfil) {
+                if (!silencioso) {
+                    mostrarAlertaPersonalizado("Acesso negado", "Este usuário ainda não foi liberado no painel. Fale com o administrador.");
+                }
+                return false;
+            }
+
+            document.getElementById("login-section").style.display = "none";
+
+            if (perfil.papel === "admin") {
+                usuarioLogado = "Admin";
+                document.getElementById("dashboard-barbeiro").style.display = "none";
+                document.getElementById("dashboard-admin").style.display = "block";
+                adminDiaAtivoIso = hojeISO();
+                document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
+                carregarResumoAdmin();
+            } else {
+                usuarioLogado = perfil.nome;
+                document.getElementById("dashboard-admin").style.display = "none";
+                document.getElementById("dashboard-barbeiro").style.display = "block";
+                document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda: ${usuarioLogado}`;
+                diaAtivoIso = hojeISO();
+                carregarAgendaSemanal();
+                carregarFaturamentoBarbeiro();
+            }
+            return true;
+        }
+
+        async function fazerLogin() {
+            const email = document.getElementById("login-usuario").value.trim().toLowerCase();
+            const senha = document.getElementById("login-senha").value;
+
+            if (!email || !senha) {
+                mostrarAlertaPersonalizado("Atenção", "Preencha o e-mail e a senha.");
+                return;
+            }
+
+            const btn = document.getElementById("btn-login");
+            btn.disabled = true;
+
+            try {
+                const { error } = await _supabase.auth.signInWithPassword({ email: email, password: senha });
+                if (error) {
+                    mostrarAlertaPersonalizado("Erro", "E-mail ou senha incorretos!");
+                    return;
+                }
+                document.getElementById("login-senha").value = "";
+                const entrou = await entrarNoPainel(false);
+                if (!entrou) {
+                    await _supabase.auth.signOut();
+                    mostrarTelaLogin();
+                } else {
+                    document.getElementById("login-usuario").value = "";
+                }
+            } catch (err) {
+                console.error("Erro no login:", err);
+                mostrarAlertaPersonalizado("Erro", "Não foi possível entrar. Verifique a internet e tente novamente.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function fazerLogout() {
+            try { await _supabase.auth.signOut(); } catch (err) { console.error(err); }
+            mostrarTelaLogin();
         }
 
         function mudarSemana(direcao) {
             const dataAtual = new Date(diaAtivoIso + "T00:00:00");
             dataAtual.setDate(dataAtual.getDate() + (direcao * 7));
-            diaAtivoIso = dataAtual.toISOString().split("T")[0];
+            diaAtivoIso = isoLocal(dataAtual);
             carregarAgendaSemanal();
         }
 
         function adminMudarSemana(direcao) {
             const dataAtual = new Date(adminDiaAtivoIso + "T00:00:00");
             dataAtual.setDate(dataAtual.getDate() + (direcao * 7));
-            adminDiaAtivoIso = dataAtual.toISOString().split("T")[0];
+            adminDiaAtivoIso = isoLocal(dataAtual);
             document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
             carregarResumoAdmin();
         }
@@ -353,7 +398,7 @@
             for (let i = 0; i < 6; i++) { 
                 const d = new Date(segunda);
                 d.setDate(segunda.getDate() + i);
-                dias.push({ iso: d.toISOString().split("T")[0], label: d.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' }) });
+                dias.push({ iso: isoLocal(d), label: d.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' }) });
             }
             return dias;
         }
@@ -361,7 +406,7 @@
         const precosTabela = {
             "corte": 35, "barba": 30, "sobrancelha": 10, "hidratacao profunda": 30,
             "relaxamento": 40, "escova": 25, "luzes": 120, "platinado": 150,
-            "botox (selagem)": 90, "coloracao": 100, "pigmentacao": 30, "pezinho simples": 10, "pezinho gourmet": 15
+            "botox (selagem)": 90, "coloracao": 100, "pigmentacao": 30, "pezinho simples": 10, "pezinho gourmet": 15, "barba simples": 20, "bigode simples": 10
         };
 
         function calcularPrecoServico(nomeServico) {
@@ -392,14 +437,14 @@
             let primeiraData, ultimaData;
 
             if (periodo === 'dia') {
-                primeiraData = ultimaData = hoje.toISOString().split("T")[0];
+                primeiraData = ultimaData = isoLocal(hoje);
             } else if (periodo === 'semana') {
-                const diasDaSemanaAtual = obterDiasDaSemanaParaData(hoje.toISOString().split("T")[0]);
+                const diasDaSemanaAtual = obterDiasDaSemanaParaData(isoLocal(hoje));
                 primeiraData = diasDaSemanaAtual[0].iso;
                 ultimaData = diasDaSemanaAtual[diasDaSemanaAtual.length - 1].iso;
             } else if (periodo === 'mes') {
-                primeiraData = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0];
-                ultimaData = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split("T")[0];
+                primeiraData = isoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+                ultimaData = isoLocal(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
             }
 
             try {
@@ -505,7 +550,7 @@
                             } else if (ag) {
                                 const isConcluido = ag.status === 'concluido';
                                 itemSlot.className = "slot-item booked";
-                                itemSlot.innerHTML = `<div><strong>${horario}</strong> ${isConcluido ? '<i class="fa-solid fa-check-circle" style="color:#3498db;"></i>' : ''}<br><span style="color:#AAA;">${ag.cliente}</span></div><button onclick="abrirGerenciadorAgendamento('${ag.id}')" style="background:${isConcluido ? '#3498db' : '#25D366'}; color:#FFF; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;"><i class="fa-solid fa-gear"></i> Ações</button>`;
+                                itemSlot.innerHTML = `<div><strong>${horario}</strong> ${isConcluido ? '<i class="fa-solid fa-check-circle" style="color:#3498db;"></i>' : ''}<br><span style="color:#AAA;">${esc(ag.cliente)}</span></div><button onclick="abrirGerenciadorAgendamento('${esc(ag.id)}')" style="background:${isConcluido ? '#3498db' : '#25D366'}; color:#FFF; border:none; padding:8px 12px; border-radius:6px; cursor:pointer;"><i class="fa-solid fa-gear"></i> Ações</button>`;
                             } else {
                                 itemSlot.className = "slot-item available";
                                 itemSlot.innerHTML = `<span><i class="fa-regular fa-clock"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${diaAtivo.iso}', '${horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Bloquear</button>`;
@@ -532,15 +577,15 @@
             const precoFinal = obterPrecoAgendamento(data);
             const dataFormatada = data.data.split("-").reverse().join("/");
 
-            document.getElementById("action-modal-details").innerHTML = `<strong>Cliente:</strong> ${data.cliente}<br><strong>Telefone:</strong> ${data.telefone}<br><strong>Serviço:</strong> ${data.servico}<br><strong>Valor:</strong> R$ ${precoFinal},00<br><strong>Horário:</strong> ${data.horario} (${dataFormatada})`;
+            document.getElementById("action-modal-details").innerHTML = `<strong>Cliente:</strong> ${esc(data.cliente)}<br><strong>Telefone:</strong> ${esc(data.telefone)}<br><strong>Serviço:</strong> ${esc(data.servico)}<br><strong>Valor:</strong> R$ ${precoFinal.toFixed(2).replace(".", ",")}<br><strong>Horário:</strong> ${esc(data.horario)} (${esc(dataFormatada)})`;
             
             const paymentBox = document.getElementById("payment-box");
             const buttonsBox = document.getElementById("action-modal-buttons");
             paymentBox.style.display = "none";
             buttonsBox.innerHTML = "";
 
-            const telefoneLimpo = data.telefone.replace(/\D/g, '');
-            const mensagemLembrete = `Olá ${data.cliente}! Aqui é da Barreto Barbearia. Passando para confirmar o seu agendamento:\n\n💈 Barbeiro: ${data.barbeiro}\n✂️ Serviços: ${data.servico}\n💰 Valor Final: R$ ${precoFinal},00\n📅 Data: ${dataFormatada} às ${data.horario}\n\nTe esperamos!`;
+            const telefoneLimpo = (data.telefone || '').replace(/\D/g, '');
+            const mensagemLembrete = `Olá ${data.cliente}! Aqui é da Barreto Barbearia. Passando para confirmar o seu agendamento:\n\n💈 Barbeiro: ${data.barbeiro}\n✂️ Serviços: ${data.servico}\n💰 Valor Final: R$ ${precoFinal.toFixed(2).replace(".", ",")}\n📅 Data: ${dataFormatada} às ${data.horario}\n\nTe esperamos!`;
             const linkWhatsapp = `https://wa.me/55${telefoneLimpo}?text=${encodeURIComponent(mensagemLembrete)}`;
 
             const btnWhatsapp = document.createElement("a");
@@ -561,7 +606,8 @@
                     btnSalvar.textContent = "Confirmar Pagamento";
                     btnSalvar.style.marginTop = "8px";
                     btnSalvar.onclick = async () => {
-                        await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: document.getElementById("select-forma-pagamento").value }).eq("id", id);
+                        const { error: errUp } = await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: document.getElementById("select-forma-pagamento").value }).eq("id", id);
+                        if (errUp) { console.error(errUp); mostrarAlertaPersonalizado("Erro", "Não foi possível salvar o atendimento. Tente novamente."); return; }
                         modal.classList.remove("active");
                         carregarAgendaSemanal();
                         carregarFaturamentoBarbeiro();
@@ -575,7 +621,8 @@
                 btnCancelar.textContent = "Cancelar Agendamento";
                 btnCancelar.onclick = async () => {
                     if (confirm("Deseja cancelar?")) {
-                        await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                        const { error: errCanc } = await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                        if (errCanc) { console.error(errCanc); mostrarAlertaPersonalizado("Erro", "Não foi possível cancelar. Tente novamente."); return; }
                         modal.classList.remove("active");
                         carregarAgendaSemanal();
                     }
@@ -638,14 +685,24 @@
 
         function abrirModalSenha() {
             const modal = document.getElementById("custom-password-modal");
+            const campo = document.getElementById("input-nova-senha");
+            campo.value = "";
             modal.classList.add("active");
-            document.getElementById("pass-btn-salvar").onclick = () => {
-                const nova = document.getElementById("input-nova-senha").value.trim();
-                if (nova) {
-                    localStorage.setItem(`senha_${usuarioLogado.toLowerCase()}`, nova);
-                    modal.classList.remove("active");
-                    mostrarAlertaPersonalizado("Sucesso", "Senha alterada!");
+            document.getElementById("pass-btn-salvar").onclick = async () => {
+                const nova = campo.value;
+                if (nova.length < 8) {
+                    mostrarAlertaPersonalizado("Atenção", "A senha precisa ter pelo menos 8 caracteres.");
+                    return;
                 }
+                const { error } = await _supabase.auth.updateUser({ password: nova });
+                if (error) {
+                    console.error(error);
+                    mostrarAlertaPersonalizado("Erro", "Não foi possível alterar a senha. Tente novamente.");
+                    return;
+                }
+                modal.classList.remove("active");
+                campo.value = "";
+                mostrarAlertaPersonalizado("Sucesso", "Senha alterada!");
             };
             document.getElementById("pass-btn-cancelar").onclick = () => modal.classList.remove("active");
         }
@@ -711,7 +768,7 @@
                     const isConcluido = item.status === 'concluido';
                     const isCancelado = item.status === 'cancelado';
                     card.style.cssText = "background: #242424; padding: 12px 15px; border-radius: 8px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#3498db' : (isCancelado ? '#e74c3c' : '#FF6600'));
-                    card.innerHTML = `<strong>${item.horario} - ${item.barbeiro}</strong> ${isConcluido ? '<span style="color:#3498db; font-size:0.8rem;">(Concluído)</span>' : ''} ${isCancelado ? '<span style="color:#e74c3c; font-size:0.8rem;">(Cancelado)</span>' : ''}<br><span style="color:#AAA;">Cliente: ${item.cliente} | Serviço: ${item.servico} | R$ ${obterPrecoAgendamento(item)},00</span>`;
+                    card.innerHTML = `<strong>${esc(item.horario)} - ${esc(item.barbeiro)}</strong> ${isConcluido ? '<span style="color:#3498db; font-size:0.8rem;">(Concluído)</span>' : ''} ${isCancelado ? '<span style="color:#e74c3c; font-size:0.8rem;">(Cancelado)</span>' : ''}<br><span style="color:#AAA;">Cliente: ${esc(item.cliente)} | Serviço: ${esc(item.servico)} | R$ ${obterPrecoAgendamento(item).toFixed(2).replace(".", ",")}</span>`;
                     container.appendChild(card);
                 });
             } catch (err) {
@@ -719,6 +776,32 @@
                 container.innerHTML = "<p style='color:#e74c3c; text-align:center;'>Erro ao carregar dados.</p>";
             }
         }
+
+        // Restaura a sessão ao abrir o app (o barbeiro não precisa logar toda vez)
+        (async function iniciarSessao() {
+            try {
+                const entrou = await entrarNoPainel(true);
+                if (!entrou) {
+                    const { data: { session } } = await _supabase.auth.getSession();
+                    if (session) await _supabase.auth.signOut();
+                    mostrarTelaLogin();
+                }
+            } catch (err) {
+                console.error("Erro ao restaurar sessão:", err);
+                mostrarTelaLogin();
+            }
+        })();
+
+        _supabase.auth.onAuthStateChange((evento) => {
+            if (evento === "SIGNED_OUT") mostrarTelaLogin();
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && document.getElementById("login-section").style.display !== "none") {
+                const foco = document.activeElement;
+                if (foco && (foco.id === "login-usuario" || foco.id === "login-senha")) fazerLogin();
+            }
+        });
     </script>
 </body>
 </html>
