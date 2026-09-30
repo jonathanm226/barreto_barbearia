@@ -1,31 +1,31 @@
 // === CONFIGURAÇÃO DO SUPABASE ===
+// A chave "publishable" pode ficar no front-end: quem protege os dados é o RLS (ver supabase_setup.sql).
 const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let selectedBarber = "Matheus";
-let selectedServices = []; 
+// === CONFIGURAÇÕES DO NEGÓCIO ===
+// ATENÇÃO: o expediente também existe dentro da função criar_agendamento no SQL.
+// Se mudar aqui, mude lá também.
+const PRIMEIRO_HORARIO = "08:00";
+const ULTIMO_HORARIO = "19:00";   // último horário de INÍCIO de atendimento
+const DIAS_ANTECEDENCIA_MAX = 21;
+const MINUTOS_ANTECEDENCIA_MIN = 30;
 
-let requisicaoHorariosAtual = 0;
-
-const HORARIO_EMERGENCIAL_INICIO = "19:30";
-const VALOR_CORTE_EMERGENCIAL = 50;
-
-// Telefones específicos de cada barbeiro da Barbearia do Barreto (Rafael corrigido)
+// Telefones específicos de cada barbeiro da Barbearia do Barreto
 const telefonesBarbeiros = {
     "Matheus": "5531997193193",
     "Yann": "5531993789798",
     "Rafael": "5531975470879"
 };
 
-function isHorarioEmergencial(horario) {
-    return !!horario && horario >= HORARIO_EMERGENCIAL_INICIO;
-}
-
+// Durações em minutos (devem ser iguais às da tabela servicos_barreto no SQL)
 const duracoesServicos = {
     "Corte": 45,
     "Barba": 10,
+    "Barba simples": 10,
+    "Bigode simples": 5,
     "Sobrancelha": 25,
     "Hidratação profunda": 25,
     "Relaxamento": 25,
@@ -39,25 +39,79 @@ const duracoesServicos = {
     "Pezinho Gourmet": 20
 };
 
+let selectedBarber = "Matheus";
+let selectedServices = [];
+let requisicaoHorariosAtual = 0;
+let enviandoAgendamento = false;
+
+// === FUNÇÕES AUXILIARES ===
+
+// Data local (YYYY-MM-DD). toISOString() usa UTC e "pula" o dia depois das 21h no Brasil.
+function isoLocal(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dia}`;
+}
+
+function toMin(hhmm) {
+    const [h, m] = String(hhmm).split(":").map(Number);
+    return h * 60 + m;
+}
+
+function fromMin(min) {
+    return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+function formatarBRL(valor) {
+    return "R$ " + Number(valor).toFixed(2).replace(".", ",");
+}
+
+function escapeHtml(valor) {
+    return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function calcularTotal() {
+    return selectedServices.reduce((acc, s) => acc + s.price, 0);
+}
+
+function gerarSlots(ultimoHorario) {
+    const slots = [];
+    for (let m = toMin(PRIMEIRO_HORARIO); m <= toMin(ultimoHorario); m += 30) {
+        slots.push(fromMin(m));
+    }
+    return slots;
+}
+
+function diaDaSemana(dateString) {
+    const [y, m, d] = dateString.split("-").map(Number);
+    return new Date(y, m - 1, d).getDay();
+}
+
+// === INICIALIZAÇÃO ===
+
 document.addEventListener("DOMContentLoaded", () => {
     const dateInput = document.getElementById("date");
     if (dateInput) {
-        const todayObj = new Date();
-        const todayStr = todayObj.toISOString().split("T")[0];
-        
-        dateInput.min = todayStr;
-        const maxDateObj = new Date();
-        maxDateObj.setDate(todayObj.getDate() + 21);
-        dateInput.max = maxDateObj.toISOString().split("T")[0];
+        const hoje = new Date();
+        const maximo = new Date();
+        maximo.setDate(hoje.getDate() + DIAS_ANTECEDENCIA_MAX);
 
-        dateInput.value = todayStr;
+        dateInput.min = isoLocal(hoje);
+        dateInput.max = isoLocal(maximo);
+        dateInput.value = isoLocal(hoje);
     }
     checkAvailableTimes();
 });
 
 function selectBarber(element, barberName) {
-    document.querySelectorAll('.barber-card').forEach(card => card.classList.remove('active'));
-    element.classList.add('active');
+    document.querySelectorAll(".barber-card").forEach(card => card.classList.remove("active"));
+    element.classList.add("active");
     selectedBarber = barberName;
     checkAvailableTimes();
 }
@@ -82,44 +136,42 @@ function toggleService(element, serviceName, price) {
             icon.classList.add("fa-solid", "fa-square-check");
         }
     }
-    
+
     checkAvailableTimes();
 }
 
+// === HORÁRIOS ===
+
 function getTimesForDate(dateString) {
     if (!dateString) return [];
-    
-    const partes = dateString.split('-');
-    const dataObj = new Date(partes[0], partes[1] - 1, partes[2]);
-    const diaSemana = dataObj.getDay(); 
 
-    let horarios = [];
+    // Domingo fechado
+    if (diaDaSemana(dateString) === 0) return [];
 
-    if (diaSemana === 0) { // Domingo
-        return [];
-    } else if (diaSemana === 6) { // Sábado
-        for (let h = 8; h < 19; h++) {
-            horarios.push(h < 10 ? `0${h}:00` : `${h}:00`);
-            horarios.push(h < 10 ? `0${h}:30` : `${h}:30`);
-        }
-        horarios.push("19:00");
-    } else { // Segunda a Sexta
-        for (let h = 8; h < 19; h++) {
-            horarios.push(h < 10 ? `0${h}:00` : `${h}:00`);
-            horarios.push(h < 10 ? `0${h}:30` : `${h}:30`);
-        }
-        horarios.push("19:00");
-    }
+    let horarios = gerarSlots(ULTIMO_HORARIO);
 
+    // Se for hoje, remove horários que já passaram (ou que estão muito em cima da hora)
     const agora = new Date();
-    const hojeStr = agora.toISOString().split("T")[0];
-    if (dateString === hojeStr) {
-        const limite = new Date(agora.getTime() + 30 * 60000);
-        const horaLimite = `${String(limite.getHours()).padStart(2, "0")}:${String(limite.getMinutes()).padStart(2, "0")}`;
-        horarios = horarios.filter(h => h >= horaLimite);
+    if (dateString === isoLocal(agora)) {
+        const limite = agora.getTime() + MINUTOS_ANTECEDENCIA_MIN * 60000;
+        const [y, m, d] = dateString.split("-").map(Number);
+        horarios = horarios.filter(h => {
+            const [hh, mm] = h.split(":").map(Number);
+            return new Date(y, m - 1, d, hh, mm).getTime() >= limite;
+        });
     }
 
     return horarios;
+}
+
+function mostrarMensagemNoSelect(timeSelect, texto) {
+    timeSelect.innerHTML = "";
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = texto;
+    option.disabled = true;
+    option.selected = true;
+    timeSelect.appendChild(option);
 }
 
 async function checkAvailableTimes() {
@@ -132,33 +184,26 @@ async function checkAvailableTimes() {
     const selectedDate = dateElement.value;
     if (!selectedDate) return;
 
+    const horarioAnterior = timeSelect.value;
     const allTimes = getTimesForDate(selectedDate);
-    timeSelect.innerHTML = "";
 
     if (allTimes.length === 0) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "Fechado neste dia";
-        option.disabled = true;
-        timeSelect.appendChild(option);
+        mostrarMensagemNoSelect(
+            timeSelect,
+            diaDaSemana(selectedDate) === 0 ? "Fechado neste dia" : "Sem horários disponíveis neste dia"
+        );
         return;
     }
 
     const totalDurationMinutes = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
     const slotsNeeded = Math.ceil(totalDurationMinutes / 30);
 
-    const optionCarregando = document.createElement("option");
-    optionCarregando.value = "";
-    optionCarregando.textContent = "Carregando horários...";
-    optionCarregando.disabled = true;
-    timeSelect.appendChild(optionCarregando);
+    mostrarMensagemNoSelect(timeSelect, "Carregando horários...");
 
     try {
+        // Só horário + serviço (sem dados pessoais) via função segura do banco
         const { data: agendamentos, error: errAgendamentos } = await _supabase
-            .from("agendamentos_barreto")
-            .select("horario, status, servico")
-            .eq("barbeiro", selectedBarber)
-            .eq("data", selectedDate);
+            .rpc("horarios_ocupados", { p_barbeiro: selectedBarber, p_data: selectedDate });
 
         if (errAgendamentos) throw errAgendamentos;
         if (minhaRequisicao !== requisicaoHorariosAtual) return;
@@ -172,113 +217,100 @@ async function checkAvailableTimes() {
         if (errBloqueios) throw errBloqueios;
         if (minhaRequisicao !== requisicaoHorariosAtual) return;
 
-        let occupiedTimes = [];
-        if (agendamentos) {
-            agendamentos.filter(a => a.status !== 'cancelado').forEach(a => {
-                occupiedTimes.push(a.horario);
-                if (a.servico) {
-                    let duracaoAntiga = 0;
-                    a.servico.split(",").forEach(serv => {
-                        const nomeS = serv.trim();
-                        duracaoAntiga += duracoesServicos[nomeS] || 30;
-                    });
-                    const slotsAntigos = Math.ceil(duracaoAntiga / 30);
-                    const idxInicio = allTimes.indexOf(a.horario);
-                    if (idxInicio !== -1) {
-                        for (let k = 1; k < slotsAntigos; k++) {
-                            if (allTimes[idxInicio + k]) {
-                                occupiedTimes.push(allTimes[idxInicio + k]);
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        // Minutos ocupados por agendamentos existentes (calculado por minutos, não por posição na lista)
+        const ocupados = new Set();
+        (agendamentos || []).forEach(a => {
+            if (typeof a.horario !== "string" || !/^\d{1,2}:\d{2}/.test(a.horario)) return;
+            const inicio = toMin(a.horario);
+            let duracao = 0;
+            if (a.servico) {
+                a.servico.split(",").forEach(serv => {
+                    duracao += duracoesServicos[serv.trim()] || 30;
+                });
+            }
+            const slots = Math.max(1, Math.ceil(duracao / 30));
+            for (let k = 0; k < slots; k++) ocupados.add(inicio + 30 * k);
+        });
 
-        const blockedTimes = bloqueios ? bloqueios.map(b => b.horario) : [];
-        timeSelect.innerHTML = "";
-
-        if (blockedTimes.includes("TODOS")) {
-            const option = document.createElement("option");
-            option.value = "";
-            option.textContent = "Agenda fechada neste dia";
-            option.disabled = true;
-            timeSelect.appendChild(option);
+        const listaBloqueios = (bloqueios || []).map(b => String(b.horario));
+        if (listaBloqueios.includes("TODOS")) {
+            mostrarMensagemNoSelect(timeSelect, "Agenda fechada neste dia");
             return;
         }
 
-        allTimes.forEach((time, index) => {
+        const bloqueados = new Set(
+            listaBloqueios.filter(h => /^\d{1,2}:\d{2}/.test(h)).map(toMin)
+        );
+        const slotsDisponiveisNaGrade = new Set(allTimes.map(toMin));
+
+        timeSelect.innerHTML = "";
+
+        allTimes.forEach(time => {
             const option = document.createElement("option");
             option.value = time;
 
+            // O atendimento inteiro precisa caber dentro do expediente e sem colidir
             let temConflito = false;
-            if (index + slotsNeeded > allTimes.length) {
-                temConflito = true;
-            } else {
-                for (let i = 0; i < slotsNeeded; i++) {
-                    const slotAtual = allTimes[index + i];
-                    if (occupiedTimes.includes(slotAtual) || blockedTimes.includes(slotAtual)) {
-                        temConflito = true;
-                        break;
-                    }
+            const inicio = toMin(time);
+            for (let i = 0; i < slotsNeeded; i++) {
+                const slot = inicio + 30 * i;
+                if (!slotsDisponiveisNaGrade.has(slot) || ocupados.has(slot) || bloqueados.has(slot)) {
+                    temConflito = true;
+                    break;
                 }
             }
 
-            const emergencial = isHorarioEmergencial(time);
-
             if (temConflito) {
-                option.textContent = emergencial
-                    ? `${time} 🚨 Corte Emergencial - (Indisponível)`
-                    : `${time} - (Indisponível para esta duração)`;
+                option.textContent = `${time} - (Indisponível para esta duração)`;
                 option.disabled = true;
             } else {
-                option.textContent = emergencial
-                    ? `${time} 🚨 Corte Emergencial (R$ ${VALOR_CORTE_EMERGENCIAL},00)`
-                    : time;
+                option.textContent = time;
             }
 
             timeSelect.appendChild(option);
         });
+
+        // Mantém o horário que o cliente já tinha escolhido, se ainda estiver livre
+        const anterior = Array.from(timeSelect.options).find(o => o.value === horarioAnterior && !o.disabled);
+        if (anterior) {
+            timeSelect.value = horarioAnterior;
+        } else {
+            const primeiroLivre = Array.from(timeSelect.options).find(o => !o.disabled);
+            if (primeiroLivre) timeSelect.value = primeiroLivre.value;
+        }
     } catch (err) {
         console.error("Erro ao buscar disponibilidade:", err);
         if (minhaRequisicao === requisicaoHorariosAtual) {
-            timeSelect.innerHTML = "";
-            const optionErro = document.createElement("option");
-            optionErro.value = "";
-            optionErro.textContent = "Erro ao carregar horários. Verifique sua internet e tente novamente.";
-            optionErro.disabled = true;
-            timeSelect.appendChild(optionErro);
+            mostrarMensagemNoSelect(timeSelect, "Erro ao carregar horários. Verifique sua internet e tente novamente.");
         }
     }
 }
+
+// === CLIENTE ===
 
 async function buscarClientePorTelefone() {
     const telefoneInput = document.getElementById("client-phone").value.trim();
     if (!telefoneInput) return;
 
-    const telefoneLimpo = telefoneInput.replace(/\D/g, '');
-    if (telefoneLimpo.length < 8) return;
+    const telefoneLimpo = telefoneInput.replace(/\D/g, "");
+    if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) return;
+
+    const nomeInput = document.getElementById("client-name");
+    if (nomeInput.value.trim()) return; // não sobrescreve o que a pessoa já digitou
 
     try {
-        const { data, error } = await _supabase
-            .from("agendamentos_barreto")
-            .select("cliente, telefone");
-
+        // A busca acontece no servidor: o navegador recebe apenas um nome (nunca a lista de clientes)
+        const { data, error } = await _supabase.rpc("buscar_cliente_por_telefone", { p_telefone: telefoneLimpo });
         if (error) throw error;
-
-        if (data && data.length > 0) {
-            const registrosCliente = data.filter(item => item.telefone && item.telefone.replace(/\D/g, '') === telefoneLimpo);
-            if (registrosCliente.length > 0) {
-                const comNome = registrosCliente.find(item => item.cliente);
-                if (comNome && comNome.cliente) {
-                    document.getElementById("client-name").value = comNome.cliente;
-                }
-            }
+        if (data && !nomeInput.value.trim()) {
+            nomeInput.value = data;
         }
     } catch (err) {
         console.error("Erro ao buscar cliente:", err);
     }
 }
+
+// === CONFIRMAÇÃO ===
 
 function abrirModalConfirmacao() {
     const nameInput = document.getElementById("client-name");
@@ -296,7 +328,7 @@ function abrirModalConfirmacao() {
         return;
     }
 
-    const telefoneDigitos = phone.replace(/\D/g, '');
+    const telefoneDigitos = phone.replace(/\D/g, "");
     if (telefoneDigitos.length < 10 || telefoneDigitos.length > 11) {
         alert("Por favor, digite um WhatsApp válido, com DDD (ex: 31 99999-9999).");
         return;
@@ -312,27 +344,18 @@ function abrirModalConfirmacao() {
         return;
     }
 
-    let precoTotal = 0;
-    const servicosNomes = selectedServices.map(s => {
-        precoTotal += s.price;
-        return s.name;
-    });
-
-    const emergencial = isHorarioEmergencial(time);
-    if (emergencial) {
-        precoTotal = VALOR_CORTE_EMERGENCIAL;
-    }
-
+    const precoTotal = calcularTotal();
+    const servicosNomes = selectedServices.map(s => s.name);
     const formattedDate = date.split("-").reverse().join("/");
 
     const resumoDiv = document.getElementById("resumo-agendamento");
     if (resumoDiv) {
         resumoDiv.innerHTML = `
-            <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
-            <div style="margin-bottom: 8px;"><strong>Data:</strong> ${formattedDate} às ${time}</div>
-            <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servicosNomes.join(", ")}${emergencial ? " 🚨 (Corte Emergencial)" : ""}</div>
+            <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${escapeHtml(selectedBarber)}</div>
+            <div style="margin-bottom: 8px;"><strong>Data:</strong> ${escapeHtml(formattedDate)} às ${escapeHtml(time)}</div>
+            <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${escapeHtml(servicosNomes.join(", "))}</div>
             <div style="margin-top: 12px; border-top: 1px solid #333333; padding-top: 8px; font-size: 1.1rem;">
-                <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">R$ ${precoTotal.toFixed(2).replace('.', ',')}</span>
+                <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">${formatarBRL(precoTotal)}</span>
             </div>
         `;
     }
@@ -356,75 +379,66 @@ async function confirmarEEnviar() {
 }
 
 async function sendToWhatsapp() {
+    if (enviandoAgendamento) return; // evita clique duplo
+
     const nameInput = document.getElementById("client-name");
     const phoneInput = document.getElementById("client-phone");
     const dateInput = document.getElementById("date");
     const timeSelect = document.getElementById("time");
-    const btnAgendar = document.getElementById("btn-continuar") || document.getElementById("btn-agendar");
+    const btnAgendar = document.getElementById("btn-continuar");
 
     const name = nameInput ? nameInput.value.trim() : "";
     const phone = phoneInput ? phoneInput.value.trim() : "";
     const date = dateInput ? dateInput.value : "";
     const time = timeSelect ? timeSelect.value : "";
 
+    enviandoAgendamento = true;
     if (btnAgendar) {
         btnAgendar.disabled = true;
-        btnAgendar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A agendar...';
+        btnAgendar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Agendando...';
     }
 
-    let precoTotal = 0;
-    let listaNomesServicos = selectedServices.map(s => {
-        precoTotal += s.price;
-        return s.name;
-    }).join(", ");
-
-    const emergencial = isHorarioEmergencial(time);
-    if (emergencial) {
-        precoTotal = VALOR_CORTE_EMERGENCIAL;
-    }
-
-    const formattedDate = date.split("-").reverse().join("/");
-    
-    // Busca o WhatsApp específico do barbeiro selecionado com o número do Rafael corrigido
-    const whatsappNumber = telefonesBarbeiros[selectedBarber] || "5531997193193";
-
-    const avisoEmergencial = emergencial
-        ? `🚨 *HORÁRIO EMERGENCIAL (fora do expediente normal)* 🚨\n\n`
-        : "";
-
-    const message = `${avisoEmergencial}✅ *AGENDAMENTO CONFIRMADO - BARRETO BARBEARIA* ✅\n\nOlá! Segue a confirmação do meu horário:\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${listaNomesServicos}${emergencial ? " (Corte Emergencial)" : ""} (Total: R$ ${precoTotal},00)\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${time}`;
-
-    const link = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    let linkWhatsapp = null;
 
     try {
-        const payload = {
-            cliente: name,
-            telefone: phone,
-            barbeiro: selectedBarber,
-            servico: listaNomesServicos,
-            preco_total: precoTotal,
-            data: date,
-            horario: time,
-            status: 'ativo'
-        };
+        // A validação final e a gravação acontecem de forma atômica no banco.
+        // Se dois clientes tentarem o mesmo horário, só um consegue.
+        const { data: resultado, error } = await _supabase.rpc("criar_agendamento", {
+            p_cliente: name,
+            p_telefone: phone.replace(/\D/g, ""),
+            p_barbeiro: selectedBarber,
+            p_servicos: selectedServices.map(s => s.name),
+            p_data: date,
+            p_horario: time
+        });
 
-        const { error } = await _supabase
-            .from("agendamentos_barreto")
-            .insert([payload]);
+        if (error) throw error;
 
-        if (error) {
-            console.error("Detalhe completo do erro do Supabase:", JSON.stringify(error, null, 2));
+        if (!resultado || resultado.ok !== true) {
+            alert((resultado && resultado.mensagem) || "Não foi possível concluir o agendamento. Tente outro horário.");
+            await checkAvailableTimes();
+        } else {
+            const formattedDate = date.split("-").reverse().join("/");
+            const whatsappNumber = telefonesBarbeiros[selectedBarber] || "5531997193193";
+            const listaNomesServicos = selectedServices.map(s => s.name).join(", ");
+
+            const message = `✅ *AGENDAMENTO CONFIRMADO - BARRETO BARBEARIA* ✅\n\nOlá! Segue a confirmação do meu horário:\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${listaNomesServicos} (Total: ${formatarBRL(resultado.preco_total)})\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${time}`;
+
+            linkWhatsapp = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
         }
     } catch (err) {
-        console.error("Erro crítico na requisição:", err);
+        console.error("Erro ao registrar agendamento:", err);
+        alert("Não foi possível registrar o seu agendamento. Verifique a internet e tente novamente.");
+    } finally {
+        enviandoAgendamento = false;
+        if (btnAgendar) {
+            btnAgendar.disabled = false;
+            btnAgendar.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i>';
+        }
     }
 
-    await checkAvailableTimes();
-
-    if (btnAgendar) {
-        btnAgendar.disabled = false;
-        btnAgendar.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i>';
+    // Só vai para o WhatsApp se o agendamento foi realmente gravado
+    if (linkWhatsapp) {
+        window.location.href = linkWhatsapp;
     }
-
-    window.location.href = link;
 }
