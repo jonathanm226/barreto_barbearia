@@ -138,8 +138,8 @@
 
         <!-- Dashboard Admin Geral -->
         <section id="dashboard-admin" class="section" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Resumo Administrativo (Geral)</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h2>Painel Administrativo (Geral)</h2>
                 <div style="display: flex; gap: 8px;">
                     <button onclick="carregarResumoAdmin()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
@@ -150,13 +150,41 @@
                 </div>
             </div>
 
-            <div class="input-group" style="margin-bottom: 20px;">
-                <label for="filter-date-admin">Selecionar Data:</label>
-                <input type="date" id="filter-date-admin" onchange="carregarResumoAdmin()">
+            <!-- Controles de Navegação Semanal e Filtro de Barbeiro para Admin -->
+            <div style="background: #1A1A1A; border: 1px solid #333; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Período da Agenda</div>
+                        <span id="admin-label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 1rem;"></span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="adminMudarSemana(-1)" class="btn-whatsapp" style="padding: 8px 12px; font-size: 0.85rem; border: 1px solid #444; background: #242424; color: #FFF;"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button onclick="adminMudarSemana(1)" class="btn-whatsapp" style="padding: 8px 12px; font-size: 0.85rem; border: 1px solid #444; background: #242424; color: #FFF;"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #333; padding-top: 12px;">
+                    <div style="flex: 1; min-width: 180px;">
+                        <label for="filter-date-admin" style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 4px;">Selecionar Data Específica:</label>
+                        <input type="date" id="filter-date-admin" onchange="adminSelecionarDataPorInput()" style="width: 100%; padding: 8px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF;">
+                    </div>
+                    <div style="flex: 1; min-width: 180px;">
+                        <label for="admin-select-barbeiro" style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 4px;">Filtrar Barbeiro:</label>
+                        <select id="admin-select-barbeiro" onchange="carregarResumoAdmin()" style="width: 100%; padding: 8px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF;">
+                            <option value="TODOS">Todos os Barbeiros</option>
+                            <option value="Matheus">Matheus</option>
+                            <option value="Yann">Yann</option>
+                            <option value="Rafael">Rafael</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
+            <!-- Seletor de Dias da Semana para o Admin -->
+            <div id="admin-seletor-dias" style="display: flex; gap: 4px; justify-content: space-between; width: 100%; margin-bottom: 15px;"></div>
+
             <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 25px;">
-                <h3 style="color: #FFF; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 8px;"><i class="fa-solid fa-chart-pie"></i> Fechamento Geral</h3>
+                <h3 style="color: #FFF; margin-bottom: 15px; font-size: 1.1rem; border-bottom: 1px solid #333; padding-bottom: 8px;"><i class="fa-solid fa-chart-pie"></i> Fechamento do Dia / Filtro</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.95rem; margin-bottom: 15px;">
                     <div style="background: #242424; border: 1px solid #333; padding: 12px; border-radius: 6px;">
                         <span style="color: #888; display: block; font-size: 0.8rem; margin-bottom: 4px;">Atendimentos</span>
@@ -167,7 +195,6 @@
                         <strong id="admin-resumo-total" style="font-size: 1.3rem; color: #25D366;">R$ 0,00</strong>
                     </div>
                 </div>
-                <div style="background: #242424; border: 1px solid #333; padding: 12px; border-radius: 6px; font-size: 0.9rem; color: #DDD;" id="admin-detalhes-pagamento"></div>
             </div>
             <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </section>
@@ -219,6 +246,7 @@
 
         let usuarioLogado = "";
         let diaAtivoIso = new Date().toISOString().split("T")[0]; 
+        let adminDiaAtivoIso = new Date().toISOString().split("T")[0];
         
         const horariosPadrao = [
             "08:00", "08:30", "09:00", "09:30", 
@@ -267,7 +295,8 @@
                 usuarioLogado = "Admin";
                 document.getElementById("login-section").style.display = "none";
                 document.getElementById("dashboard-admin").style.display = "block";
-                document.getElementById("filter-date-admin").value = new Date().toISOString().split("T")[0];
+                adminDiaAtivoIso = new Date().toISOString().split("T")[0];
+                document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
                 carregarResumoAdmin();
             } else if (userLower === 'matheus' || userLower === 'yann' || userLower === 'rafael') {
                 usuarioLogado = usuarioInput.charAt(0).toUpperCase() + usuarioInput.slice(1).toLowerCase();
@@ -295,6 +324,22 @@
             dataAtual.setDate(dataAtual.getDate() + (direcao * 7));
             diaAtivoIso = dataAtual.toISOString().split("T")[0];
             carregarAgendaSemanal();
+        }
+
+        function adminMudarSemana(direcao) {
+            const dataAtual = new Date(adminDiaAtivoIso + "T00:00:00");
+            dataAtual.setDate(dataAtual.getDate() + (direcao * 7));
+            adminDiaAtivoIso = dataAtual.toISOString().split("T")[0];
+            document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
+            carregarResumoAdmin();
+        }
+
+        function adminSelecionarDataPorInput() {
+            const val = document.getElementById("filter-date-admin").value;
+            if (val) {
+                adminDiaAtivoIso = val;
+                carregarResumoAdmin();
+            }
         }
 
         function obterDiasDaSemanaParaData(dataIso) {
@@ -606,32 +651,73 @@
         }
 
         async function carregarResumoAdmin() {
-            const dataFiltro = document.getElementById("filter-date-admin").value;
+            const lblPeriodo = document.getElementById("admin-label-periodo-semana");
+            const seletorDiasAdmin = document.getElementById("admin-seletor-dias");
+            const barbeiroFiltro = document.getElementById("admin-select-barbeiro").value;
             const container = document.getElementById("agendamentos-list-admin");
+            
             container.innerHTML = "<p style='color:#888; text-align:center;'>A carregar...</p>";
-            
-            let query = _supabase.from("agendamentos_barreto").select("*").order("horario", { ascending: true });
-            if (dataFiltro) query = query.eq("data", dataFiltro);
-            const { data } = await query;
 
-            let total = 0, qtd = 0;
-            (data || []).forEach(item => {
-                if (item.status === 'concluido') {
-                    qtd++;
-                    total += obterPrecoAgendamento(item);
+            const diasSemana = obterDiasDaSemanaParaData(adminDiaAtivoIso);
+            lblPeriodo.textContent = `${diasSemana[0].label} até ${diasSemana[diasSemana.length - 1].label}`;
+
+            if (!diasSemana.find(d => d.iso === adminDiaAtivoIso)) {
+                adminDiaAtivoIso = diasSemana[0].iso;
+                document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
+            }
+
+            // Renderizar seletor de dias da semana para o Admin
+            seletorDiasAdmin.innerHTML = "";
+            diasSemana.forEach(dia => {
+                const btnDia = document.createElement("button");
+                btnDia.innerHTML = dia.label.split(',')[0].toUpperCase();
+                btnDia.style.cssText = `flex: 1; min-width: 0; padding: 10px 0; font-size: 0.7rem; border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; border: 1px solid ${dia.iso === adminDiaAtivoIso ? '#FF6600' : '#444'}; background: ${dia.iso === adminDiaAtivoIso ? '#FF6600' : '#242424'}; color: #FFF;`;
+                btnDia.onclick = () => { 
+                    adminDiaAtivoIso = dia.iso; 
+                    document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
+                    carregarResumoAdmin(); 
+                };
+                seletorDiasAdmin.appendChild(btnDia);
+            });
+
+            try {
+                let query = _supabase.from("agendamentos_barreto").select("*").eq("data", adminDiaAtivoIso).order("horario", { ascending: true });
+                if (barbeiroFiltro !== "TODOS") {
+                    query = query.eq("barbeiro", barbeiroFiltro);
                 }
-            });
 
-            document.getElementById("admin-resumo-qtd").textContent = qtd;
-            document.getElementById("admin-resumo-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
-            
-            container.innerHTML = "";
-            (data || []).forEach(item => {
-                const card = document.createElement("div");
-                card.style.cssText = "background: #242424; padding: 12px 15px; border-radius: 8px; border: 1px solid #333; border-left: 4px solid " + (item.status === 'concluido' ? '#3498db' : '#FF6600');
-                card.innerHTML = `<strong>${item.horario} - ${item.barbeiro}</strong><br><span style="color:#AAA;">Cliente: ${item.cliente} | Serviço: ${item.servico} | R$ ${obterPrecoAgendamento(item)},00</span>`;
-                container.appendChild(card);
-            });
+                const { data, error } = await query;
+                if (error) throw error;
+
+                let total = 0, qtd = 0;
+                (data || []).forEach(item => {
+                    if (item.status === 'concluido') {
+                        qtd++;
+                        total += obterPrecoAgendamento(item);
+                    }
+                });
+
+                document.getElementById("admin-resumo-qtd").textContent = qtd;
+                document.getElementById("admin-resumo-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+                
+                container.innerHTML = "";
+                if (!data || data.length === 0) {
+                    container.innerHTML = "<p style='color:#888; text-align:center;'>Nenhum agendamento encontrado para este dia/filtro.</p>";
+                    return;
+                }
+
+                data.forEach(item => {
+                    const card = document.createElement("div");
+                    const isConcluido = item.status === 'concluido';
+                    const isCancelado = item.status === 'cancelado';
+                    card.style.cssText = "background: #242424; padding: 12px 15px; border-radius: 8px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#3498db' : (isCancelado ? '#e74c3c' : '#FF6600'));
+                    card.innerHTML = `<strong>${item.horario} - ${item.barbeiro}</strong> ${isConcluido ? '<span style="color:#3498db; font-size:0.8rem;">(Concluído)</span>' : ''} ${isCancelado ? '<span style="color:#e74c3c; font-size:0.8rem;">(Cancelado)</span>' : ''}<br><span style="color:#AAA;">Cliente: ${item.cliente} | Serviço: ${item.servico} | R$ ${obterPrecoAgendamento(item)},00</span>`;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                console.error("Erro ao carregar resumo admin:", err);
+                container.innerHTML = "<p style='color:#e74c3c; text-align:center;'>Erro ao carregar dados.</p>";
+            }
         }
     </script>
 </body>
