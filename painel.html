@@ -338,8 +338,6 @@
                 carregarFaturamentoBarbeiro();
             }
 
-            // Primeiro acesso: exige nova senha e coleta o e-mail de contato
-            if (!perfil.email_contato) abrirModalSenha();
             return true;
         }
 
@@ -361,7 +359,12 @@
             try {
                 const { error } = await _supabase.auth.signInWithPassword({ email: email, password: senha });
                 if (error) {
-                    mostrarAlertaPersonalizado("Erro", "Login ou senha incorretos!");
+                    if (error.code === "invalid_credentials" || /invalid login/i.test(error.message || "")) {
+                        mostrarAlertaPersonalizado("Erro", "Login ou senha incorretos!");
+                    } else {
+                        console.error("Erro no login:", error);
+                        mostrarAlertaPersonalizado("Erro", `Não foi possível entrar: ${error.message || "erro desconhecido"}`);
+                    }
                     return;
                 }
                 document.getElementById("login-senha").value = "";
@@ -715,15 +718,15 @@
             const btnSalvar = document.getElementById("pass-btn-salvar");
             const btnCancelar = document.getElementById("pass-btn-cancelar");
 
-            // Sem e-mail cadastrado = primeiro acesso (obrigatório)
+            // Ainda sem e-mail cadastrado = primeira troca de senha: coleta o e-mail junto
             const precisaEmail = !perfilAtual.email_contato;
 
-            document.getElementById("password-modal-title").textContent = precisaEmail ? "Primeiro acesso" : "Alterar Senha";
+            document.getElementById("password-modal-title").textContent = "Alterar Senha";
             document.getElementById("password-modal-user").textContent = precisaEmail
-                ? "Crie uma nova senha e informe o seu e-mail. Ele será usado para contato e recuperação de acesso."
+                ? "Digite a nova senha e informe o seu e-mail (usado para contato e recuperação de acesso)."
                 : "Digite a nova senha:";
             campoEmail.style.display = precisaEmail ? "block" : "none";
-            btnCancelar.textContent = precisaEmail ? "Sair" : "Cancelar";
+            btnCancelar.textContent = "Cancelar";
 
             campoSenha.value = "";
             campoConfirma.value = "";
@@ -731,10 +734,7 @@
             erro.textContent = "";
             modal.classList.add("active");
 
-            btnCancelar.onclick = () => {
-                modal.classList.remove("active");
-                if (precisaEmail) fazerLogout();
-            };
+            btnCancelar.onclick = () => modal.classList.remove("active");
 
             btnSalvar.onclick = async () => {
                 erro.textContent = "";
@@ -760,6 +760,7 @@
                             : "Não foi possível alterar a senha. Tente novamente.";
                         return;
                     }
+                    const senhaAlterada = !error;
 
                     if (precisaEmail) {
                         const { data: linhas, error: errEmail } = await _supabase
@@ -772,7 +773,7 @@
                             console.error(errEmail);
                             erro.textContent = (errEmail && errEmail.code === "23505")
                                 ? "Este e-mail já está cadastrado para outro usuário."
-                                : "A senha foi alterada, mas não foi possível salvar o e-mail. Tente novamente.";
+                                : "Não foi possível salvar o e-mail. Tente novamente.";
                             return;
                         }
                         perfilAtual.email_contato = email;
@@ -781,7 +782,10 @@
                     modal.classList.remove("active");
                     campoSenha.value = "";
                     campoConfirma.value = "";
-                    mostrarAlertaPersonalizado("Sucesso", precisaEmail ? "Senha alterada e e-mail cadastrado!" : "Senha alterada!");
+                    mostrarAlertaPersonalizado("Sucesso",
+                        precisaEmail
+                            ? (senhaAlterada ? "Senha alterada e e-mail cadastrado!" : "E-mail cadastrado!")
+                            : "Senha alterada!");
                 } catch (err) {
                     console.error(err);
                     erro.textContent = "Erro de conexão. Tente novamente.";
