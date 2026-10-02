@@ -251,20 +251,20 @@
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // O login digitado como "matheus" vira "matheus@DOMINIO_LOGIN" no Supabase Auth.
-        // Não é um e-mail real (nenhuma mensagem é enviada); precisa ser igual ao usado no SQL (PARTE 5).
         const DOMINIO_LOGIN = "barretobarbearia.com.br";
 
         let usuarioLogado = "";
-        let perfilAtual = null; // { user_id, nome, papel, email_contato }
+        let perfilAtual = null;
         let diaAtivoIso = hojeISO(); 
         let adminDiaAtivoIso = hojeISO();
         
+        // Grade de horários padrão estendida até as 22:00 para suportar cortes emergenciais
         const horariosPadrao = [
             "08:00", "08:30", "09:00", "09:30", 
             "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", 
             "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", 
+            "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
         ];
 
         function mostrarAlertaPersonalizado(titulo, mensagem) {
@@ -275,7 +275,6 @@
             document.getElementById("alert-btn-ok").onclick = () => modal.classList.remove("active");
         }
 
-        // ===== Utilitários =====
         function isoLocal(d) {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -291,7 +290,6 @@
                 .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         }
 
-        // ===== Autenticação (Supabase Auth) =====
         function mostrarTelaLogin() {
             usuarioLogado = "";
             perfilAtual = null;
@@ -350,7 +348,6 @@
                 return;
             }
 
-            // Aceita "matheus" ou um e-mail completo
             const email = usuarioDigitado.includes("@") ? usuarioDigitado : `${usuarioDigitado}@${DOMINIO_LOGIN}`;
 
             const btn = document.getElementById("btn-login");
@@ -430,7 +427,7 @@
         const precosTabela = {
             "corte": 35, "barba": 30, "sobrancelha": 10, "hidratacao profunda": 30,
             "relaxamento": 40, "escova": 25, "luzes": 120, "platinado": 150,
-            "botox (selagem)": 90, "coloracao": 100, "pigmentacao": 30, "pezinho simples": 10, "pezinho gourmet": 15, "barba simples": 20, "bigode simples": 10
+            "botox (selagem)": 90, "coloracao": 100, "pigmentacao": 30, "pezinho simples": 10, "pezinho gourmet": 15, "barba simples": 20, "bigode simples": 10, "corte emergencial (r$ 45,00)": 45
         };
 
         function calcularPrecoServico(nomeServico) {
@@ -718,7 +715,6 @@
             const btnSalvar = document.getElementById("pass-btn-salvar");
             const btnCancelar = document.getElementById("pass-btn-cancelar");
 
-            // Ainda sem e-mail cadastrado = primeira troca de senha: coleta o e-mail junto
             const precisaEmail = !perfilAtual.email_contato;
 
             document.getElementById("password-modal-title").textContent = "Alterar Senha";
@@ -751,7 +747,6 @@
                 btnSalvar.disabled = true;
                 try {
                     const { error } = await _supabase.auth.updateUser({ password: nova });
-                    // "mesma senha" só é aceito se for uma nova tentativa de salvar o e-mail
                     const mesmaSenha = error && (error.code === "same_password" || /different from the old/i.test(error.message || ""));
                     if (error && !(mesmaSenha && precisaEmail)) {
                         console.error(error);
@@ -811,7 +806,6 @@
                 document.getElementById("filter-date-admin").value = adminDiaAtivoIso;
             }
 
-            // Renderizar seletor de dias da semana para o Admin
             seletorDiasAdmin.innerHTML = "";
             diasSemana.forEach(dia => {
                 const btnDia = document.createElement("button");
@@ -865,7 +859,6 @@
             }
         }
 
-        // Restaura a sessão ao abrir o app (o barbeiro não precisa logar toda vez)
         (async function iniciarSessao() {
             try {
                 const entrou = await entrarNoPainel(true);
