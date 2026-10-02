@@ -433,7 +433,7 @@ async function sendToWhatsapp() {
             p_barbeiro: selectedBarber,
             p_servicos: selectedServices.map(s => s.name),
             p_data: date,
-            p_horario: time
+            p_horario: String(time) // Garante explicitamente que o horário vai como texto compatível com a função SQL
         });
 
         if (error) {
@@ -456,7 +456,7 @@ async function sendToWhatsapp() {
         const whatsappNumber = telefonesBarbeiros[selectedBarber] || "5531997193193";
         const listaNomesServicos = selectedServices.map(s => s.name).join(", ");
 
-        const message = `✅ *AGENDAMENTO CONFIRMADO - BARRETO BARBEARIA* ✅\n\nOlá! Segue a confirmação do meu horário:\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${listaNomesServicos} (Total: ${formatarBRL(precoTotal)})\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${time}`;
+        const message = `✅ *AGENDAMENTO CONFIRMADO - BARRETO BARBEARIA* ✅\n\nOlá! Segue a confirmação do seu horário:\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${listaNomesServicos} (Total: ${formatarBRL(precoTotal)})\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${time}`;
 
         linkWhatsapp = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 
