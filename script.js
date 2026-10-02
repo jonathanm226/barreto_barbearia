@@ -1,15 +1,10 @@
 // === CONFIGURAÇÃO DO SUPABASE ===
-// A chave "publishable" pode ficar no front-end: quem protege os dados é o RLS (ver supabase_setup.sql).
 const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // === CONFIGURAÇÕES DO NEGÓCIO ===
-// ATENÇÃO: o expediente também existe dentro da função criar_agendamento no SQL.
-// Se mudar aqui, mude lá também.
-const PRIMEIRO_HORARIO = "08:00";
-const ULTIMO_HORARIO = "19:00";   // último horário de INÍCIO de atendimento
 const DIAS_ANTECEDENCIA_MAX = 21;
 const MINUTOS_ANTECEDENCIA_MIN = 30;
 
@@ -46,7 +41,6 @@ let enviandoAgendamento = false;
 
 // === FUNÇÕES AUXILIARES ===
 
-// Data local (YYYY-MM-DD). toISOString() usa UTC e "pula" o dia depois das 21h no Brasil.
 function isoLocal(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -77,15 +71,8 @@ function escapeHtml(valor) {
 }
 
 function calcularTotal() {
+    // Se houver apenas Corte e for horário emergencial, pode aplicar o valor fixo ou somar
     return selectedServices.reduce((acc, s) => acc + s.price, 0);
-}
-
-function gerarSlots(ultimoHorario) {
-    const slots = [];
-    for (let m = toMin(PRIMEIRO_HORARIO); m <= toMin(ultimoHorario); m += 30) {
-        slots.push(fromMin(m));
-    }
-    return slots;
 }
 
 function diaDaSemana(dateString) {
@@ -140,28 +127,65 @@ function toggleService(element, serviceName, price) {
     checkAvailableTimes();
 }
 
-// === HORÁRIOS ===
+// === HORÁRIOS E REGRAS DA SEMANA ===
 
-function getTimesForDate(dateString) {
+function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
 
-    // Domingo fechado
-    if (diaDaSemana(dateString) === 0) return [];
+    const diaSem = diaDaSemana(dateString); // 0=Domingo, 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sábado
 
-    let horarios = gerarSlots(ULTIMO_HORARIO);
+    // Domingo: Fechado para todos
+    if (diaSem === 0) return [];
 
-    // Se for hoje, remove horários que já passaram (ou que estão muito em cima da hora)
-    const agora = new Date();
-    if (dateString === isoLocal(agora)) {
-        const limite = agora.getTime() + MINUTOS_ANTECEDENCIA_MIN * 60000;
-        const [y, m, d] = dateString.split("-").map(Number);
-        horarios = horarios.filter(h => {
-            const [hh, mm] = h.split(":").map(Number);
-            return new Date(y, m - 1, d, hh, mm).getTime() >= limite;
-        });
+    // Validar escala do barbeiro no dia escolhido
+    if (barbeiro === "Matheus") {
+        if (diaSem === 3) return []; // Quarta-feira o Matheus não atende
+    } else if (barbeiro === "Yann" || barbeiro === "Rafael") {
+        if (diaSem === 1) return []; // Segunda-feira Yann e Rafael não atendem
     }
 
-    return horarios;
+    let inicioExpediente = 600;     // 10:00 padrão
+    let fimExpedienteNormal = 1200; // 20:00 padrão
+    let inicioEmergencia = 1200;    // 20:00 padrão
+    let fimExpedienteLimite = 1320; // 22:00 (último horário)
+
+    // Configurações específicas por dia da semana
+    if (diaSem === 1) { // Segunda: apenas Matheus 10:00 às 20:00, emergência após 20:00
+        inicioExpediente = 600;
+        fimExpedienteNormal = 1200;
+        inicioEmergencia = 1200;
+    } else if (diaSem === 2) { // Terça: todos 10:00 às 20:00, emergência após 20:00
+        inicioExpediente = 600;
+        fimExpedienteNormal = 1200;
+        inicioEmergencia = 1200;
+    } else if (diaSem === 3) { // Quarta: apenas Rafael e Yann 10:00 às 20:00, emergência após 20:00
+        inicioExpediente = 600;
+        fimExpedienteNormal = 1200;
+        inicioEmergencia = 1200;
+    } else if (diaSem === 4 || diaSem === 5) { // Quinta e Sexta: todos 09:00 às 21:30, emergência a partir de 21:00
+        inicioExpediente = 540; // 09:00
+        fimExpedienteNormal = 1290; // 21:30
+        inicioEmergencia = 1260; // 21:00
+    } else if (diaSem === 6) { // Sábado: todos 09:00 às 17:00, emergência a partir de 18:00
+        inicioExpediente = 540; // 09:00
+        fimExpedienteNormal = 1020; // 17:00
+        inicioEmergencia = 1080; // 18:00
+    }
+
+    const slots = [];
+    for (let m = inicioExpediente; m <= fimExpedienteLimite; m += 30) {
+        const horaStr = fromMin(m);
+        let textoSlot = horaStr;
+        let ehEmergencia = m >= inicioEmergencia;
+
+        if (ehEmergencia) {
+            textoSlot = `${horaStr} - (Corte Emergencial: R$ 45,00)`;
+        }
+
+        slots.push({ valor: horaStr, texto: textoSlot, ehEmergencia: ehEmergencia });
+    }
+
+    return slots;
 }
 
 function mostrarMensagemNoSelect(timeSelect, texto) {
@@ -185,13 +209,16 @@ async function checkAvailableTimes() {
     if (!selectedDate) return;
 
     const horarioAnterior = timeSelect.value;
-    const allTimes = getTimesForDate(selectedDate);
+    const allSlots = getTimesForDate(selectedDate, selectedBarber);
 
-    if (allTimes.length === 0) {
-        mostrarMensagemNoSelect(
-            timeSelect,
-            diaDaSemana(selectedDate) === 0 ? "Fechado neste dia" : "Sem horários disponíveis neste dia"
-        );
+    if (allSlots.length === 0) {
+        const diaSem = diaDaSemana(selectedDate);
+        let msg = "Sem horários disponíveis neste dia";
+        if (diaSem === 0) msg = "Fechado aos domingos";
+        else if (selectedBarber === "Matheus" && diaSem === 3) msg = "Matheus não atende às quartas-feiras";
+        else if ((selectedBarber === "Yann" || selectedBarber === "Rafael") && diaSem === 1) msg = `${selectedBarber} não atende às segundas-feiras`;
+
+        mostrarMensagemNoSelect(timeSelect, msg);
         return;
     }
 
@@ -201,7 +228,6 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSelect, "Carregando horários...");
 
     try {
-        // Só horário + serviço (sem dados pessoais) via função segura do banco
         const { data: agendamentos, error: errAgendamentos } = await _supabase
             .rpc("horarios_ocupados", { p_barbeiro: selectedBarber, p_data: selectedDate });
 
@@ -217,7 +243,6 @@ async function checkAvailableTimes() {
         if (errBloqueios) throw errBloqueios;
         if (minhaRequisicao !== requisicaoHorariosAtual) return;
 
-        // Minutos ocupados por agendamentos existentes (calculado por minutos, não por posição na lista)
         const ocupados = new Set();
         (agendamentos || []).forEach(a => {
             if (typeof a.horario !== "string" || !/^\d{1,2}:\d{2}/.test(a.horario)) return;
@@ -241,17 +266,17 @@ async function checkAvailableTimes() {
         const bloqueados = new Set(
             listaBloqueios.filter(h => /^\d{1,2}:\d{2}/.test(h)).map(toMin)
         );
-        const slotsDisponiveisNaGrade = new Set(allTimes.map(toMin));
+        const slotsDisponiveisNaGrade = new Set(allSlots.map(s => toMin(s.valor)));
 
         timeSelect.innerHTML = "";
 
-        allTimes.forEach(time => {
+        allSlots.forEach(slotObj => {
             const option = document.createElement("option");
-            option.value = time;
+            option.value = slotObj.valor;
+            option.textContent = slotObj.texto;
 
-            // O atendimento inteiro precisa caber dentro do expediente e sem colidir
             let temConflito = false;
-            const inicio = toMin(time);
+            const inicio = toMin(slotObj.valor);
             for (let i = 0; i < slotsNeeded; i++) {
                 const slot = inicio + 30 * i;
                 if (!slotsDisponiveisNaGrade.has(slot) || ocupados.has(slot) || bloqueados.has(slot)) {
@@ -261,16 +286,13 @@ async function checkAvailableTimes() {
             }
 
             if (temConflito) {
-                option.textContent = `${time} - (Indisponível para esta duração)`;
+                option.textContent = `${slotObj.valor} - (Indisponível)`;
                 option.disabled = true;
-            } else {
-                option.textContent = time;
             }
 
             timeSelect.appendChild(option);
         });
 
-        // Mantém o horário que o cliente já tinha escolhido, se ainda estiver livre
         const anterior = Array.from(timeSelect.options).find(o => o.value === horarioAnterior && !o.disabled);
         if (anterior) {
             timeSelect.value = horarioAnterior;
@@ -281,7 +303,7 @@ async function checkAvailableTimes() {
     } catch (err) {
         console.error("Erro ao buscar disponibilidade:", err);
         if (minhaRequisicao === requisicaoHorariosAtual) {
-            mostrarMensagemNoSelect(timeSelect, "Erro ao carregar horários. Verifique sua internet e tente novamente.");
+            mostrarMensagemNoSelect(timeSelect, "Erro ao carregar horários. Tente novamente.");
         }
     }
 }
@@ -296,10 +318,9 @@ async function buscarClientePorTelefone() {
     if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) return;
 
     const nomeInput = document.getElementById("client-name");
-    if (nomeInput.value.trim()) return; // não sobrescreve o que a pessoa já digitou
+    if (nomeInput.value.trim()) return;
 
     try {
-        // A busca acontece no servidor: o navegador recebe apenas um nome (nunca a lista de clientes)
         const { data, error } = await _supabase.rpc("buscar_cliente_por_telefone", { p_telefone: telefoneLimpo });
         if (error) throw error;
         if (data && !nomeInput.value.trim()) {
@@ -330,7 +351,7 @@ function abrirModalConfirmacao() {
 
     const telefoneDigitos = phone.replace(/\D/g, "");
     if (telefoneDigitos.length < 10 || telefoneDigitos.length > 11) {
-        alert("Por favor, digite um WhatsApp válido, com DDD (ex: 31 99999-9999).");
+        alert("Por favor, digite um WhatsApp válido com DDD.");
         return;
     }
 
@@ -344,8 +365,18 @@ function abrirModalConfirmacao() {
         return;
     }
 
-    const precoTotal = calcularTotal();
-    const servicosNomes = selectedServices.map(s => s.name);
+    // Verificar se é horário de emergência para exibir o valor correto no resumo
+    const diaSem = diaDaSemana(date);
+    const minTime = toMin(time);
+    let ehEmergencia = false;
+    if ((diaSem >= 1 && diaSem <= 3 && minTime >= 1200) ||
+        ((diaSem === 4 || diaSem === 5) && minTime >= 1260) ||
+        (diaSem === 6 && minTime >= 1080)) {
+        ehEmergencia = true;
+    }
+
+    const precoTotal = ehEmergencia ? 45.00 : calcularTotal();
+    const servicosNomes = ehEmergencia ? ["Corte Emergencial"] : selectedServices.map(s => s.name);
     const formattedDate = date.split("-").reverse().join("/");
 
     const resumoDiv = document.getElementById("resumo-agendamento");
@@ -379,7 +410,7 @@ async function confirmarEEnviar() {
 }
 
 async function sendToWhatsapp() {
-    if (enviandoAgendamento) return; // evita clique duplo
+    if (enviandoAgendamento) return;
 
     const nameInput = document.getElementById("client-name");
     const phoneInput = document.getElementById("client-phone");
@@ -401,8 +432,6 @@ async function sendToWhatsapp() {
     let linkWhatsapp = null;
 
     try {
-        // A validação final e a gravação acontecem de forma atômica no banco.
-        // Se dois clientes tentarem o mesmo horário, só um consegue.
         const { data: resultado, error } = await _supabase.rpc("criar_agendamento", {
             p_cliente: name,
             p_telefone: phone.replace(/\D/g, ""),
@@ -437,7 +466,6 @@ async function sendToWhatsapp() {
         }
     }
 
-    // Só vai para o WhatsApp se o agendamento foi realmente gravado
     if (linkWhatsapp) {
         window.location.href = linkWhatsapp;
     }
