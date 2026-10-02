@@ -71,7 +71,6 @@ function escapeHtml(valor) {
 }
 
 function calcularTotal() {
-    // Se houver apenas Corte e for horário emergencial, pode aplicar o valor fixo ou somar
     return selectedServices.reduce((acc, s) => acc + s.price, 0);
 }
 
@@ -134,39 +133,36 @@ function getTimesForDate(dateString, barbeiro) {
 
     const diaSem = diaDaSemana(dateString); // 0=Domingo, 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sábado
 
-    // Domingo: Fechado para todos
     if (diaSem === 0) return [];
 
-    // Validar escala do barbeiro no dia escolhido
     if (barbeiro === "Matheus") {
-        if (diaSem === 3) return []; // Quarta-feira o Matheus não atende
+        if (diaSem === 3) return [];
     } else if (barbeiro === "Yann" || barbeiro === "Rafael") {
-        if (diaSem === 1) return []; // Segunda-feira Yann e Rafael não atendem
+        if (diaSem === 1) return [];
     }
 
     let inicioExpediente = 600;     // 10:00 padrão
     let fimExpedienteNormal = 1200; // 20:00 padrão
     let inicioEmergencia = 1200;    // 20:00 padrão
-    let fimExpedienteLimite = 1320; // 22:00 (último horário)
+    let fimExpedienteLimite = 1320; // 22:00
 
-    // Configurações específicas por dia da semana
-    if (diaSem === 1) { // Segunda: apenas Matheus 10:00 às 20:00, emergência após 20:00
+    if (diaSem === 1) {
         inicioExpediente = 600;
         fimExpedienteNormal = 1200;
         inicioEmergencia = 1200;
-    } else if (diaSem === 2) { // Terça: todos 10:00 às 20:00, emergência após 20:00
+    } else if (diaSem === 2) {
         inicioExpediente = 600;
         fimExpedienteNormal = 1200;
         inicioEmergencia = 1200;
-    } else if (diaSem === 3) { // Quarta: apenas Rafael e Yann 10:00 às 20:00, emergência após 20:00
+    } else if (diaSem === 3) {
         inicioExpediente = 600;
         fimExpedienteNormal = 1200;
         inicioEmergencia = 1200;
-    } else if (diaSem === 4 || diaSem === 5) { // Quinta e Sexta: todos 09:00 às 21:30, emergência a partir de 21:00
+    } else if (diaSem === 4 || diaSem === 5) {
         inicioExpediente = 540; // 09:00
         fimExpedienteNormal = 1290; // 21:30
         inicioEmergencia = 1260; // 21:00
-    } else if (diaSem === 6) { // Sábado: todos 09:00 às 17:00, emergência a partir de 18:00
+    } else if (diaSem === 6) {
         inicioExpediente = 540; // 09:00
         fimExpedienteNormal = 1020; // 17:00
         inicioEmergencia = 1080; // 18:00
@@ -365,7 +361,6 @@ function abrirModalConfirmacao() {
         return;
     }
 
-    // Verificar se é horário de emergência para exibir o valor correto no resumo
     const diaSem = diaDaSemana(date);
     const minTime = toMin(time);
     let ehEmergencia = false;
@@ -441,23 +436,33 @@ async function sendToWhatsapp() {
             p_horario: time
         });
 
-        if (error) throw error;
-
-        if (!resultado || resultado.ok !== true) {
-            alert((resultado && resultado.mensagem) || "Não foi possível concluir o agendamento. Tente outro horário.");
-            await checkAvailableTimes();
-        } else {
-            const formattedDate = date.split("-").reverse().join("/");
-            const whatsappNumber = telefonesBarbeiros[selectedBarber] || "5531997193193";
-            const listaNomesServicos = selectedServices.map(s => s.name).join(", ");
-
-            const message = `✅ *AGENDAMENTO CONFIRMADO - BARRETO BARBEARIA* ✅\n\nOlá! Segue a confirmação do meu horário:\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${listaNomesServicos} (Total: ${formatarBRL(resultado.preco_total)})\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${time}`;
-
-            linkWhatsapp = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+        if (error) {
+            console.error("Erro retornado pelo Supabase:", error);
+            throw new Error(error.message || "Erro desconhecido no banco de dados.");
         }
+
+        if (!resultado || (typeof resultado === 'object' && resultado.ok === false)) {
+            const mensagemErro = (resultado && resultado.mensagem) || "Não foi possível concluir o agendamento. O horário pode ter sido ocupado.";
+            alert(mensagemErro);
+            await checkAvailableTimes();
+            return;
+        }
+
+        const precoTotal = (typeof resultado === 'object' && resultado.preco_total !== undefined) 
+            ? resultado.preco_total 
+            : calcularTotal();
+
+        const formattedDate = date.split("-").reverse().join("/");
+        const whatsappNumber = telefonesBarbeiros[selectedBarber] || "5531997193193";
+        const listaNomesServicos = selectedServices.map(s => s.name).join(", ");
+
+        const message = `✅ *AGENDAMENTO CONFIRMADO - BARRETO BARBEARIA* ✅\n\nOlá! Segue a confirmação do meu horário:\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${listaNomesServicos} (Total: ${formatarBRL(precoTotal)})\n📅 *Data:* ${formattedDate}\n⏰ *Horário:* ${time}`;
+
+        linkWhatsapp = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+
     } catch (err) {
-        console.error("Erro ao registrar agendamento:", err);
-        alert("Não foi possível registrar o seu agendamento. Verifique a internet e tente novamente.");
+        console.error("Erro detalhado ao registrar agendamento:", err);
+        alert("Erro ao registrar o agendamento: " + (err.message || "Verifique sua conexão com a internet."));
     } finally {
         enviandoAgendamento = false;
         if (btnAgendar) {
