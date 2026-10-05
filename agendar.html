@@ -3,126 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barreto Barbearia | Agendamento</title>
+    <title>Willian Cortes | Agendamento</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- SDK do Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
     <div class="app-container">
         
+        <!-- Cabeçalho com a Logo -->
         <header class="barber-header">
             <div class="brand-info">
-                <div class="brand-logo-container" style="width: 60px; height: 60px; margin-bottom: 0;">
-                    <img src="logo.jpg.jpg" alt="Barreto Barbearia Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                <div class="brand-logo-container" style="width: 50px; height: 50px; margin-bottom: 0;">
+                    <img src="logo.jpg.jpg" alt="Willian Cortes Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 </div>
                 <div>
-                    <h1>Barreto Barbearia</h1>
-                    <p>Estilo e Tradição</p>
+                    <h1>Willian Cortes</h1>
+                    <p>Desde 2019</p>
                 </div>
             </div>
         </header>
 
-        <!-- Seleção de Barbeiros -->
-        <section class="section">
-            <h2>1. Escolha o Profissional</h2>
-            <div class="barbers-grid">
-                <div class="barber-card active" onclick="selectBarber(this, 'Matheus')">
-                    <i class="fa-solid fa-user-tie" style="font-size: 1.2rem; color: #FF6600; margin-bottom: 4px;"></i>
-                    <h3>Matheus</h3>
-                </div>
-                <div class="barber-card" onclick="selectBarber(this, 'Yann')">
-                    <i class="fa-solid fa-user-tie" style="font-size: 1.2rem; color: #FF6600; margin-bottom: 4px;"></i>
-                    <h3>Yann</h3>
-                </div>
-                <div class="barber-card" onclick="selectBarber(this, 'Rafael')">
-                    <i class="fa-solid fa-user-tie" style="font-size: 1.2rem; color: #FF6600; margin-bottom: 4px;"></i>
-                    <h3>Rafael</h3>
-                </div>
-            </div>
-        </section>
-
         <!-- Seleção de Serviços -->
         <section class="section">
-            <h2>2. Escolha os Serviços</h2>
+            <h2>1. Escolha os Serviços</h2>
             <div class="services-grid">
                 
                 <div class="service-card" onclick="toggleService(this, 'Corte', 35)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Corte</h3><span>45 min</span></div>
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Corte (40 min)</h3></div>
                     <span class="price">R$ 35,00</span>
                 </div>
 
-                <div class="service-card" onclick="toggleService(this, 'Barba', 30)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Barba</h3><span>10 min</span></div>
-                    <span class="price">R$ 30,00</span>
+                <div class="service-card" onclick="toggleService(this, 'Barba', 35)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Barba (20 min)</h3></div>
+                    <span class="price">R$ 35,00</span>
                 </div>
 
-                <!-- Novos Serviços Opcionais Inseridos -->
-                <div class="service-card" onclick="toggleService(this, 'Barba simples', 20)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Barba simples</h3><span>10 min</span></div>
-                    <span class="price">R$ 20,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Bigode simples', 10)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Bigode simples</h3><span>5 min</span></div>
-                    <span class="price">R$ 10,00</span>
-                </div>
-                <!-- Fim dos Novos Serviços -->
-
-                <div class="service-card" onclick="toggleService(this, 'Sobrancelha', 10)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Sobrancelha</h3><span>25 min</span></div>
-                    <span class="price">R$ 10,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Hidratação profunda', 30)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Hidratação profunda</h3><span>25 min</span></div>
-                    <span class="price">A partir R$ 30,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Relaxamento', 40)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Relaxamento</h3><span>25 min</span></div>
-                    <span class="price">A partir R$ 40,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Escova', 25)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Escova</h3><span>30 min</span></div>
-                    <span class="price">R$ 25,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Luzes', 120)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Luzes</h3><span>01h</span></div>
-                    <span class="price">A partir R$ 120,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Platinado', 150)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Platinado</h3><span>01h</span></div>
-                    <span class="price">A partir R$ 150,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Botox (selagem)', 90)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Botox (selagem)</h3><span>01h</span></div>
-                    <span class="price">A partir R$ 90,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Coloração', 100)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Coloração</h3><span>01h</span></div>
-                    <span class="price">R$ 100,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Pigmentação', 30)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pigmentação</h3><span>40 min</span></div>
-                    <span class="price">R$ 30,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Pezinho simples', 10)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pezinho simples</h3><span>10 min</span></div>
-                    <span class="price">R$ 10,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Pezinho Gourmet', 15)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pezinho Gourmet</h3><span>20 min</span></div>
+                <div class="service-card" onclick="toggleService(this, 'Sobrancelha', 15)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Sobrancelha (10 min)</h3></div>
                     <span class="price">R$ 15,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Acabamento', 15)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Acabamento (15 min)</h3></div>
+                    <span class="price">R$ 15,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Corte e Sobrancelha', 50)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Corte e Sobrancelha (60 min)</h3></div>
+                    <span class="price">R$ 50,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Corte e Pintura - tinta da casa', 70)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Corte e Pintura - tinta da casa (1h20)</h3></div>
+                    <span class="price">R$ 70,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Corte e Pintura - tinta do cliente', 50)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Corte e Pintura - tinta do cliente (1h20)</h3></div>
+                    <span class="price">R$ 50,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Pigmentação', 35)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pigmentação (20 min)</h3></div>
+                    <span class="price">R$ 35,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Alisamento', 35)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Alisamento (40 min)</h3></div>
+                    <span class="price">R$ 35,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Hidratação', 35)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Hidratação (20 min)</h3></div>
+                    <span class="price">R$ 35,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Selagem', 70)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Selagem (45 min)</h3></div>
+                    <span class="price">R$ 70,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Luzes', 90)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Luzes (60 min)</h3></div>
+                    <span class="price">R$ 90,00</span>
+                </div>
+
+                <div class="service-card" onclick="toggleService(this, 'Platinado', 120)">
+                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Platinado (90 min)</h3></div>
+                    <span class="price">R$ 120,00</span>
                 </div>
 
             </div>
@@ -130,7 +101,10 @@
 
         <!-- Seleção de Data e Horário -->
         <section class="section">
-            <h2>3. Data e Horário</h2>
+            <h2>2. Data e Horário</h2>
+            <p style="font-size: 0.8rem; color: #666; margin: -5px 0 12px 0;">
+                <i class="fa-solid fa-circle-info"></i> Horários a partir das 19:00 são emergenciais (Corte/Base: R$ 50,00 | Adicional Sobrancelha: R$ 20,00).
+            </p>
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <div class="input-group" style="width: 100%;">
                     <label for="date">Data:</label>
@@ -138,51 +112,71 @@
                 </div>
                 <div class="input-group" style="width: 100%;">
                     <label for="time">Horário:</label>
-                    <select id="time" style="width: 100%; box-sizing: border-box;"></select>
+                    <select id="time" style="width: 100%; box-sizing: border-box;">
+                        <!-- Carregado dinamicamente via script.js -->
+                    </select>
                 </div>
             </div>
         </section>
 
         <!-- Identificação do Cliente -->
         <section class="section">
-            <h2>4. Seus Dados</h2>
+            <h2>3. Seus Dados</h2>
             <div class="client-inputs">
                 <div class="input-group">
                     <label for="client-phone">WhatsApp / Telefone:</label>
                     <input type="tel" id="client-phone" placeholder="Seu WhatsApp (com DDD)" required onblur="buscarClientePorTelefone()">
                 </div>
+
                 <div class="input-group">
                     <label for="client-name">Nome Completo:</label>
                     <input type="text" id="client-name" placeholder="Seu Nome Completo" required>
                 </div>
+                
+                <div class="input-group" id="group-nascimento">
+                    <label for="client-nascimento">Data de Nascimento:</label>
+                    <input type="date" id="client-nascimento">
+                </div>
             </div>
         </section>
 
+        <!-- ESPAÇADOR PARA EVITAR SOBREPOSIÇÃO DO BOTÃO FIXO -->
         <div style="height: 100px; width: 100%;"></div>
 
+        <!-- Botão de Ação Atualizado -->
         <footer class="footer-action">
-            <button class="btn-whatsapp" id="btn-continuar" onclick="abrirModalConfirmacao()">
+            <button class="btn-whatsapp" id="btn-continuar" onclick="abrirModalConfirmacao()" style="background: #000; color: #FFF; border: 1px solid #333;">
                 Continuar Agendamento <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i>
             </button>
         </footer>
 
     </div>
 
-    <div id="modal-confirmacao" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 9999;">
-        <div style="background: #1A1A1A; border: 1px solid #333333; border-radius: 12px; padding: 25px; width: 90%; max-width: 400px; text-align: center; color: #FFF;">
-            <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3rem; color: #FFF;">Confirmar Agendamento</h3>
-            <div id="resumo-agendamento" style="text-align: left; background: #242424; padding: 15px; border-radius: 8px; border: 1px solid #333333; margin-bottom: 20px; font-size: 0.95rem; color: #DDD; line-height: 1.6;"></div>
+    <!-- MODAL DE CONFIRMAÇÃO DE AGENDAMENTO -->
+    <div id="modal-confirmacao" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 9999;">
+        <div style="background: #FFFFFF; border-radius: 12px; padding: 25px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3rem; color: #000;">Confirmar Agendamento</h3>
+            
+            <div id="resumo-agendamento" style="text-align: left; background: #F9F9F9; padding: 15px; border-radius: 8px; border: 1px solid #EAEAEA; margin-bottom: 20px; font-size: 0.95rem; color: #333; line-height: 1.6;">
+                <!-- Preenchido via JavaScript -->
+            </div>
+            
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">
+                Revise os dados acima. Ao confirmar, seu horário será reservado e você será direcionado ao WhatsApp.
+            </p>
+            
             <div style="display: flex; gap: 10px; flex-direction: column;">
-                <button onclick="confirmarEEnviar()" style="padding: 14px; border-radius: 8px; font-weight: bold; border: none; background: #25D366; color: #FFF; cursor: pointer; font-size: 1rem;">
+                <button onclick="confirmarEEnviar()" style="padding: 14px; border-radius: 8px; font-weight: bold; border: none; background: #25D366; color: #FFF; cursor: pointer; font-size: 1rem; transition: 0.2s;">
                     <i class="fa-brands fa-whatsapp"></i> Confirmar e Enviar
                 </button>
-                <button onclick="fecharModalConfirmacao()" style="padding: 14px; border-radius: 8px; font-weight: bold; border: 1px solid #444; background: #242424; color: #FFF; cursor: pointer; font-size: 1rem;">
+                <button onclick="fecharModalConfirmacao()" style="padding: 14px; border-radius: 8px; font-weight: bold; border: 1px solid #CCC; background: #FFF; color: #333; cursor: pointer; font-size: 1rem; transition: 0.2s;">
                     Voltar e Editar
                 </button>
             </div>
         </div>
     </div>
 
+    <!-- Referência ao script -->
     <script src="script.js"></script>
 </body>
 </html>
