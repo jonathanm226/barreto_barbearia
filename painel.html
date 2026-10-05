@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agenda Pro. Barreto Barbearia</title>
+    <title>Agenda Pro | Barreto Barbearia</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,23 +23,8 @@
         .barber-header h1 { font-size: 1.5rem; color: #FFF; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
         .barber-header p { font-size: 0.85rem; color: #FF6600; text-transform: uppercase; letter-spacing: 1px; }
         #login-section { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; }
-        .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
-        .custom-modal-overlay.active { opacity: 1; visibility: visible; }
-        #custom-alert-modal { z-index: 10000; }
-        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 25px; width: 90%; max-width: 420px; text-align: center; }
-        .custom-modal h3 { color: #FFF; font-size: 1.1rem; margin-bottom: 12px; text-transform: uppercase; }
-        .custom-modal p { color: #CCC; font-size: 0.9rem; margin-bottom: 20px; }
-        .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; font-size: 1rem; margin-bottom: 15px; outline: none; }
-        .custom-modal-buttons { display: flex; gap: 10px; }
-        .custom-modal-btn { flex: 1; padding: 12px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; }
-        .btn-modal-cancelar { background: #333; color: #FFF; }
-        .btn-modal-confirmar { background: #FF6600; color: #FFF; }
-        .btn-modal-atendido { background: #25D366; color: #FFF; }
-        .btn-modal-whatsapp { background: #25D366; color: #FFF; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
-        .btn-modal-voltar { background: #333; color: #FFF; border: 1px solid #555; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
-        .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
         
-        /* --- NOVA GRADE HORIZONTAL (ESTILO BARRETO) --- */
+        /* Grade Horária do Painel */
         .week-horizontal-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 15px; width: 100%; overflow-x: hidden; }
         .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 6px; padding: 4px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         .day-header { font-size: 0.65rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px; display: flex; flex-direction: column; gap: 4px; text-align: center; }
@@ -48,13 +33,7 @@
         .slot-item.booked { border-left-color: #25D366; background: #152219; }
         .slot-item.concluded { border-left-color: #3498db; background: #15202b; }
         .slot-item.blocked { border-left-color: #e74c3c; background: #2a1616; }
-        .slot-item.conflict { border-left-color: #e74c3c; background: #4a0000; }
         .slot-item.available { border-left-color: #FF6600; background: #242424; }
-
-        /* Botões Extras do Modal */
-        .btn-modal-editar { background: #3498db; color: #FFF; }
-        .btn-modal-lembrete { background: #25D366; color: #FFF; }
-        #edit-box { display: none; text-align: left; margin-bottom: 15px; background: #242424; padding: 12px; border-radius: 6px; border: 1px solid #444; }
     </style>
 </head>
 <body>
@@ -71,9 +50,10 @@
             </div>
         </header>
 
+        <!-- Seção de Login -->
         <section id="login-section" class="section">
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px;">ACESSO AO PAINEL</h2>
-            <div class="datetime-inputs">
+            <div class="datetime-inputs" style="display: flex; flex-direction: column; gap: 12px;">
                 <div class="input-group">
                     <label for="login-usuario">Login (Matheus, Yann, Rafael ou admin):</label>
                     <input type="text" id="login-usuario" autocomplete="username" autocapitalize="none" autocorrect="off">
@@ -82,7 +62,7 @@
                     <label for="login-senha">Senha:</label>
                     <input type="password" id="login-senha" autocomplete="current-password">
                 </div>
-                <button class="btn-primary-action" id="btn-login" onclick="fazerLogin()" style="background: #FF6600; color: #FFF; font-weight: bold; letter-spacing: 1px; padding: 15px;">ENTRAR</button>
+                <button class="btn-primary-action" id="btn-login" onclick="fazerLogin()" style="background: #FF6600; color: #FFF; font-weight: bold; letter-spacing: 1px; padding: 15px; border: none; border-radius: 6px; cursor: pointer;">ENTRAR</button>
             </div>
         </section>
 
@@ -91,9 +71,6 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2 id="titulo-agenda-barbeiro">Minha Agenda</h2>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button onclick="abrirModalSenha()" class="btn-whatsapp" style="width: auto; padding: 8px 12px; font-size: 0.85rem; background: #333; color: #FFF;">
-                        <i class="fa-solid fa-key"></i> Senha
-                    </button>
                     <button onclick="carregarAgendaSemanal(); carregarFaturamentoBarbeiro();" class="btn-whatsapp" style="width: auto; padding: 8px 12px; font-size: 0.85rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
                     </button>
@@ -103,6 +80,7 @@
                 </div>
             </div>
 
+            <!-- Extrato de Faturamento -->
             <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 8px;">
                     <h3 style="color: #FFF; font-size: 1rem; margin: 0;"><i class="fa-solid fa-wallet"></i> Extrato de Faturamento</h3>
@@ -122,13 +100,9 @@
                         <strong id="barber-resumo-total" style="font-size: 1.2rem; color: #25D366;">R$ 0,00</strong>
                     </div>
                 </div>
-                <div style="background: #242424; border: 1px solid #333; padding: 10px; border-radius: 6px; font-size: 0.85rem; color: #DDD;" id="barber-detalhes-pagamento">
-                    <strong>Por Forma de Pagamento:</strong><br>
-                    💵 Dinheiro: R$ 0,00 | 📱 Pix: R$ 0,00<br>
-                    💳 Débito: R$ 0,00 | 💳 Crédito: R$ 0,00
-                </div>
             </div>
 
+            <!-- Controles de Semana -->
             <div style="background: #1A1A1A; border: 1px solid #333; padding: 14px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
                 <div style="font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Período da Agenda</div>
                 <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 1rem; display: block; margin-bottom: 12px;"></span>
@@ -142,47 +116,12 @@
                 </div>
             </div>
 
-            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #FFF; text-align: center;">Agenda Diária</h3>
-            <div id="seletor-dias" style="display: flex; gap: 4px; justify-content: space-between; width: 100%; margin-bottom: 15px;"></div>
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: #FFF; text-align: center;">Agenda Semanal</h3>
             <div id="grade-semanal-container" class="week-horizontal-container"></div>
         </section>
 
-        <!-- Dashboard Admin Geral -->
-        <section id="dashboard-admin" class="section" style="display: none;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h2>Painel Administrativo (Geral)</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="abrirModalSenha()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #333; color: #FFF;">
-                        <i class="fa-solid fa-key"></i> Senha
-                    </button>
-                    <button onclick="carregarResumoAdmin()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #FF6600; color: #FFF;">
-                        <i class="fa-solid fa-rotate"></i> Atualizar
-                    </button>
-                    <button onclick="fazerLogout()" class="btn-whatsapp" style="width: auto; padding: 8px 15px; font-size: 0.9rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
-                        <i class="fa-solid fa-right-from-bracket"></i> Sair
-                    </button>
-                </div>
-            </div>
+    </div>
 
-            <!-- Controles de Navegação Semanal e Filtro de Barbeiro para Admin -->
-            <div style="background: #1A1A1A; border: 1px solid #333; padding: 14px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <div style="font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Período da Agenda</div>
-                        <span id="admin-label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 1rem;"></span>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button onclick="adminMudarSemana(-1)" class="btn-whatsapp" style="padding: 8px 12px; font-size: 0.85rem; border: 1px solid #444; background: #242424; color: #FFF;"><i class="fa-solid fa-chevron-left"></i></button>
-                        <button onclick="adminMudarSemana(1)" class="btn-whatsapp" style="padding: 8px 12px; font-size: 0.85rem; border: 1px solid #444; background: #242424; color: #FFF;"><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-top: 1px solid #333; padding-top: 12px;">
-                    <div style="flex: 1; min-width: 180px;">
-                        <label for="filter-date-admin" style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 4px;">Selecionar Data Específica:</label>
-                        <input type="date" id="filter-date-admin" onchange="adminSelecionarDataPorInput()" style="width: 100%; padding: 8px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF;">
-                    </div>
-                    <div style="flex: 1; min-width: 180px;">
-                        <label for="admin-select-barbeiro" style="font-size: 0.8rem; color: #888; display: block; margin-bottom: 4px;">Filtrar Barbeiro:</label>
-                        <select id="admin-select-barbeiro" onchange="carregarResumoAdmin()" style="width: 100%; padding: 8px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF;">
-                            <option value="TODOS">Todos os Barbeiros</option>
+    <script src="script_painel.js"></script>
+</body>
+</html>
