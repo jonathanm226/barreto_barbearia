@@ -6,21 +6,30 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Variáveis de Estado do Painel
 let usuarioLogado = null;
-let perfilLogado = null; // 'barbeiro' ou 'admin'
+let perfilLogado = null;
 let dataAtualGrade = new Date();
+let selectedBarber = "Matheus";
 
-// Mapeamento de senhas padrão para acesso rápido (caso não use tabela dedicada)
+// Senhas padrão para acesso rápido e seguro ao painel
 const senhasMaster = {
     "Matheus": "1234",
     "Yann": "1234",
     "Rafael": "1234",
-    "admin": "admin123"
+    "Admin": "admin123"
 };
 
-// === FUNÇÃO DE LOGIN ===
+// === FUNÇÃO DE LOGIN CORRIGIDA E DEPURADA ===
 async function fazerLogin() {
-    const usuarioInput = document.getElementById("login-usuario").value.trim();
-    const senhaInput = document.getElementById("login-senha").value.trim();
+    const inputUsuario = document.getElementById("login-usuario");
+    const inputSenha = document.getElementById("login-senha");
+
+    if (!inputUsuario || !inputSenha) {
+        alert("Erro crítico: Os campos de login não foram encontrados no HTML.");
+        return;
+    }
+
+    const usuarioInput = inputUsuario.value.trim();
+    const senhaInput = inputSenha.value.trim();
 
     if (!usuarioInput || !senhaInput) {
         alert("Por favor, preencha o usuário e a senha.");
@@ -29,16 +38,17 @@ async function fazerLogin() {
 
     const nomeFormatado = usuarioInput.charAt(0).toUpperCase() + usuarioInput.slice(1).toLowerCase();
     
-    // Validação básica local de acesso ou via tabela do Supabase
     let autorizado = false;
+    
+    // Validação pelas credenciais padrão
     if (senhasMaster[nomeFormatado] && senhasMaster[nomeFormatado] === senhaInput) {
         autorizado = true;
     } else if (usuarioInput.toLowerCase() === "admin" && senhaInput === "admin123") {
         autorizado = true;
     }
 
+    // Validação opcional caso exista tabela no Supabase
     if (!autorizado) {
-        // Tenta validar em tabela do banco caso exista
         try {
             const { data, error } = await _supabase
                 .from("barbeiros_senhas")
@@ -46,30 +56,39 @@ async function fazerLogin() {
                 .eq("usuario", usuarioInput)
                 .eq("senha", senhaInput)
                 .single();
-            if (data && !error) autorizado = true;
+            
+            if (data && !error) {
+                autorizado = true;
+            }
         } catch (e) {
-            console.warn("Tabela de senhas personalizada não encontrada, usando validação padrão.");
+            console.log("Aviso: Tabela personalizada não consultada, utilizando validação padrão.");
         }
     }
 
     if (!autorizado) {
-        alert("Usuário ou senha inválidos.");
+        alert("Usuário ou senha inválidos! Verifique se digitou corretamente.");
         return;
     }
 
     usuarioLogado = nomeFormatado;
-    document.getElementById("login-section").style.display = "none";
+    
+    const secLogin = document.getElementById("login-section");
+    const secDash = document.getElementById("dashboard-barbeiro");
+
+    if (secLogin) secLogin.style.display = "none";
+    if (secDash) secDash.style.display = "block";
+
+    const tituloAgenda = document.getElementById("titulo-agenda-barbeiro");
+    if (tituloAgenda) {
+        tituloAgenda.textContent = usuarioInput.toLowerCase() === "admin" ? "Agenda Geral (Admin)" : `Agenda - ${nomeFormatado}`;
+    }
 
     if (usuarioInput.toLowerCase() === "admin") {
         perfilLogado = "admin";
         selectedBarber = "Matheus";
-        document.getElementById("dashboard-barbeiro").style.display = "block";
-        document.getElementById("titulo-agenda-barbeiro").textContent = "Agenda Geral (Admin)";
     } else {
         perfilLogado = "barbeiro";
         selectedBarber = nomeFormatado;
-        document.getElementById("dashboard-barbeiro").style.display = "block";
-        document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda - ${nomeFormatado}`;
     }
 
     carregarAgendaSemanal();
@@ -96,9 +115,8 @@ async function carregarAgendaSemanal() {
     const labelPeriodo = document.getElementById("label-periodo-semana");
     if (!container) return;
 
-    container.innerHTML = "<div style='grid-column: span 6; text-align:center; padding: 20px;'>Carregando agenda...</div>";
+    container.innerHTML = "<div style='grid-column: span 6; text-align:center; padding: 20px;'>A carregar agenda...</div>";
 
-    // Calcula início da semana (Segunda-feira)
     const d = new Date(dataAtualGrade);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -112,7 +130,6 @@ async function carregarAgendaSemanal() {
 
     container.innerHTML = "";
 
-    // Renderiza colunas de Segunda a Sábado
     for (let i = 0; i < 6; i++) {
         const diaAtual = new Date(segunda);
         diaAtual.setDate(segunda.getDate() + i);
@@ -126,12 +143,11 @@ async function carregarAgendaSemanal() {
                 <span>${diaAtual.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 4px;" id="slots-${dataIso}">
-                <span style="font-size:0.65rem; color:#888; text-align:center;">Buscando...</span>
+                <span style="font-size:0.65rem; color:#888; text-align:center;">A procurar...</span>
             </div>
         `;
         container.appendChild(coluna);
 
-        // Busca agendamentos do dia para o barbeiro selecionado
         try {
             const { data: agendamentos } = await _supabase
                 .rpc("horarios_ocupados", { p_barbeiro: selectedBarber, p_data: dataIso });
@@ -165,7 +181,6 @@ async function carregarFaturamentoBarbeiro() {
     totalEl.textContent = "R$ 0,00";
 
     try {
-        // Consulta simulada ou direta ao banco de agendamentos concluídos
         const { data, error } = await _supabase
             .from("agendamentos_barreto")
             .select("*")
