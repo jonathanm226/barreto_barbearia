@@ -424,6 +424,46 @@ async function sendToWhatsapp() {
         btnAgendar.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Agendando...';
     }
 
+    // --- INÍCIO DA NOVA VALIDAÇÃO (PREVENÇÃO DE RACE CONDITION) ---
+    const { data: verifOcupados, error: errVerif } = await _supabase.rpc("horarios_ocupados", { p_barbeiro: selectedBarber, p_data: date });
+    let temConflitoPre = false;
+    
+    if (!errVerif) {
+        const slotsOcupadosSet = new Set();
+        (verifOcupados || []).forEach(a => {
+            const inicio = toMin(a.horario);
+            let dur = 0;
+            if (a.servico) {
+                a.servico.split(",").forEach(serv => dur += duracoesServicos[serv.trim()] || 30);
+            }
+            const slots = Math.max(1, Math.ceil(dur / 30));
+            for (let k = 0; k < slots; k++) slotsOcupadosSet.add(inicio + 30 * k);
+        });
+
+        const inicioMeu = toMin(time);
+        const meusSlotsNeeded = Math.ceil( (selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30) / 30 );
+        
+        for (let i = 0; i < meusSlotsNeeded; i++) {
+            if (slotsOcupadosSet.has(inicioMeu + 30 * i)) {
+                temConflitoPre = true;
+                break;
+            }
+        }
+    }
+
+    if (temConflitoPre) {
+        alert("Ops! Este horário acabou de ser reservado por outra pessoa. Por favor, escolha outro horário.");
+        fecharModalConfirmacao();
+        enviandoAgendamento = false;
+        if (btnAgendar) {
+            btnAgendar.disabled = false;
+            btnAgendar.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i>';
+        }
+        await checkAvailableTimes(); // Recarrega horários vazios
+        return;
+    }
+    // --- FIM DA NOVA VALIDAÇÃO ---
+
     let linkWhatsapp = null;
 
     try {
