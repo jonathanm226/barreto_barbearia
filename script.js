@@ -226,27 +226,21 @@ async function confirmarEEnviar() {
         const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
 
-        const { error: rpcError } = await _supabase.rpc("criar_agendamento", {
-            p_cliente: name,
-            p_telefone: phone,
-            p_barbeiro: selectedBarber,
-            p_servicos: servicosNome,
-            p_data: date,
-            p_horario: String(time)
-        });
+        // INSERÇÃO DIRETA NA TABELA (Garante o registo imediato no Supabase)
+        const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
+            cliente: name,
+            telefone: phone,
+            barbeiro: selectedBarber,
+            servico: servicosNome,
+            preco_total: precoTotal,
+            data: date,
+            horario: time,
+            status: 'ativo'
+        }]);
 
-        if (rpcError) {
-            const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
-                cliente: name,
-                telefone: phone,
-                barbeiro: selectedBarber,
-                servico: servicosNome,
-                preco_total: precoTotal,
-                data: date,
-                horario: time,
-                status: 'ativo'
-            }]);
-            if (insertError) throw insertError;
+        if (insertError) {
+            console.error("Detalhes do erro Supabase:", insertError);
+            throw new Error(insertError.message);
         }
 
         fecharModalConfirmacao();
@@ -256,7 +250,7 @@ async function confirmarEEnviar() {
         window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 
     } catch (err) {
-        alert("Erro ao agendar. Verifique a internet e tente novamente.");
+        alert("Erro ao gravar na base de dados: " + err.message);
         enviandoAgendamento = false; btn.disabled = false; btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
     }
 }
