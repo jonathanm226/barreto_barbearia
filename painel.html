@@ -18,10 +18,10 @@
         html, body { height: 100vh; background: #121212; color: #FFF; margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; }
         .app-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
         
-        .barber-header { text-align: center; padding: 6px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; }
-        .brand-logo-container { width: 35px; height: 35px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; }
+        .barber-header { text-align: center; padding: 5px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; }
+        .brand-logo-container { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; }
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
-        .barber-header h1 { font-size: 0.9rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .barber-header h1 { font-size: 0.85rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
         
         /* Controle de visibilidade das seções */
         .section-view { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; }
@@ -34,13 +34,13 @@
         .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; margin-bottom: 15px; outline: none; box-sizing: border-box; }
         .custom-modal-btn { width: 100%; padding: 12px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; margin-bottom: 10px; }
 
-        /* GRADE HORIZONTAL COMPLETA DA SEMANA OTIMIZADA */
+        /* GRADE HORIZONTAL COMPLETA DA SEMANA */
         .week-horizontal-container {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 4px;
+            gap: 2px;
             overflow-x: auto;
-            padding: 2px 4px;
+            padding: 2px;
             width: 100%;
             flex: 1;
             box-sizing: border-box;
@@ -52,25 +52,25 @@
             background: #1A1A1A;
             border: 1px solid #333;
             border-radius: 4px;
-            padding: 3px;
+            padding: 2px;
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
             min-width: 0;
             height: 100%;
             overflow: hidden;
         }
-        .day-header { font-size: 0.6rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
+        .day-header { font-size: 0.55rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
         
-        /* Slots de Atendimento Limpos e Organizados sem sobreposição */
-        .slots-wrapper { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; flex: 1; padding-right: 1px; }
-        .slot-item { background: #242424; padding: 5px 4px; border-radius: 4px; font-size: 0.58rem; border: 1px solid #333; border-left: 3px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
-        .slot-item.booked { border-left-color: #3498db; }
-        .slot-item.booked-done { border-left-color: #25D366; background: #152219; }
-        .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
-        .slot-item.busy { border-left-color: #f39c12; background: #2a2215; opacity: 0.8; }
-        .slot-item.available { border-left-color: #FF6600; }
-        .action-btn { padding: 2px 4px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 0.48rem; border: none; white-space: nowrap; }
+        /* Slots de Atendimento Limpos, Desafogados e Organizados */
+        .slots-wrapper { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; }
+        .slot-item { background: #1E1E1E; padding: 4px 3px; border-radius: 3px; font-size: 0.52rem; border: 1px solid #333; border-left: 2px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+        .slot-item.booked { border-left-color: #3498db; background: #18232c; }
+        .slot-item.booked-done { border-left-color: #25D366; background: #132219; }
+        .slot-item.blocked { border-left-color: #e74c3c; background: #241616; }
+        .slot-item.busy { border-left-color: #f39c12; background: #241e12; opacity: 0.7; }
+        .slot-item.available { border-left-color: #FF6600; background: #1A1A1A; }
+        .action-btn { padding: 1px 3px; border-radius: 2px; cursor: pointer; font-weight: bold; font-size: 0.42rem; border: none; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -98,19 +98,19 @@
 
         <!-- Dashboard Barbeiro -->
         <section id="dashboard-barbeiro" class="section-view" style="padding: 2px 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; padding: 0 4px; flex-wrap: wrap; gap: 4px;">
-                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
-                <div style="display: flex; gap: 3px;">
-                    <button onclick="carregarAgendaSemanal()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 3px 6px; font-size: 0.55rem;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 3px 6px; font-size: 0.55rem;">Sair</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; padding: 0 2px; gap: 4px;">
+                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.7rem; text-transform: uppercase;">Minha Agenda</h2>
+                <div style="display: flex; gap: 2px;">
+                    <button onclick="carregarAgendaSemanal()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 3px 5px; font-size: 0.5rem;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+                    <button onclick="fazerLogout()" class="action-btn" style="background: #241616; color: #e74c3c; border: 1px solid #e74c3c; padding: 3px 5px; font-size: 0.5rem;">Sair</button>
                 </div>
             </div>
 
             <!-- Navegação da Semana -->
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 3px 6px; border-radius: 4px; border: 1px solid #333; margin-bottom: 3px;">
-                <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 5px;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
-                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.65rem; text-align: center;"></span>
-                <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 5px;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 2px 4px; border-radius: 4px; border: 1px solid #333; margin-bottom: 2px;">
+                <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 4px;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
+                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.6rem; text-align: center;"></span>
+                <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 4px;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
             </div>
 
             <!-- GRADE HORIZONTAL DA SEMANA INTEIRA -->
@@ -123,7 +123,7 @@
                 <h2 style="font-size: 1rem; margin:0;">Painel Administrativo</h2>
                 <div style="display: flex; gap: 6px;">
                     <button onclick="carregarResumoAdmin()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 6px 10px;"><i class="fa-solid fa-rotate"></i></button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 10px;">Sair</button>
+                    <button onclick="fazerLogout()" class="action-btn" style="background: #241616; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 10px;">Sair</button>
                 </div>
             </div>
 
@@ -291,7 +291,7 @@
 
         async function carregarAgendaSemanal() {
             const container = document.getElementById("grade-semanal-container");
-            container.innerHTML = "<p style='color:#FFF; padding: 15px; font-size: 0.65rem;'>A carregar...</p>";
+            container.innerHTML = "<p style='color:#FFF; padding: 10px; font-size: 0.6rem;'>A carregar...</p>";
             
             const diasSemana = obterDiasDaSemana(diaReferencia);
             document.getElementById("label-periodo-semana").textContent = `${diasSemana[0].label} até ${diasSemana[5].label}`;
@@ -319,7 +319,7 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
+                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#241616' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
@@ -329,7 +329,7 @@
                     slotsDiv.className = "slots-wrapper";
 
                     if (blqDia) {
-                        slotsDiv.innerHTML = `<div style="color:#e74c3c; text-align:center; padding: 10px 0; font-size: 0.6rem;"><i class="fa-solid fa-lock"></i> Fechado</div>`;
+                        slotsDiv.innerHTML = `<div style="color:#e74c3c; text-align:center; padding: 10px 0; font-size: 0.55rem;"><i class="fa-solid fa-lock"></i> Fechado</div>`;
                     } else {
                         const ocupadosDia = new Map();
                         const duracaoExtra = new Set();
@@ -361,25 +361,25 @@
 
                             if (blq) {
                                 item.className = "slot-item blocked";
-                                item.innerHTML = `<span><i class="fa-solid fa-ban"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', true)" class="action-btn" style="background:#2C1A1A; color:#e74c3c; border:1px solid #e74c3c;">Desbl</button>`;
+                                item.innerHTML = `<span><i class="fa-solid fa-ban"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', true)" class="action-btn" style="background:#241616; color:#e74c3c; border:1px solid #e74c3c;">Desbl</button>`;
                             } else if (ag) {
                                 const isDone = ag.status === 'concluido';
                                 item.className = isDone ? "slot-item booked-done" : "slot-item booked";
                                 item.innerHTML = `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; margin-bottom: 1px;">
-                                        <strong style="font-size: 0.6rem; color: #FFF;">${horario}</strong>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-weight:700; color:#FFF;">${horario}</span>
                                         <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF;"><i class="fa-solid fa-gear"></i></button>
                                     </div>
-                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#FFD0B0; font-weight: 600; font-size: 0.58rem;" title="${ag.cliente}">
+                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#DDD; font-weight:500;" title="${ag.cliente}">
                                         ${ag.cliente}
                                     </div>
                                 `;
                             } else if (isExtraBusy) {
                                 item.className = "slot-item busy";
-                                item.innerHTML = `<span style="color:#AAA; font-size: 0.52rem;">${horario} (Ocupado)</span>`;
+                                item.innerHTML = `<span style="color:#888; font-size: 0.48rem;"><i class="fa-solid fa-scissors"></i> ${horario}</span>`;
                             } else {
                                 item.className = "slot-item available";
-                                item.innerHTML = `<span>${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>`;
+                                item.innerHTML = `<span style="color:#AAA;">${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>`;
                             }
                             slotsDiv.appendChild(item);
                         });
@@ -390,7 +390,7 @@
 
             } catch (err) {
                 console.error(err);
-                container.innerHTML = "<p style='color:#e74c3c; padding: 15px; font-size: 0.65rem;'>Erro ao carregar.</p>";
+                container.innerHTML = "<p style='color:#e74c3c; padding: 10px; font-size: 0.6rem;'>Erro ao carregar.</p>";
             }
         }
 
@@ -436,7 +436,7 @@
                 btns.appendChild(btnOk);
                 
                 const btnCanc = document.createElement("button");
-                btnCanc.className = "custom-modal-btn"; btnCanc.style.background = "#2C1A1A"; btnCanc.style.color = "#e74c3c"; btnCanc.style.border = "1px solid #e74c3c";
+                btnCanc.className = "custom-modal-btn"; btnCanc.style.background = "#241616"; btnCanc.style.color = "#e74c3c"; btnCanc.style.border = "1px solid #e74c3c";
                 btnCanc.textContent = "Cancelar Agendamento";
                 btnCanc.onclick = async () => {
                     if (confirm("Deseja cancelar a reserva?")) {
