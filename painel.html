@@ -38,7 +38,7 @@
         .week-horizontal-container {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 3px;
+            gap: 4px;
             overflow-x: auto;
             padding: 2px 4px;
             width: 100%;
@@ -52,25 +52,25 @@
             background: #1A1A1A;
             border: 1px solid #333;
             border-radius: 4px;
-            padding: 2px;
+            padding: 3px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 3px;
             min-width: 0;
             height: 100%;
             overflow: hidden;
         }
-        .day-header { font-size: 0.58rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
+        .day-header { font-size: 0.6rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
         
-        /* Slots de Atendimento Compactos e Organizados */
-        .slots-wrapper { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; }
-        .slot-item { background: #242424; padding: 4px 3px; border-radius: 3px; font-size: 0.55rem; border: 1px solid #333; border-left: 2px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+        /* Slots de Atendimento Limpos e Organizados sem sobreposição */
+        .slots-wrapper { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; flex: 1; padding-right: 1px; }
+        .slot-item { background: #242424; padding: 5px 4px; border-radius: 4px; font-size: 0.58rem; border: 1px solid #333; border-left: 3px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
         .slot-item.booked { border-left-color: #3498db; }
         .slot-item.booked-done { border-left-color: #25D366; background: #152219; }
         .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
         .slot-item.busy { border-left-color: #f39c12; background: #2a2215; opacity: 0.8; }
         .slot-item.available { border-left-color: #FF6600; }
-        .action-btn { padding: 1px 3px; border-radius: 2px; cursor: pointer; font-weight: bold; font-size: 0.45rem; border: none; white-space: nowrap; }
+        .action-btn { padding: 2px 4px; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 0.48rem; border: none; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -319,7 +319,7 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'}; font-size: 0.5rem; padding: 1px 2px;">
+                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
@@ -366,17 +366,17 @@
                                 const isDone = ag.status === 'concluido';
                                 item.className = isDone ? "slot-item booked-done" : "slot-item booked";
                                 item.innerHTML = `
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <strong style="font-size: 0.58rem;">${horario}</strong>
-                                        <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF; font-size:0.45rem; padding: 1px 3px;"><i class="fa-solid fa-gear"></i></button>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px; margin-bottom: 1px;">
+                                        <strong style="font-size: 0.6rem; color: #FFF;">${horario}</strong>
+                                        <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF;"><i class="fa-solid fa-gear"></i></button>
                                     </div>
-                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#FFD0B0; font-weight: 500;" title="${ag.cliente}">
+                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#FFD0B0; font-weight: 600; font-size: 0.58rem;" title="${ag.cliente}">
                                         ${ag.cliente}
                                     </div>
                                 `;
                             } else if (isExtraBusy) {
                                 item.className = "slot-item busy";
-                                item.innerHTML = `<span style="color:#AAA; font-size: 0.5rem;">${horario} (Ocupado)</span>`;
+                                item.innerHTML = `<span style="color:#AAA; font-size: 0.52rem;">${horario} (Ocupado)</span>`;
                             } else {
                                 item.className = "slot-item available";
                                 item.innerHTML = `<span>${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>`;
