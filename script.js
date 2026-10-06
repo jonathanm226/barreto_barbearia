@@ -147,7 +147,17 @@ async function checkAvailableTimes() {
             for (let k = 0; k < numSlots; k++) ocupados.add(inicio + (30 * k));
         });
 
+        // BLOQUEIOS AUTOMÁTICOS DIÁRIOS POR BARBEIRO (Almoço / Pausa)
+        const bloqueiosAlmocoAutomaticos = {
+            "Rafael": ["13:00", "13:30"],
+            "Yann": ["12:00", "12:30", "13:00"],
+            "Matheus": ["13:30", "14:00", "14:30"]
+        };
+        const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber] || [];
+
         const bloqueados = new Set((bloqueios || []).map(b => toMin(String(b.horario).substring(0, 5))));
+        almocoPadrao.forEach(h => bloqueados.add(toMin(h)));
+
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
 
         timeSel.innerHTML = "";
@@ -226,7 +236,6 @@ async function confirmarEEnviar() {
         const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
 
-        // INSERÇÃO DIRETA NA TABELA (Garante o registo imediato no Supabase)
         const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
             cliente: name,
             telefone: phone,
@@ -238,10 +247,7 @@ async function confirmarEEnviar() {
             status: 'ativo'
         }]);
 
-        if (insertError) {
-            console.error("Detalhes do erro Supabase:", insertError);
-            throw new Error(insertError.message);
-        }
+        if (insertError) throw new Error(insertError.message);
 
         fecharModalConfirmacao();
         const num = telefonesBarbeiros[selectedBarber] || "5531997193193";
