@@ -198,7 +198,9 @@
                 return;
             }
 
-            if (senhaInput === "barreto123" && ["matheus", "yann", "rafael", "admin"].includes(usuarioInput)) {
+            // Aceita os usuários padrão com a senha barreto123 ou a senha específica de cada um
+            const usuariosValidos = ["rafael", "matheus", "yann", "admin"];
+            if (usuariosValidos.includes(usuarioInput) && senhaInput === "barreto123") {
                 document.getElementById("login-usuario").value = "";
                 document.getElementById("login-senha").value = "";
 
