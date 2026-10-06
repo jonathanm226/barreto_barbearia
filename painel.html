@@ -16,15 +16,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         html, body { height: 100vh; background: #121212; color: #FFF; margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; }
-        .app-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        .app-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
         
-        .barber-header { text-align: center; padding: 5px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; }
-        .brand-logo-container { width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; }
+        .barber-header { text-align: center; padding: 4px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; }
+        .brand-logo-container { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; }
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
-        .barber-header h1 { font-size: 0.85rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .barber-header h1 { font-size: 0.8rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
         
         /* Controle de visibilidade das seções */
-        .section-view { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; }
+        .section-view { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; box-sizing: border-box; }
         .section-view.active { display: flex; }
 
         /* Modais */
@@ -60,16 +60,22 @@
             height: 100%;
             overflow: hidden;
         }
-        .day-header { font-size: 0.55rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
+        .day-header { font-size: 0.52rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
         
-        /* Slots de Atendimento Limpos, Desafogados e Organizados */
-        .slots-wrapper { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; }
-        .slot-item { background: #1E1E1E; padding: 4px 3px; border-radius: 3px; font-size: 0.52rem; border: 1px solid #333; border-left: 2px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
-        .slot-item.booked { border-left-color: #3498db; background: #18232c; }
-        .slot-item.booked-done { border-left-color: #25D366; background: #132219; }
-        .slot-item.blocked { border-left-color: #e74c3c; background: #241616; }
-        .slot-item.busy { border-left-color: #f39c12; background: #241e12; opacity: 0.7; }
+        /* SLOTS DE ATENDIMENTO ORGANIZADOS E SEM SOBREPOSIÇÃO */
+        .slots-wrapper { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; flex: 1; padding-right: 1px; }
+        .slot-item { background: #222222; padding: 4px 3px; border-radius: 3px; font-size: 0.52rem; border: 1px solid #333; border-left: 3px solid #555; color: #FFF; display: flex; flex-direction: column; justify-content: center; min-height: 28px; box-sizing: border-box; }
+        
+        .slot-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .slot-time { font-weight: 700; font-size: 0.52rem; color: #FFF; }
+        .slot-client { font-weight: 600; font-size: 0.48rem; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+
+        .slot-item.booked { border-left-color: #3498db; background: #192530; }
+        .slot-item.booked-done { border-left-color: #25D366; background: #13271C; }
+        .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
+        .slot-item.busy { border-left-color: #f39c12; background: #2B2213; opacity: 0.8; }
         .slot-item.available { border-left-color: #FF6600; background: #1A1A1A; }
+        
         .action-btn { padding: 1px 3px; border-radius: 2px; cursor: pointer; font-weight: bold; font-size: 0.42rem; border: none; white-space: nowrap; }
     </style>
 </head>
@@ -99,17 +105,17 @@
         <!-- Dashboard Barbeiro -->
         <section id="dashboard-barbeiro" class="section-view" style="padding: 2px 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; padding: 0 2px; gap: 4px;">
-                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.7rem; text-transform: uppercase;">Minha Agenda</h2>
+                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.68rem; text-transform: uppercase;">Minha Agenda</h2>
                 <div style="display: flex; gap: 2px;">
                     <button onclick="carregarAgendaSemanal()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 3px 5px; font-size: 0.5rem;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #241616; color: #e74c3c; border: 1px solid #e74c3c; padding: 3px 5px; font-size: 0.5rem;">Sair</button>
+                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 3px 5px; font-size: 0.5rem;">Sair</button>
                 </div>
             </div>
 
             <!-- Navegação da Semana -->
             <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 2px 4px; border-radius: 4px; border: 1px solid #333; margin-bottom: 2px;">
                 <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 4px;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
-                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.6rem; text-align: center;"></span>
+                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.58rem; text-align: center;"></span>
                 <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 4px;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
             </div>
 
@@ -123,7 +129,7 @@
                 <h2 style="font-size: 1rem; margin:0;">Painel Administrativo</h2>
                 <div style="display: flex; gap: 6px;">
                     <button onclick="carregarResumoAdmin()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 6px 10px;"><i class="fa-solid fa-rotate"></i></button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #241616; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 10px;">Sair</button>
+                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 10px;">Sair</button>
                 </div>
             </div>
 
@@ -319,7 +325,7 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#241616' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
+                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
@@ -361,25 +367,33 @@
 
                             if (blq) {
                                 item.className = "slot-item blocked";
-                                item.innerHTML = `<span><i class="fa-solid fa-ban"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', true)" class="action-btn" style="background:#241616; color:#e74c3c; border:1px solid #e74c3c;">Desbl</button>`;
+                                item.innerHTML = `
+                                    <div class="slot-top">
+                                        <span class="slot-time"><i class="fa-solid fa-ban"></i> ${horario}</span>
+                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', true)" class="action-btn" style="background:#2C1A1A; color:#e74c3c; border:1px solid #e74c3c;">Desbl</button>
+                                    </div>
+                                `;
                             } else if (ag) {
                                 const isDone = ag.status === 'concluido';
                                 item.className = isDone ? "slot-item booked-done" : "slot-item booked";
                                 item.innerHTML = `
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span style="font-weight:700; color:#FFF;">${horario}</span>
+                                    <div class="slot-top">
+                                        <span class="slot-time">${horario}</span>
                                         <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF;"><i class="fa-solid fa-gear"></i></button>
                                     </div>
-                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#DDD; font-weight:500;" title="${ag.cliente}">
-                                        ${ag.cliente}
-                                    </div>
+                                    <div class="slot-client" title="${ag.cliente}">${ag.cliente}</div>
                                 `;
                             } else if (isExtraBusy) {
                                 item.className = "slot-item busy";
-                                item.innerHTML = `<span style="color:#888; font-size: 0.48rem;"><i class="fa-solid fa-scissors"></i> ${horario}</span>`;
+                                item.innerHTML = `<span style="color:#AAA; font-size: 0.45rem;"><i class="fa-solid fa-scissors"></i> ${horario}</span>`;
                             } else {
                                 item.className = "slot-item available";
-                                item.innerHTML = `<span style="color:#AAA;">${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>`;
+                                item.innerHTML = `
+                                    <div class="slot-top">
+                                        <span class="slot-time">${horario}</span>
+                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>
+                                    </div>
+                                `;
                             }
                             slotsDiv.appendChild(item);
                         });
@@ -436,7 +450,7 @@
                 btns.appendChild(btnOk);
                 
                 const btnCanc = document.createElement("button");
-                btnCanc.className = "custom-modal-btn"; btnCanc.style.background = "#241616"; btnCanc.style.color = "#e74c3c"; btnCanc.style.border = "1px solid #e74c3c";
+                btnCanc.className = "custom-modal-btn"; btnCanc.style.background = "#2C1A1A"; btnCanc.style.color = "#e74c3c"; btnCanc.style.border = "1px solid #e74c3c";
                 btnCanc.textContent = "Cancelar Agendamento";
                 btnCanc.onclick = async () => {
                     if (confirm("Deseja cancelar a reserva?")) {
