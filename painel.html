@@ -34,19 +34,20 @@
         .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; margin-bottom: 15px; outline: none; box-sizing: border-box; }
         .custom-modal-btn { width: 100%; padding: 12px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; margin-bottom: 10px; }
 
-        /* GRADE HORIZONTAL COMPLETA DA SEMANA */
+        /* ROLAGEM GLOBAL DA SEMANA INTEIRA JUNTA */
         .week-horizontal-container {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
-            gap: 2px;
+            gap: 3px;
             overflow-x: auto;
-            padding: 2px;
+            overflow-y: auto; /* Rolagem vertical unificada para toda a semana */
+            padding: 2px 4px;
             width: 100%;
             flex: 1;
             box-sizing: border-box;
             scrollbar-width: thin;
             scrollbar-color: #FF6600 #1A1A1A;
-            overflow-y: hidden;
+            align-content: start;
         }
         .day-column {
             background: #1A1A1A;
@@ -55,20 +56,18 @@
             padding: 2px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 3px;
             min-width: 0;
-            height: 100%;
-            overflow: hidden;
         }
-        .day-header { font-size: 0.52rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
+        .day-header { font-size: 0.55rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; position: sticky; top: 0; background: #1A1A1A; z-index: 5; }
         
-        /* SLOTS DE ATENDIMENTO ORGANIZADOS E SEM SOBREPOSIÇÃO */
-        .slots-wrapper { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; flex: 1; padding-right: 1px; }
-        .slot-item { background: #222222; padding: 4px 3px; border-radius: 3px; font-size: 0.52rem; border: 1px solid #333; border-left: 3px solid #555; color: #FFF; display: flex; flex-direction: column; justify-content: center; min-height: 28px; box-sizing: border-box; }
+        /* SLOTS DE ATENDIMENTO OTIMIZADOS E UNIFORMES */
+        .slots-wrapper { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+        .slot-item { background: #222222; padding: 4px 3px; border-radius: 3px; font-size: 0.52rem; border: 1px solid #333; border-left: 3px solid #555; color: #FFF; display: flex; flex-direction: column; justify-content: center; min-height: 30px; box-sizing: border-box; }
         
         .slot-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .slot-time { font-weight: 700; font-size: 0.52rem; color: #FFF; }
-        .slot-client { font-weight: 600; font-size: 0.48rem; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+        .slot-time { font-weight: 700; font-size: 0.54rem; color: #FFF; }
+        .slot-client { font-weight: 600; font-size: 0.5rem; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
         .slot-item.booked { border-left-color: #3498db; background: #192530; }
         .slot-item.booked-done { border-left-color: #25D366; background: #13271C; }
@@ -507,7 +506,7 @@
                         <div style="color:#CCC; font-size: 0.85rem;">
                             <strong>Cliente:</strong> ${item.cliente} (${item.telefone})<br>
                             <strong>Serviço:</strong> ${item.servico}<br>
-                            <strong>Valor:</strong> R$ ${Number(item.preco_total).toFixed(2).replace(".", ",")}
+                            <strong>Valor:</strong> R$ ${Number(item.preco_total).2f ? Number(item.preco_total).toFixed(2).replace(".", ",") : item.preco_total}
                         </div>
                     `;
                     container.appendChild(card);
