@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Agenda Pro. Barreto Barbearia</title>
     
     <link rel="manifest" href="manifest.json">
@@ -15,11 +15,13 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        html, body { height: 100%; background: #121212; color: #FFF; margin: 0; padding: 0; font-family: sans-serif; }
-        .barber-header { text-align: center; padding: 12px 10px; margin-bottom: 8px; border-bottom: 1px solid #333; }
-        .brand-logo-container { width: 60px; height: 60px; margin: 0 auto 6px auto; border-radius: 50%; overflow: hidden; box-shadow: 0 4px 10px rgba(255,102,0,0.2); border: 2px solid #FF6600; }
+        html, body { height: 100vh; background: #121212; color: #FFF; margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; }
+        .app-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+        
+        .barber-header { text-align: center; padding: 6px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .brand-logo-container { width: 35px; height: 35px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; }
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
-        .barber-header h1 { font-size: 1.1rem; color: #FFF; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; }
+        .barber-header h1 { font-size: 0.9rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
         
         /* Modais */
         .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
@@ -28,44 +30,48 @@
         .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; margin-bottom: 15px; outline: none; box-sizing: border-box; }
         .custom-modal-btn { width: 100%; padding: 12px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; margin-bottom: 10px; }
 
-        /* GRADE HORIZONTAL COMPLETA DA SEMANA */
+        /* GRADE HORIZONTAL COMPLETA DA SEMANA OTIMIZADA */
         .week-horizontal-container {
             display: grid;
-            grid-template-columns: repeat(6, 175px);
-            gap: 8px;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 3px;
             overflow-x: auto;
-            padding: 0 10px 20px 10px;
+            padding: 2px 4px;
             width: 100%;
+            flex: 1;
             box-sizing: border-box;
             scrollbar-width: thin;
             scrollbar-color: #FF6600 #1A1A1A;
+            overflow-y: hidden;
         }
         .day-column {
-            min-width: 175px; 
-            max-width: 175px;
             background: #1A1A1A;
             border: 1px solid #333;
-            border-radius: 8px;
-            padding: 8px;
+            border-radius: 4px;
+            padding: 2px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 2px;
+            min-width: 0;
+            height: 100%;
+            overflow: hidden;
         }
-        .day-header { font-size: 0.78rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .day-header { font-size: 0.58rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
         
-        /* Slots de Atendimento Compactos para caber perfeitamente na grelha lateral */
-        .slot-item { background: #242424; padding: 6px; border-radius: 4px; font-size: 0.72rem; border: 1px solid #333; border-left: 3px solid #555; color: #FFF; display: flex; justify-content: space-between; align-items: center; gap: 3px; }
+        /* Slots de Atendimento Compactos para caber perfeitamente na tela */
+        .slots-wrapper { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; }
+        .slot-item { background: #242424; padding: 3px 2px; border-radius: 3px; font-size: 0.55rem; border: 1px solid #333; border-left: 2px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
         .slot-item.booked { border-left-color: #3498db; }
         .slot-item.booked-done { border-left-color: #25D366; background: #152219; }
         .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
         .slot-item.busy { border-left-color: #f39c12; background: #2a2215; opacity: 0.8; }
         .slot-item.available { border-left-color: #FF6600; }
-        .action-btn { padding: 3px 6px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.65rem; border: none; white-space: nowrap; }
+        .action-btn { padding: 1px 3px; border-radius: 2px; cursor: pointer; font-weight: bold; font-size: 0.45rem; border: none; white-space: nowrap; }
     </style>
 </head>
 <body>
 
-    <div class="app-container" style="max-width: 100%; margin: 0 auto; padding: 0;">
+    <div class="app-container">
         
         <header class="barber-header">
             <div class="brand-logo-container"><img src="logo.jpg.jpg" alt="Logo Barreto"></div>
@@ -73,7 +79,7 @@
         </header>
 
         <!-- Sessão de Login -->
-        <section id="login-section" class="section" style="max-width: 380px; margin: 0 auto; padding: 0 15px;">
+        <section id="login-section" class="section" style="max-width: 380px; margin: auto; padding: 0 15px; width: 100%;">
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px; font-size: 1rem;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
                 <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 3px;">Utilizador (Rafael, Matheus, Yann ou Admin):</label>
@@ -87,20 +93,20 @@
         </section>
 
         <!-- Dashboard Barbeiro (Grelha da Semana Inteira Lado a Lado) -->
-        <section id="dashboard-barbeiro" class="section" style="display: none; padding: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 10px; flex-wrap: wrap; gap: 8px;">
-                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 1rem;">Minha Agenda</h2>
-                <div style="display: flex; gap: 6px;">
-                    <button onclick="carregarAgendaSemanal()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 6px 10px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 10px; font-size: 0.75rem;">Sair</button>
+        <section id="dashboard-barbeiro" class="section" style="display: none; height: 100%; display: flex; flex-direction: column; overflow: hidden; padding: 2px 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; padding: 0 4px; flex-wrap: wrap; gap: 4px;">
+                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
+                <div style="display: flex; gap: 3px;">
+                    <button onclick="carregarAgendaSemanal()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 3px 6px; font-size: 0.55rem;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 3px 6px; font-size: 0.55rem;">Sair</button>
                 </div>
             </div>
 
             <!-- Navegação da Semana -->
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 8px 10px; border-radius: 6px; border: 1px solid #333; margin: 0 10px 10px 10px;">
-                <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 5px 8px;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
-                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.78rem; text-align: center;"></span>
-                <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 5px 8px;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 3px 6px; border-radius: 4px; border: 1px solid #333; margin-bottom: 3px;">
+                <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 5px;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
+                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.65rem; text-align: center;"></span>
+                <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 5px;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
             </div>
 
             <!-- GRADE HORIZONTAL DA SEMANA INTEIRA -->
@@ -237,7 +243,7 @@
                     usuarioLogado = nomeReal;
                     document.getElementById("login-section").style.display = "none";
                     document.getElementById("dashboard-admin").style.display = "none";
-                    document.getElementById("dashboard-barbeiro").style.display = "block";
+                    document.getElementById("dashboard-barbeiro").style.display = "flex";
                     document.getElementById("titulo-agenda-barbeiro").innerHTML = `<i class="fa-solid fa-calendar-days"></i> Agenda: ${usuarioLogado}`;
                     diaReferencia = new Date();
                     carregarAgendaSemanal();
@@ -281,7 +287,7 @@
 
         async function carregarAgendaSemanal() {
             const container = document.getElementById("grade-semanal-container");
-            container.innerHTML = "<p style='color:#FFF; padding: 15px;'>A carregar grade semanal...</p>";
+            container.innerHTML = "<p style='color:#FFF; padding: 15px; font-size: 0.65rem;'>A carregar...</p>";
             
             const diasSemana = obterDiasDaSemana(diaReferencia);
             document.getElementById("label-periodo-semana").textContent = `${diasSemana[0].label} até ${diasSemana[5].label}`;
@@ -309,17 +315,17 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
+                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'}; font-size: 0.5rem; padding: 1px 2px;">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
                     `;
 
                     const slotsDiv = document.createElement("div");
-                    slotsDiv.style.cssText = "display: flex; flex-direction: column; gap: 4px;";
+                    slotsDiv.className = "slots-wrapper";
 
                     if (blqDia) {
-                        slotsDiv.innerHTML = `<div style="color:#e74c3c; text-align:center; padding: 15px 0; font-size: 0.75rem;"><i class="fa-solid fa-lock"></i> Fechado</div>`;
+                        slotsDiv.innerHTML = `<div style="color:#e74c3c; text-align:center; padding: 10px 0; font-size: 0.6rem;"><i class="fa-solid fa-lock"></i> Fechado</div>`;
                     } else {
                         const ocupadosDia = new Map();
                         const duracaoExtra = new Set();
@@ -356,15 +362,17 @@
                                 const isDone = ag.status === 'concluido';
                                 item.className = isDone ? "slot-item booked-done" : "slot-item booked";
                                 item.innerHTML = `
-                                    <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        <strong>${horario}</strong> ${isDone ? '<i class="fa-solid fa-check" style="color:#25D366;"></i>' : ''}<br>
-                                        <span style="color:#DDD; font-size:0.7rem;">${ag.cliente}</span>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <strong>${horario}</strong>
+                                        <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF; font-size:0.45rem; padding: 0px 2px;"><i class="fa-solid fa-gear"></i></button>
                                     </div>
-                                    <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF;"><i class="fa-solid fa-gear"></i></button>
+                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#DDD;" title="${ag.cliente}">
+                                        ${ag.cliente}
+                                    </div>
                                 `;
                             } else if (isExtraBusy) {
                                 item.className = "slot-item busy";
-                                item.innerHTML = `<span style="color:#AAA; font-size: 0.68rem;"><i class="fa-solid fa-scissors"></i> ${horario} (Ocupado)</span>`;
+                                item.innerHTML = `<span style="color:#AAA; font-size: 0.5rem;">${horario} (Ocupado)</span>`;
                             } else {
                                 item.className = "slot-item available";
                                 item.innerHTML = `<span>${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>`;
@@ -378,7 +386,7 @@
 
             } catch (err) {
                 console.error(err);
-                container.innerHTML = "<p style='color:#e74c3c; padding: 15px;'>Erro ao carregar agenda.</p>";
+                container.innerHTML = "<p style='color:#e74c3c; padding: 15px; font-size: 0.65rem;'>Erro ao carregar.</p>";
             }
         }
 
