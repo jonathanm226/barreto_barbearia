@@ -18,7 +18,6 @@ let selectedBarber = "Matheus";
 let selectedServices = [];
 let enviandoAgendamento = false;
 
-// Função de Alerta Customizado para substituir o alert nativo
 function mostrarAlertaCliente(mensagem, sucesso = true) {
     let modalAlerta = document.getElementById("modal-alerta-cliente");
     if (!modalAlerta) {
@@ -154,11 +153,18 @@ async function checkAvailableTimes() {
 
     try {
         const { data: agsDB } = await _supabase.from("agendamentos_barreto")
-            .select("horario, servico, status")
+            .select("horario, servico, status, data")
             .ilike("barbeiro", `%${selectedBarber.trim()}%`)
             .like("data", `${selDate}%`);
 
-        const agendamentos = (agsDB || []).filter(a => a.status !== 'cancelado');
+        const chavesCanceladas = JSON.parse(localStorage.getItem('barreto_chaves_canceladas') || '[]');
+        
+        const agendamentos = (agsDB || []).filter(a => {
+            if (a.status === 'cancelado') return false;
+            const hAg = String(a.horario).substring(0, 5);
+            const chaveUnica = `${selDate}_${hAg}`;
+            return !chavesCanceladas.includes(chaveUnica);
+        });
 
         const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
             .select("horario")
@@ -190,7 +196,6 @@ async function checkAvailableTimes() {
 
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
 
-        // Validação de horário retroativo para o dia de hoje
         const agora = new Date();
         const hojeIso = isoLocal(agora);
         const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
@@ -203,7 +208,6 @@ async function checkAvailableTimes() {
             
             let conflito = false;
 
-            // Se for hoje, bloqueia horários passados
             if (selDate === hojeIso && inicio < minutosAtuais) {
                 conflito = true;
                 opt.textContent = `${slot.valor} - (Expirado)`;
