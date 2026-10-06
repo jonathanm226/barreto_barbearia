@@ -10,109 +10,56 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="logo.jpg.jpg">
 
-    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        html, body { height: 100vh; background: #121212; color: #FFF; margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; }
-        .app-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; }
+        .app-container { width: 100%; max-width: 100%; background-color: #121212; padding: 8px; padding-bottom: 90px; }
         
-        .barber-header { text-align: center; padding: 6px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 8px; flex-shrink: 0; background: #181818; }
-        .brand-logo-container { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; box-shadow: 0 0 8px rgba(255, 102, 0, 0.4); }
+        /* Cabeçalho com Logo Bem Destacada */
+        .barber-header { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px; text-align: center; background: #181818; border-radius: 6px; padding-top: 8px; }
+        .brand-logo-container { width: 65px; height: 65px; background: #1A1A1A; border: 2px solid #FF6600; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px auto; overflow: hidden; box-shadow: 0 0 12px rgba(255, 102, 0, 0.5); }
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
-        .barber-header h1 { font-size: 0.85rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
-        
-        .section-view { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; box-sizing: border-box; }
-        .section-view.active { display: flex; }
+        .barber-header h1 { font-size: 1.05rem; color: #FFFFFF; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .barber-header p { font-size: 0.7rem; color: #AAAAAA; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 500; }
 
-        .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
+        #login-section { min-height: 50vh; display: flex; flex-direction: column; justify-content: center; padding: 0 15px; max-width: 380px; margin: auto; }
+        
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s ease-in-out; }
         .custom-modal-overlay.active { opacity: 1; visibility: visible; }
-        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 90%; max-width: 400px; text-align: center; }
-        .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; margin-bottom: 15px; outline: none; box-sizing: border-box; }
-        .custom-modal-btn { width: 100%; padding: 12px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; margin-bottom: 10px; }
+        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .custom-modal h3 { color: #FFFFFF; font-size: 1rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .custom-modal p { color: #CCCCCC; font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4; text-align: left; }
+        .custom-modal input, .custom-modal select { width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; margin-bottom: 12px; outline: none; }
+        .custom-modal-buttons { display: flex; gap: 8px; flex-direction: column; }
+        .custom-modal-btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; }
+        .btn-modal-cancelar { background: #2A2A2A; color: #FFFFFF; border: 1px solid #444; }
+        .btn-modal-confirmar { background: #FF6600; color: #FFFFFF; }
+        .btn-modal-atendido { background: #25D366; color: #FFFFFF; }
+        .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
 
-        /* GRADE DA SEMANA E ROLAGEM GLOBAL UNIFICADA */
-        .week-horizontal-container {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 2px;
-            overflow-x: auto;
-            overflow-y: auto; 
-            padding: 2px 3px;
-            width: 100%;
-            flex: 1;
-            box-sizing: border-box;
-            scrollbar-width: thin;
-            scrollbar-color: #FF6600 #1A1A1A;
-            align-content: start;
-        }
-        .day-column {
-            background: #1A1A1A;
-            border: 1px solid #333;
-            border-radius: 4px;
-            padding: 2px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-        .day-header { 
-            font-size: 0.52rem; 
-            color: #FFF; 
-            font-weight: bold; 
-            border-bottom: 1px solid #333; 
-            padding-bottom: 2px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 1px; 
-            text-align: center; 
-            position: sticky; 
-            top: 0; 
-            background: #1A1A1A; 
-            z-index: 5; 
-        }
+        /* Grade da Semana Alinhada */
+        .week-horizontal-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin-top: 6px; width: 100%; overflow-x: hidden; }
+        .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 4px; padding: 2px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .day-header { font-size: 0.58rem; color: #FFFFFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
         
-        /* SLOTS DE ATENDIMENTO LIMPOS E ALINHADOS */
-        .slots-wrapper { display: flex; flex-direction: column; gap: 2px; width: 100%; }
-        .slot-item { 
-            background: #202020; 
-            padding: 3px 2px; 
-            border-radius: 3px; 
-            font-size: 0.5rem; 
-            border: 1px solid #333; 
-            border-left: 3px solid #555; 
-            color: #FFF; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            min-height: 28px; 
-            box-sizing: border-box; 
-        }
-        
-        .slot-top { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 1px; }
-        .slot-time { font-weight: 700; font-size: 0.52rem; color: #FFF; white-space: nowrap; }
-        .slot-client { font-weight: 600; font-size: 0.46rem; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; width: 100%; }
-
+        .slot-item { background: #222222; padding: 3px 2px; border-radius: 3px; font-size: 0.55rem; display: flex; flex-direction: column; gap: 1px; border: 1px solid #333; border-left: 3px solid #555; color: #FFFFFF; cursor: pointer; transition: 0.15s; overflow: hidden; }
+        .slot-item:hover { opacity: 0.85; }
         .slot-item.booked { border-left-color: #3498db; background: #192530; }
-        .slot-item.booked-done { border-left-color: #25D366; background: #13271C; }
+        .slot-item.concluded { border-left-color: #25D366; background: #13271C; }
         .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
-        .slot-item.busy { border-left-color: #f39c12; background: #2B2213; opacity: 0.8; }
         .slot-item.available { border-left-color: #FF6600; background: #1A1A1A; }
+
+        .datetime-inputs { display: flex; flex-direction: column; gap: 10px; }
+        .input-group { display: flex; flex-direction: column; gap: 4px; }
+        .input-group label { font-size: 0.8rem; color: #AAAAAA; }
+        input, select { width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid #333; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; outline: none; }
+        input:focus, select:focus { border-color: #FF6600; background: #242424; }
         
-        /* BOTÕES ULTRA COMPACTOS PARA CELULAR */
-        .action-btn { 
-            padding: 2px 4px; 
-            border-radius: 2px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 0.42rem; 
-            border: none; 
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .btn-acao { width: 100%; padding: 10px; background-color: #FF6600; color: #FFFFFF; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
+        .btn-acao:hover { background-color: #e05b00; }
     </style>
 </head>
 <body>
@@ -120,97 +67,100 @@
     <div class="app-container">
         
         <header class="barber-header">
-            <div class="brand-logo-container"><img src="logo.jpg.jpg" alt="Logo Barreto"></div>
-            <h1>Agenda Pro. Barreto</h1>
+            <div class="brand-logo-container">
+                <img src="logo.jpg.jpg" alt="Logo Barreto">
+            </div>
+            <div>
+                <h1>Agenda Pro. Barreto</h1>
+                <p id="painel-subtitulo">Painel de Atendimento</p>
+            </div>
         </header>
 
         <!-- Sessão de Login -->
-        <section id="login-section" class="section-view active" style="justify-content: center; padding: 0 15px; max-width: 380px; margin: auto;">
-            <div style="text-align: center; margin-bottom: 18px;">
-                <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; border: 3px solid #FF6600; display: inline-block; box-shadow: 0 0 12px rgba(255, 102, 0, 0.4);">
-                    <img src="logo.jpg.jpg" alt="Logo Barreto" style="width: 100%; height: 100%; object-fit: cover;">
-                </div>
-            </div>
-            <h2 style="border-left: 3px solid #FF6600; padding-left: 10px; font-size: 0.95rem; margin-bottom: 12px;">ACESSO AO PAINEL</h2>
+        <section id="login-section" class="section">
+            <h2 style="border-left: 3px solid #FF6600; padding-left: 8px; font-size: 0.95rem; margin-bottom: 12px; text-transform: uppercase;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
-                <label style="font-size: 0.72rem; color: #aaa; display: block; margin-bottom: 3px;">Utilizador (Rafael, Matheus, Yann ou Admin):</label>
-                <input type="text" id="login-usuario" placeholder="Utilizador" style="width:100%; padding:9px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:8px; box-sizing: border-box; font-size: 0.85rem;">
-                
-                <label style="font-size: 0.72rem; color: #aaa; display: block; margin-bottom: 3px;">Senha:</label>
-                <input type="password" id="login-senha" placeholder="Senha" style="width:100%; padding:9px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:12px; box-sizing: border-box; font-size: 0.85rem;">
-                
-                <button id="btn-login" onclick="fazerLogin()" style="width:100%; padding:10px; background:#FF6600; color:#FFF; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 0.9rem; text-transform: uppercase;">Entrar no Painel</button>
+                <div class="input-group">
+                    <label for="login-usuario">Utilizador (Rafael, Matheus, Yann ou Admin):</label>
+                    <input type="text" id="login-usuario" placeholder="Utilizador">
+                </div>
+                <div class="input-group">
+                    <label for="login-senha">Senha:</label>
+                    <input type="password" id="login-senha" placeholder="Senha">
+                </div>
+                <button class="btn-acao" onclick="fazerLogin()" style="padding: 12px; margin-top: 4px;">ENTRAR</button>
             </div>
         </section>
 
         <!-- Dashboard Barbeiro -->
-        <section id="dashboard-barbeiro" class="section-view" style="padding: 2px 3px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; padding: 0 2px; gap: 4px;">
-                <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.65rem; text-transform: uppercase;">Minha Agenda</h2>
-                <div style="display: flex; gap: 2px;">
-                    <button onclick="carregarAgendaSemanal()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 3px 6px; font-size: 0.48rem;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 3px 6px; font-size: 0.48rem;">Sair</button>
+        <section id="dashboard-barbeiro" class="section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
+                <h2 id="titulo-agenda-barbeiro" style="font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
+                <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+                    <button onclick="carregarAgendaSemanal()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #FF6600; color: #FFF;">
+                        <i class="fa-solid fa-rotate"></i> Atualizar
+                    </button>
+                    <button onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sair
+                    </button>
                 </div>
             </div>
 
             <!-- Navegação da Semana -->
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 2px 4px; border-radius: 4px; border: 1px solid #333; margin-bottom: 2px;">
-                <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 5px;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
-                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.55rem; text-align: center;"></span>
-                <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 2px 5px;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
+            <div style="background: #1A1A1A; border: 1px solid #333; padding: 6px; border-radius: 6px; margin-bottom: 8px; text-align: center;">
+                <div style="font-size: 0.58rem; color: #AAAAAA; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Período da Agenda</div>
+                <span id="label-periodo-semana" style="font-weight: bold; color: #FFFFFF; font-size: 0.7rem; display: block; margin-bottom: 5px;"></span>
+                <div style="display: flex; justify-content: space-between; gap: 4px;">
+                    <button onclick="mudarSemana(-1)" class="btn-acao" style="flex: 1; padding: 3px; font-size: 0.58rem; border: 1px solid #444; background: #242424; color: #FFF;">
+                        <i class="fa-solid fa-chevron-left"></i> Anterior
+                    </button>
+                    <button onclick="mudarSemana(1)" class="btn-acao" style="flex: 1; padding: 3px; font-size: 0.58rem; border: 1px solid #444; background: #242424; color: #FFF;">
+                        Próxima <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- GRADE HORIZONTAL DA SEMANA INTEIRA -->
+            <h3 style="font-size: 0.7rem; margin-bottom: 3px; color: #FFF; text-align: center; text-transform: uppercase;">Visão Geral da Semana</h3>
             <div id="grade-semanal-container" class="week-horizontal-container"></div>
         </section>
 
         <!-- Dashboard Admin Geral -->
-        <section id="dashboard-admin" class="section-view" style="padding: 0 10px; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; padding-top: 10px;">
-                <h2 style="font-size: 1rem; margin:0;">Painel Administrativo</h2>
+        <section id="dashboard-admin" class="section" style="display: none; padding: 0 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h2 style="font-size: 0.95rem;">Resumo Administrativo</h2>
                 <div style="display: flex; gap: 6px;">
-                    <button onclick="carregarResumoAdmin()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 6px 10px; font-size: 0.7rem;"><i class="fa-solid fa-rotate"></i></button>
-                    <button onclick="fazerLogout()" class="action-btn" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 6px 10px; font-size: 0.7rem;">Sair</button>
+                    <button onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i></button>
+                    <button onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></button>
                 </div>
             </div>
 
-            <div style="background: #1A1A1A; border: 1px solid #333; padding: 10px; border-radius: 8px; margin-bottom: 12px;">
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 130px;">
-                        <label style="font-size: 0.7rem; color: #888; display: block; margin-bottom: 2px;">Data:</label>
-                        <input type="date" id="filter-date-admin" onchange="carregarResumoAdmin()" style="width: 100%; padding: 6px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; outline: none; font-size: 0.8rem; box-sizing: border-box;">
-                    </div>
-                    <div style="flex: 1; min-width: 130px;">
-                        <label style="font-size: 0.7rem; color: #888; display: block; margin-bottom: 2px;">Barbeiro:</label>
-                        <select id="admin-select-barbeiro" onchange="carregarResumoAdmin()" style="width: 100%; padding: 6px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; outline: none; font-size: 0.8rem; box-sizing: border-box;">
-                            <option value="TODOS">Todos</option>
-                            <option value="Matheus">Matheus</option>
-                            <option value="Yann">Yann</option>
-                            <option value="Rafael">Rafael</option>
-                        </select>
-                    </div>
-                </div>
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label for="filter-date-admin">Selecionar Data:</label>
+                <input type="date" id="filter-date-admin" onchange="carregarResumoAdmin()">
             </div>
 
-            <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 15px;"></div>
+            <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 6px;"></div>
         </section>
 
     </div>
 
-    <!-- Modal Gerenciar -->
+    <!-- Modais -->
     <div id="custom-action-modal" class="custom-modal-overlay">
         <div class="custom-modal">
-            <h3 style="color:#FFF; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 12px; font-size: 1rem;">Gerenciar Atendimento</h3>
-            <div id="action-modal-details" style="text-align: left; background: #242424; padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; color: #DDD; border: 1px solid #444;"></div>
+            <h3>Gerenciar Atendimento</h3>
+            <div id="action-modal-details" style="text-align: left; background: #242424; padding: 10px; border-radius: 6px; border: 1px solid #444; margin-bottom: 12px; font-size: 0.85rem; color: #DDD;"></div>
             
-            <select id="select-forma-pagamento" style="display: none;">
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Pix">Pix</option>
-                <option value="Débito">Débito</option>
-                <option value="Crédito">Crédito</option>
-            </select>
-            
-            <div id="action-modal-buttons"></div>
+            <div id="payment-box" style="display: none; text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Forma de Pagamento:</label>
+                <select id="select-forma-pagamento">
+                    <option value="Pix">Pix</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Crédito">Crédito</option>
+                </select>
+            </div>
+
+            <div class="custom-modal-buttons" id="action-modal-buttons"></div>
         </div>
     </div>
 
@@ -218,342 +168,338 @@
         const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        const DOMINIO_LOGIN = "barretobarbearia.com.br";
 
         let usuarioLogado = "";
-        let diaReferencia = new Date();
+        let offsetSemana = 0; 
 
-        const duracoesServicos = {
-            "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
-            "Sobrancelha": 25, "Hidratação profunda": 25, "Relaxamento": 25,
-            "Escova": 30, "Luzes": 60, "Platinado": 60, "Botox (selagem)": 60,
-            "Coloração": 60, "Pigmentação": 40, "Pezinho simples": 10, "Pezinho Gourmet": 20, "Corte Emergencial": 30
-        };
-
-        const horariosPadrao = [
-            "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", 
-            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", 
-            "20:00", "20:30", "21:00", "21:30", "22:00"
-        ];
-
-        function isoLocal(d) {
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        }
-        function hojeISO() { return isoLocal(new Date()); }
-
-        function toMin(hhmm) {
-            if(!hhmm) return 0;
-            const [h, m] = String(hhmm).split(":").map(Number);
-            return h * 60 + m;
-        }
-
-        document.addEventListener("keydown", (e) => {
-            const loginSection = document.getElementById("login-section");
-            if (e.key === "Enter" && loginSection.classList.contains("active")) fazerLogin();
-        });
-
-        function alternarTela(idTela) {
-            document.querySelectorAll('.section-view').forEach(sec => sec.classList.remove('active'));
-            document.getElementById(idTela).classList.add('active');
-        }
-
-        async function fazerLogin() {
-            const user = document.getElementById("login-usuario").value.trim().toLowerCase();
-            const pass = document.getElementById("login-senha").value;
-            if(!user || !pass) return alert("Por favor, preencha o utilizador e a senha.");
+        function obterHorariosParaData(dataString) {
+            if (!dataString) return [];
+            let horarios = [];
+            let horaInicio = 8;
+            let horaFim = 22;
+            let currentMin = horaInicio * 60;
+            let endMin = horaFim * 60;
             
-            const btn = document.getElementById("btn-login");
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A ENTRAR...';
-            btn.disabled = true;
+            while (currentMin <= endMin) {
+                let h = Math.floor(currentMin / 60);
+                let m = currentMin % 60;
+                horarios.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+                currentMin += 30; 
+            }
+            return horarios;
+        }
 
-            try {
-                let papel = "barbeiro";
-                let nomeReal = user.charAt(0).toUpperCase() + user.slice(1);
+        function fazerLogin() {
+            const usuarioInput = document.getElementById("login-usuario").value.trim().toLowerCase();
+            const senhaInput = document.getElementById("login-senha").value;
 
-                if (pass === "barreto123" && ["matheus", "yann", "rafael", "admin"].includes(user)) {
-                    papel = (user === "admin") ? "admin" : "barbeiro";
-                    nomeReal = user.charAt(0).toUpperCase() + user.slice(1);
-                } else {
-                    const email = user.includes("@") ? user : `${user}@${DOMINIO_LOGIN}`;
-                    const { data: authData, error: authError } = await _supabase.auth.signInWithPassword({ email: email, password: pass });
-                    
-                    if (authError || !authData.user) throw new Error("Credenciais inválidas");
+            if (!usuarioInput || !senhaInput) {
+                alert("Preencha o utilizador e a senha.");
+                return;
+            }
 
-                    const { data: perfil } = await _supabase.from("perfis_barreto").select("nome, papel").eq("user_id", authData.user.id).maybeSingle();
-                    if (perfil) {
-                        papel = perfil.papel || "barbeiro";
-                        nomeReal = perfil.nome || nomeReal;
-                    }
-                }
+            if (senhaInput === "barreto123" && ["matheus", "yann", "rafael", "admin"].includes(usuarioInput)) {
+                document.getElementById("login-usuario").value = "";
+                document.getElementById("login-senha").value = "";
 
-                if (papel === "admin") {
+                if (usuarioInput === 'admin') {
                     usuarioLogado = "Admin";
-                    alternarTela("dashboard-admin");
-                    document.getElementById("filter-date-admin").value = hojeISO();
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("dashboard-barbeiro").style.display = "none";
+                    document.getElementById("dashboard-admin").style.display = "block";
+                    
+                    const hoje = new Date();
+                    document.getElementById("filter-date-admin").value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
                     carregarResumoAdmin();
                 } else {
-                    usuarioLogado = nomeReal;
-                    alternarTela("dashboard-barbeiro");
-                    document.getElementById("titulo-agenda-barbeiro").innerHTML = `<i class="fa-solid fa-calendar-days"></i> Agenda: ${usuarioLogado}`;
-                    diaReferencia = new Date();
+                    usuarioLogado = usuarioInput.charAt(0).toUpperCase() + usuarioInput.slice(1);
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("dashboard-admin").style.display = "none";
+                    document.getElementById("dashboard-barbeiro").style.display = "block";
+                    document.getElementById("titulo-agenda-barbeiro").textContent = `Agenda: ${usuarioLogado}`;
+                    offsetSemana = 0;
                     carregarAgendaSemanal();
                 }
-
-            } catch (err) {
-                alert("Login ou senha incorretos.");
-            } finally {
-                btn.innerHTML = 'Entrar no Painel';
-                btn.disabled = false;
+            } else {
+                alert("Utilizador ou senha incorretos!");
             }
         }
 
         function fazerLogout() {
-            _supabase.auth.signOut();
-            document.getElementById("login-senha").value = "";
-            alternarTela("login-section");
+            usuarioLogado = "";
+            document.getElementById("dashboard-barbeiro").style.display = "none";
+            document.getElementById("dashboard-admin").style.display = "none";
+            document.getElementById("login-section").style.display = "block";
         }
 
         function mudarSemana(direcao) {
-            diaReferencia.setDate(diaReferencia.getDate() + (direcao * 7));
+            offsetSemana += direcao;
             carregarAgendaSemanal();
         }
 
-        function obterDiasDaSemana(baseDate) {
+        function obterDiasDaSemana(offset) {
             const dias = [];
-            const d = new Date(baseDate);
-            const diaSemana = d.getDay();
-            const diff = d.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1); 
-            const segunda = new Date(d.setDate(diff));
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0); 
+            
+            const diaSemana = hoje.getDay();
+            const diffParaSegunda = (diaSemana === 0 ? -6 : 1) - diaSemana + (offset * 7);
+            const segunda = new Date(hoje);
+            segunda.setDate(hoje.getDate() + diffParaSegunda);
 
-            for (let i = 0; i < 6; i++) {
-                const current = new Date(segunda);
-                current.setDate(segunda.getDate() + i);
-                dias.push({ iso: isoLocal(current), label: current.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' }) });
+            for (let i = 0; i < 6; i++) { 
+                const d = new Date(segunda);
+                d.setDate(segunda.getDate() + i);
+                
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const isoString = `${yyyy}-${mm}-${dd}`;
+                
+                const formatada = d.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
+                dias.push({ iso: isoString, label: formatada });
             }
             return dias;
         }
 
         async function carregarAgendaSemanal() {
             const container = document.getElementById("grade-semanal-container");
-            container.innerHTML = "<p style='color:#FFF; padding: 10px; font-size: 0.6rem;'>A carregar...</p>";
+            const lblPeriodo = document.getElementById("label-periodo-semana");
             
-            const diasSemana = obterDiasDaSemana(diaReferencia);
-            document.getElementById("label-periodo-semana").textContent = `${diasSemana[0].label} até ${diasSemana[5].label}`;
+            container.innerHTML = "<p style='color: #888; text-align: center; width: 100%; font-size: 0.65rem;'>A carregar...</p>";
+
+            const diasSemana = obterDiasDaSemana(offsetSemana);
+            lblPeriodo.textContent = `${diasSemana[0].label} até ${diasSemana[5].label}`;
 
             try {
-                const { data: agendamentos } = await _supabase.from("agendamentos_barreto")
-                    .select("*")
-                    .ilike("barbeiro", `%${usuarioLogado.trim()}%`)
-                    .gte("data", diasSemana[0].iso)
-                    .lte("data", diasSemana[5].iso + "T23:59:59");
+                const primeiraData = diasSemana[0].iso;
+                const ultimaData = diasSemana[5].iso;
 
-                const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
-                    .select("*")
-                    .ilike("barbeiro", `%${usuarioLogado.trim()}%`)
-                    .gte("data", diasSemana[0].iso)
-                    .lte("data", diasSemana[5].iso + "T23:59:59");
+                const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
+                const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
 
                 container.innerHTML = "";
 
                 diasSemana.forEach(dia => {
                     const coluna = document.createElement("div");
                     coluna.className = "day-column";
-                    const blqDia = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && b.horario === 'TODOS');
 
+                    const blqDia = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && b.horario === 'TODOS');
+                    
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'}; font-size: 0.45rem; padding: 1px 3px;">
+                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
                     `;
 
                     const slotsDiv = document.createElement("div");
-                    slotsDiv.className = "slots-wrapper";
+                    slotsDiv.style.cssText = "display: flex; flex-direction: column; gap: 2px;";
 
                     if (blqDia) {
-                        slotsDiv.innerHTML = `<div style="color:#e74c3c; text-align:center; padding: 10px 0; font-size: 0.55rem;"><i class="fa-solid fa-lock"></i> Fechado</div>`;
+                        slotsDiv.innerHTML = `<div style="color: #e74c3c; text-align: center; font-size: 0.55rem; padding: 10px 0; font-weight: bold;"><i class="fa-solid fa-lock"></i></div>`;
                     } else {
-                        const ocupadosDia = new Map();
-                        const duracaoExtra = new Set();
+                        const horariosDia = obterHorariosParaData(dia.iso);
+                        const agendamentosDia = (agendamentos || []).filter(a => String(a.data).substring(0, 10) === dia.iso && a.status !== 'cancelado');
+                        const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
+                        
+                        let itensRenderizacao = [];
 
-                        (agendamentos || []).filter(a => {
-                            if(a.status === 'cancelado') return false;
-                            return String(a.data).substring(0, 10) === dia.iso;
-                        }).forEach(ag => {
-                            if(!ag.horario) return;
-                            const horaReal = String(ag.horario).substring(0, 5); 
-                            const inicioMin = toMin(horaReal);
-                            ocupadosDia.set(inicioMin, ag);
+                        horariosDia.forEach(h => {
+                            let ag = agendamentosDia.find(a => String(a.horario).substring(0, 5) === h);
+                            let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
 
-                            let dur = 0;
-                            if (ag.servico) { ag.servico.split(",").forEach(s => dur += (duracoesServicos[s.trim()] || 30)); }
-                            if(dur === 0) dur = 30;
-                            
-                            const nSlots = Math.ceil(dur / 30);
-                            for(let i = 1; i < nSlots; i++) duracaoExtra.add(inicioMin + (i * 30));
+                            if (ag) {
+                                itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
+                            } else if (blq) {
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq });
+                            } else {
+                                itensRenderizacao.push({ tipo: 'vazio', horario: h });
+                            }
                         });
 
-                        horariosPadrao.forEach(horario => {
-                            const min = toMin(horario);
-                            const ag = ocupadosDia.get(min);
-                            const isExtraBusy = duracaoExtra.has(min);
-                            const blq = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && String(b.horario).substring(0,5) === horario);
-                            
-                            const item = document.createElement("div");
+                        itensRenderizacao.forEach(item => {
+                            const itemSlot = document.createElement("div");
 
-                            if (blq) {
-                                item.className = "slot-item blocked";
-                                item.innerHTML = `
-                                    <div class="slot-top">
-                                        <span class="slot-time"><i class="fa-solid fa-ban"></i> ${horario}</span>
-                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', true)" class="action-btn" style="background:#2C1A1A; color:#e74c3c; border:1px solid #e74c3c;">Desbl</button>
+                            if (item.tipo === 'bloqueio') {
+                                itemSlot.className = "slot-item blocked";
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-weight:bold;">${item.horario}</span>
+                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${item.horario}', true)" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 1px 2px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Desbl</button>
                                     </div>
                                 `;
-                            } else if (ag) {
-                                const isDone = ag.status === 'concluido';
-                                item.className = isDone ? "slot-item booked-done" : "slot-item booked";
-                                item.innerHTML = `
-                                    <div class="slot-top">
-                                        <span class="slot-time">${horario}</span>
-                                        <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF;"><i class="fa-solid fa-gear"></i></button>
+                            } else if (item.tipo === 'agendamento') {
+                                const ag = item.dado;
+                                const isConcluido = ag.status === 'concluido';
+                                itemSlot.className = isConcluido ? "slot-item concluded" : "slot-item booked";
+                                itemSlot.onclick = () => abrirGerenciadorAgendamento(ag.id);
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-weight:bold;">${item.horario}</span>
+                                        <span style="font-size: 0.48rem; color: ${isConcluido ? '#25D366' : '#3498db'}; font-weight: bold;">
+                                            ${isConcluido ? 'OK' : 'AG'}
+                                        </span>
                                     </div>
-                                    <div class="slot-client" title="${ag.cliente}">${ag.cliente}</div>
+                                    <div style="font-weight: 600; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${ag.cliente}">
+                                        ${ag.cliente}
+                                    </div>
                                 `;
-                            } else if (isExtraBusy) {
-                                item.className = "slot-item busy";
-                                item.innerHTML = `<span style="color:#AAA; font-size: 0.44rem;"><i class="fa-solid fa-scissors"></i> ${horario}</span>`;
                             } else {
-                                item.className = "slot-item available";
-                                item.innerHTML = `
-                                    <div class="slot-top">
-                                        <span class="slot-time">${horario}</span>
-                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>
+                                itemSlot.className = "slot-item available";
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <span style="color:#AAA;">${item.horario}</span>
+                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${item.horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 0px 3px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Bloq</button>
                                     </div>
                                 `;
                             }
-                            slotsDiv.appendChild(item);
+                            slotsDiv.appendChild(itemSlot);
                         });
                     }
                     coluna.appendChild(slotsDiv);
                     container.appendChild(coluna);
                 });
-
             } catch (err) {
-                console.error(err);
-                container.innerHTML = "<p style='color:#e74c3c; padding: 10px; font-size: 0.6rem;'>Erro ao carregar.</p>";
+                console.error("Erro agenda:", err);
             }
         }
 
-        async function alternarBloqueioDia(data, bloqueado) {
-            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado.trim()}%`).like("data", `${data}%`).eq("horario", "TODOS");
-            else await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: data, horario: "TODOS", tipo: "dia_todo" }]);
-            carregarAgendaSemanal();
+        async function alternarBloqueioDia(dataIso, estaBloqueado) {
+            try {
+                if (estaBloqueado) {
+                    await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado}%`).eq("data", dataIso).eq("horario", "TODOS");
+                } else {
+                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
+                }
+                carregarAgendaSemanal();
+            } catch (err) {
+                alert("Erro ao alterar bloqueio.");
+            }
         }
 
-        async function alternarBloqueioHorario(data, horario, bloqueado) {
-            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado.trim()}%`).like("data", `${data}%`).like("horario", `${horario}%`);
-            else await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: data, horario: horario, tipo: "horario" }]);
-            carregarAgendaSemanal();
+        async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
+            try {
+                if (estaBloqueado) {
+                    await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado}%`).eq("data", dataIso).eq("horario", horario);
+                } else {
+                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
+                }
+                carregarAgendaSemanal();
+            } catch (err) {
+                alert("Erro ao alterar bloqueio.");
+            }
         }
 
-        async function abrirAcao(id) {
-            const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
-            if (!data) return;
+        async function abrirGerenciadorAgendamento(id) {
+            try {
+                const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
+                if (!data) return;
 
-            const modal = document.getElementById("custom-action-modal");
-            document.getElementById("action-modal-details").innerHTML = `
-                <strong>Cliente:</strong> ${data.cliente}<br>
-                <strong>Telefone:</strong> ${data.telefone}<br>
-                <strong>Serviços:</strong> ${data.servico}<br>
-                <strong>Valor:</strong> R$ ${Number(data.preco_total || 35).toFixed(2).replace(".", ",")}<br>
-                <strong>Horário:</strong> ${String(data.horario).substring(0,5)}
-            `;
-            
-            const btns = document.getElementById("action-modal-buttons");
-            const selectPg = document.getElementById("select-forma-pagamento");
-            btns.innerHTML = "";
+                const modal = document.getElementById("custom-action-modal");
+                const detailsBox = document.getElementById("action-modal-details");
+                const paymentBox = document.getElementById("payment-box");
+                const buttonsBox = document.getElementById("action-modal-buttons");
 
-            if (data.status !== 'concluido') {
-                selectPg.style.display = "block";
-                
-                const btnOk = document.createElement("button");
-                btnOk.className = "custom-modal-btn"; btnOk.style.background = "#25D366"; btnOk.style.color = "#FFF";
-                btnOk.textContent = "Concluir e Confirmar Pgto";
-                btnOk.onclick = async () => {
-                    await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: selectPg.value }).eq("id", id);
-                    modal.classList.remove("active"); carregarAgendaSemanal();
-                };
-                btns.appendChild(btnOk);
-                
-                const btnCanc = document.createElement("button");
-                btnCanc.className = "custom-modal-btn"; btnCanc.style.background = "#2C1A1A"; btnCanc.style.color = "#e74c3c"; btnCanc.style.border = "1px solid #e74c3c";
-                btnCanc.textContent = "Cancelar Agendamento";
-                btnCanc.onclick = async () => {
-                    if (confirm("Deseja cancelar a reserva?")) {
-                        await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
-                        modal.classList.remove("active"); carregarAgendaSemanal();
-                    }
-                };
-                btns.appendChild(btnCanc);
-            } else { selectPg.style.display = "none"; }
+                const preco = Number(data.preco_total || 35).toFixed(2).replace(".", ",");
 
-            const btnVoltar = document.createElement("button");
-            btnVoltar.className = "custom-modal-btn"; btnVoltar.style.background = "#333"; btnVoltar.style.color = "#FFF";
-            btnVoltar.textContent = "Fechar";
-            btnVoltar.onclick = () => modal.classList.remove("active");
-            btns.appendChild(btnVoltar);
+                detailsBox.innerHTML = `
+                    <strong>Cliente:</strong> ${data.cliente}<br>
+                    <strong>Telefone:</strong> ${data.telefone || 'Não informado'}<br>
+                    <strong>Serviço:</strong> ${data.servico}<br>
+                    <strong>Valor:</strong> R$ ${preco}<br>
+                    <strong>Horário:</strong> ${String(data.horario).substring(0,5)}
+                `;
 
-            modal.classList.add("active");
+                paymentBox.style.display = "none";
+                buttonsBox.innerHTML = "";
+
+                if (data.status !== 'concluido') {
+                    const btnAtendido = document.createElement("button");
+                    btnAtendido.className = "custom-modal-btn btn-modal-atendido";
+                    btnAtendido.textContent = "Concluir e Confirmar Pgto";
+                    btnAtendido.onclick = () => {
+                        paymentBox.style.display = "block";
+                        buttonsBox.innerHTML = "";
+
+                        const btnSalvarPg = document.createElement("button");
+                        btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
+                        btnSalvarPg.textContent = "Salvar Pagamento";
+                        btnSalvarPg.onclick = async () => {
+                            const forma = document.getElementById("select-forma-pagamento").value;
+                            await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
+                            modal.classList.remove("active");
+                            carregarAgendaSemanal();
+                        };
+
+                        const btnVoltar = document.createElement("button");
+                        btnVoltar.className = "custom-modal-btn btn-modal-cancelar";
+                        btnVoltar.textContent = "Voltar";
+                        btnVoltar.onclick = () => abrirGerenciadorAgendamento(id);
+
+                        buttonsBox.appendChild(btnSalvarPg);
+                        buttonsBox.appendChild(btnVoltar);
+                    };
+
+                    const btnCancelar = document.createElement("button");
+                    btnCancelar.className = "custom-modal-btn btn-modal-excluir";
+                    btnCancelar.textContent = "Cancelar Agendamento";
+                    btnCancelar.onclick = async () => {
+                        if (confirm("Deseja cancelar esta reserva?")) {
+                            await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                            modal.classList.remove("active");
+                            carregarAgendaSemanal();
+                        }
+                    };
+
+                    buttonsBox.appendChild(btnAtendido);
+                    buttonsBox.appendChild(btnCancelar);
+                }
+
+                const btnFechar = document.createElement("button");
+                btnFechar.className = "custom-modal-btn btn-modal-cancelar";
+                btnFechar.textContent = "Fechar";
+                btnFechar.onclick = () => modal.classList.remove("active");
+                buttonsBox.appendChild(btnFechar);
+
+                modal.classList.add("active");
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         async function carregarResumoAdmin() {
             const dataFiltro = document.getElementById("filter-date-admin").value;
-            const barbeiroFiltro = document.getElementById("admin-select-barbeiro").value;
             const container = document.getElementById("agendamentos-list-admin");
+            if (!dataFiltro) return;
             
-            if(!dataFiltro) return;
-            container.innerHTML = "<p style='color:#888; text-align:center;'>A carregar...</p>";
+            container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
 
             try {
-                let query = _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
-                if (barbeiroFiltro !== "TODOS") query = query.ilike("barbeiro", `%${barbeiroFiltro}%`);
-
-                const { data, error } = await query;
-                if (error) throw error;
+                const { data } = await _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
                 
+                container.innerHTML = "";
                 const filtrados = (data || []).filter(a => a.status !== 'cancelado');
 
-                container.innerHTML = "";
                 if (filtrados.length === 0) {
-                    container.innerHTML = "<p style='color:#AAA; text-align:center; padding: 15px; background: #242424; border-radius: 8px; font-size: 0.85rem;'>Sem agendamentos ativos.</p>";
+                    container.innerHTML = "<p style='color: #aaa; text-align: center; padding: 10px; background: #1A1A1A; border-radius: 6px;'>Sem agendamentos ativos.</p>";
                     return;
                 }
 
                 filtrados.forEach(item => {
                     const card = document.createElement("div");
                     const isConcluido = item.status === 'concluido';
-                    const horaFormatada = String(item.horario).substring(0,5); 
-                    const valorFormatado = Number(item.preco_total || 35).toFixed(2).replace(".", ",");
-
-                    card.style.cssText = "background: #242424; padding: 12px; border-radius: 8px; border: 1px solid #333; border-left: 5px solid " + (isConcluido ? '#3498db' : '#FF6600');
+                    card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600');
                     card.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                            <strong style="font-size:0.95rem; color:#FFF;">${horaFormatada} - ${item.barbeiro}</strong>
-                            ${isConcluido ? '<span style="color:#3498db; font-size:0.75rem; font-weight:bold;">Concluído</span>' : ''} 
-                        </div>
-                        <div style="color:#CCC; font-size: 0.85rem;">
-                            <strong>Cliente:</strong> ${item.cliente} (${item.telefone})<br>
-                            <strong>Serviço:</strong> ${item.servico}<br>
-                            <strong>Valor:</strong> R$ ${valorFormatado}
-                        </div>
+                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
+                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")}</span>
                     `;
                     container.appendChild(card);
                 });
             } catch (err) {
-                container.innerHTML = "<p style='color:#e74c3c; text-align:center;'>Erro ao carregar.</p>";
+                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar.</p>";
             }
         }
     </script>
