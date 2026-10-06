@@ -534,73 +534,99 @@
                 `;
 
                 paymentBox.style.display = "none";
-                buttonsBox.innerHTML = "";
+                
+                // Função interna para recarregar os botões iniciais
+                function renderizarBotoesPrincipais() {
+                    buttonsBox.innerHTML = "";
 
-                if (data.status !== 'concluido') {
-                    const btnAtendido = document.createElement("button");
-                    btnAtendido.className = "custom-modal-btn btn-modal-atendido";
-                    btnAtendido.textContent = "Concluir e Confirmar Pgto";
-                    btnAtendido.onclick = () => {
-                        paymentBox.style.display = "block";
-                        buttonsBox.innerHTML = "";
+                    if (data.status !== 'concluido') {
+                        const btnAtendido = document.createElement("button");
+                        btnAtendido.className = "custom-modal-btn btn-modal-atendido";
+                        btnAtendido.textContent = "Concluir e Confirmar Pgto";
+                        btnAtendido.onclick = () => {
+                            paymentBox.style.display = "block";
+                            buttonsBox.innerHTML = "";
 
-                        const btnSalvarPg = document.createElement("button");
-                        btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
-                        btnSalvarPg.textContent = "Salvar Pagamento";
-                        btnSalvarPg.onclick = async () => {
-                            try {
-                                btnSalvarPg.textContent = "Salvando...";
-                                btnSalvarPg.disabled = true;
-                                const forma = document.getElementById("select-forma-pagamento").value;
-                                await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
-                                modal.classList.remove("active");
-                                carregarAgendaSemanal();
-                            } catch (err) {
-                                alert("Erro ao concluir: " + err.message);
-                                btnSalvarPg.textContent = "Salvar Pagamento";
-                                btnSalvarPg.disabled = false;
-                            }
+                            const btnSalvarPg = document.createElement("button");
+                            btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
+                            btnSalvarPg.textContent = "Salvar Pagamento";
+                            btnSalvarPg.onclick = async () => {
+                                try {
+                                    btnSalvarPg.textContent = "Salvando...";
+                                    btnSalvarPg.disabled = true;
+                                    const forma = document.getElementById("select-forma-pagamento").value;
+                                    const { error } = await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
+                                    if (error) throw error;
+                                    modal.classList.remove("active");
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    alert("Erro ao concluir: " + err.message);
+                                    btnSalvarPg.textContent = "Salvar Pagamento";
+                                    btnSalvarPg.disabled = false;
+                                }
+                            };
+
+                            const btnVoltar = document.createElement("button");
+                            btnVoltar.className = "custom-modal-btn btn-modal-cancelar";
+                            btnVoltar.textContent = "Voltar";
+                            btnVoltar.onclick = () => {
+                                paymentBox.style.display = "none";
+                                renderizarBotoesPrincipais();
+                            };
+
+                            buttonsBox.appendChild(btnSalvarPg);
+                            buttonsBox.appendChild(btnVoltar);
                         };
 
-                        const btnVoltar = document.createElement("button");
-                        btnVoltar.className = "custom-modal-btn btn-modal-cancelar";
-                        btnVoltar.textContent = "Voltar";
-                        btnVoltar.onclick = () => abrirGerenciadorAgendamento(id);
+                        const btnCancelar = document.createElement("button");
+                        btnCancelar.className = "custom-modal-btn btn-modal-excluir";
+                        btnCancelar.textContent = "Cancelar Agendamento";
+                        btnCancelar.onclick = () => {
+                            // Interface de confirmação com CSS incorporado
+                            buttonsBox.innerHTML = `
+                                <p style="color: #e74c3c; font-weight: bold; margin-bottom: 12px; font-size: 0.9rem; text-align: center;">Tem a certeza que deseja cancelar esta reserva?</p>
+                            `;
+                            
+                            const btnConfirmarCancelamento = document.createElement("button");
+                            btnConfirmarCancelamento.className = "custom-modal-btn btn-modal-excluir";
+                            btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
+                            btnConfirmarCancelamento.onclick = async () => {
+                                try {
+                                    btnConfirmarCancelamento.textContent = "A cancelar...";
+                                    btnConfirmarCancelamento.disabled = true;
+                                    const { error } = await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                                    if (error) throw error;
+                                    modal.classList.remove("active");
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    alert("Erro do banco de dados ao cancelar: " + err.message + "\n\nLembre-se de verificar as permissões de UPDATE da sua tabela no Supabase.");
+                                    renderizarBotoesPrincipais();
+                                }
+                            };
 
-                        buttonsBox.appendChild(btnSalvarPg);
-                        buttonsBox.appendChild(btnVoltar);
-                    };
+                            const btnVoltarCancelamento = document.createElement("button");
+                            btnVoltarCancelamento.className = "custom-modal-btn btn-modal-cancelar";
+                            btnVoltarCancelamento.textContent = "Não, Voltar";
+                            btnVoltarCancelamento.onclick = renderizarBotoesPrincipais;
 
-                    const btnCancelar = document.createElement("button");
-                    btnCancelar.className = "custom-modal-btn btn-modal-excluir";
-                    btnCancelar.textContent = "Cancelar Agendamento";
-                    btnCancelar.onclick = async () => {
-                        if (confirm("Deseja cancelar esta reserva?")) {
-                            try {
-                                btnCancelar.textContent = "Cancelando...";
-                                btnCancelar.disabled = true;
-                                const { error } = await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
-                                if (error) throw error;
-                                modal.classList.remove("active");
-                                carregarAgendaSemanal();
-                            } catch (err) {
-                                alert("Erro ao cancelar: " + err.message);
-                                btnCancelar.textContent = "Cancelar Agendamento";
-                                btnCancelar.disabled = false;
-                            }
-                        }
-                    };
+                            buttonsBox.appendChild(btnConfirmarCancelamento);
+                            buttonsBox.appendChild(btnVoltarCancelamento);
+                        };
 
-                    buttonsBox.appendChild(btnAtendido);
-                    buttonsBox.appendChild(btnCancelar);
+                        buttonsBox.appendChild(btnAtendido);
+                        buttonsBox.appendChild(btnCancelar);
+                    }
+
+                    const btnFechar = document.createElement("button");
+                    btnFechar.className = "custom-modal-btn btn-modal-cancelar";
+                    btnFechar.textContent = "Fechar";
+                    btnFechar.onclick = () => modal.classList.remove("active");
+                    buttonsBox.appendChild(btnFechar);
                 }
 
-                const btnFechar = document.createElement("button");
-                btnFechar.className = "custom-modal-btn btn-modal-cancelar";
-                btnFechar.textContent = "Fechar";
-                btnFechar.onclick = () => modal.classList.remove("active");
-                buttonsBox.appendChild(btnFechar);
-
+                // Iniciar a renderização
+                renderizarBotoesPrincipais();
+                
                 modal.classList.add("active");
             } catch (err) {
                 console.error(err);
