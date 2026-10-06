@@ -190,6 +190,11 @@ async function checkAvailableTimes() {
 
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
 
+        // Validação de horário retroativo para o dia de hoje
+        const agora = new Date();
+        const hojeIso = isoLocal(agora);
+        const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
+
         timeSel.innerHTML = "";
         allSlots.forEach(slot => {
             const opt = document.createElement("option");
@@ -197,12 +202,22 @@ async function checkAvailableTimes() {
             const inicio = toMin(slot.valor);
             
             let conflito = false;
+
+            // Se for hoje, bloqueia horários passados
+            if (selDate === hojeIso && inicio < minutosAtuais) {
+                conflito = true;
+                opt.textContent = `${slot.valor} - (Expirado)`;
+            }
+
             for (let i = 0; i < slotsNeeded; i++) {
                 const s = inicio + (30 * i);
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { conflito = true; break; }
             }
 
-            if (conflito) { opt.textContent = `${slot.valor} - (Indisponível)`; opt.disabled = true; }
+            if (conflito && !opt.disabled) { 
+                if (!opt.textContent.includes("Expirado")) opt.textContent = `${slot.valor} - (Indisponível)`; 
+                opt.disabled = true; 
+            }
             timeSel.appendChild(opt);
         });
 
@@ -211,6 +226,7 @@ async function checkAvailableTimes() {
         else {
             const primeiroLivre = Array.from(timeSel.options).find(o => !o.disabled);
             if (primeiroLivre) timeSel.value = primeiroLivre.value;
+            else mostrarMensagemNoSelect(timeSel, "Sem horários disponíveis");
         }
 
     } catch (err) {
