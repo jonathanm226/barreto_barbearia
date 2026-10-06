@@ -71,11 +71,16 @@
             <h1>Agenda Pro. Barreto</h1>
         </header>
 
-        <!-- Sessão de Login Simplificada e Instantânea -->
+        <!-- Sessão de Login com Utilizador e Senha -->
         <section id="login-section" class="section" style="max-width: 400px; margin: 0 auto;">
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px; font-size: 1.1rem;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
-                <input type="text" id="login-usuario" placeholder="Nome (Rafael, Matheus, Yann ou Admin)" style="width:100%; padding:12px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:15px;">
+                <label style="font-size: 0.8rem; color: #aaa; display: block; margin-bottom: 5px;">Login (ex: rafael, matheus, yann ou admin):</label>
+                <input type="text" id="login-usuario" placeholder="Utilizador" style="width:100%; padding:12px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:10px;">
+                
+                <label style="font-size: 0.8rem; color: #aaa; display: block; margin-bottom: 5px;">Senha:</label>
+                <input type="password" id="login-senha" placeholder="Sua senha" style="width:100%; padding:12px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:15px;">
+                
                 <button id="btn-login" onclick="fazerLogin()" style="width:100%; padding:12px; background:#FF6600; color:#FFF; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 1rem; text-transform: uppercase;">Entrar no Painel</button>
             </div>
         </section>
@@ -153,6 +158,7 @@
         const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const DOMINIO_LOGIN = "barretobarbearia.com.br";
 
         let usuarioLogado = "";
         let diaReferencia = new Date();
@@ -162,3 +168,327 @@
             "Sobrancelha": 25, "Hidratação profunda": 25, "Relaxamento": 25,
             "Escova": 30, "Luzes": 60, "Platinado": 60, "Botox (selagem)": 60,
             "Coloração": 60, "Pigmentação": 40, "Pezinho simples": 10, "Pezinho Gourmet": 20, "Corte Emergencial": 30
+        };
+
+        const horariosPadrao = [
+            "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", 
+            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", 
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", 
+            "20:00", "20:30", "21:00", "21:30", "22:00"
+        ];
+
+        function isoLocal(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        }
+        function hojeISO() { return isoLocal(new Date()); }
+
+        function toMin(hhmm) {
+            if(!hhmm) return 0;
+            const [h, m] = String(hhmm).split(":").map(Number);
+            return h * 60 + m;
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && document.getElementById("login-section").style.display !== "none") fazerLogin();
+        });
+
+        async function fazerLogin() {
+            const user = document.getElementById("login-usuario").value.trim().toLowerCase();
+            const pass = document.getElementById("login-senha").value;
+            if(!user || !pass) return alert("Por favor, preencha o utilizador e a senha.");
+            
+            const btn = document.getElementById("btn-login");
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> A ENTRAR...';
+            btn.disabled = true;
+
+            try {
+                // Tenta autenticar via Supabase Auth com o e-mail construído
+                const email = user.includes("@") ? user : `${user}@${DOMINIO_LOGIN}`;
+                const { data: authData, error: authError } = await _supabase.auth.signInWithPassword({ email: email, password: pass });
+                
+                let papel = "barbeiro";
+                let nomeReal = user.charAt(0).toUpperCase() + user.slice(1);
+
+                if (!authError && authData.user) {
+                    const { data: perfil } = await _supabase.from("perfis_barreto").select("nome, papel").eq("user_id", authData.user.id).maybeSingle();
+                    if (perfil) {
+                        papel = perfil.papel || "barbeiro";
+                        nomeReal = perfil.nome || nomeReal;
+                    }
+                } else {
+                    // Fallback de segurança caso o Supabase Auth recuse mas queira entrar com senha padrão
+                    if (pass === "barreto123" && ["matheus", "yann", "rafael", "admin"].includes(user)) {
+                        papel = (user === "admin") ? "admin" : "barbeiro";
+                        nomeReal = user.charAt(0).toUpperCase() + user.slice(1);
+                    } else {
+                        throw new Error("Credenciais inválidas");
+                    }
+                }
+
+                if (papel === "admin") {
+                    usuarioLogado = "Admin";
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("dashboard-barbeiro").style.display = "none";
+                    document.getElementById("dashboard-admin").style.display = "block";
+                    document.getElementById("filter-date-admin").value = hojeISO();
+                    carregarResumoAdmin();
+                } else {
+                    usuarioLogado = nomeReal;
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("dashboard-admin").style.display = "none";
+                    document.getElementById("dashboard-barbeiro").style.display = "block";
+                    document.getElementById("titulo-agenda-barbeiro").innerHTML = `<i class="fa-solid fa-calendar-days"></i> Agenda: ${usuarioLogado}`;
+                    diaReferencia = new Date();
+                    carregarAgendaSemanal();
+                }
+
+            } catch (err) {
+                alert("Login ou senha incorretos.");
+            } finally {
+                btn.innerHTML = 'Entrar no Painel';
+                btn.disabled = false;
+            }
+        }
+
+        function fazerLogout() {
+            _supabase.auth.signOut();
+            document.getElementById("dashboard-barbeiro").style.display = "none";
+            document.getElementById("dashboard-admin").style.display = "none";
+            document.getElementById("login-section").style.display = "block";
+            document.getElementById("login-senha").value = "";
+        }
+
+        function mudarSemana(direcao) {
+            diaReferencia.setDate(diaReferencia.getDate() + (direcao * 7));
+            carregarAgendaSemanal();
+        }
+
+        function obterDiasDaSemana(baseDate) {
+            const dias = [];
+            const d = new Date(baseDate);
+            const diaSemana = d.getDay();
+            const diff = d.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1); 
+            const segunda = new Date(d.setDate(diff));
+
+            for (let i = 0; i < 6; i++) {
+                const current = new Date(segunda);
+                current.setDate(segunda.getDate() + i);
+                dias.push({ iso: isoLocal(current), label: current.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' }) });
+            }
+            return dias;
+        }
+
+        async function carregarAgendaSemanal() {
+            const container = document.getElementById("grade-semanal-container");
+            container.innerHTML = "<p style='color:#FFF; padding: 15px;'>A carregar grade semanal...</p>";
+            
+            const diasSemana = obterDiasDaSemana(diaReferencia);
+            document.getElementById("label-periodo-semana").textContent = `${diasSemana[0].label} até ${diasSemana[5].label}`;
+
+            try {
+                const { data: agendamentos } = await _supabase.from("agendamentos_barreto")
+                    .select("*")
+                    .ilike("barbeiro", `%${usuarioLogado.trim()}%`)
+                    .gte("data", diasSemana[0].iso)
+                    .lte("data", diasSemana[5].iso + "T23:59:59");
+
+                const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
+                    .select("*")
+                    .ilike("barbeiro", `%${usuarioLogado.trim()}%`)
+                    .gte("data", diasSemana[0].iso)
+                    .lte("data", diasSemana[5].iso + "T23:59:59");
+
+                container.innerHTML = "";
+
+                diasSemana.forEach(dia => {
+                    const coluna = document.createElement("div");
+                    coluna.className = "day-column";
+                    const blqDia = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && b.horario === 'TODOS');
+
+                    coluna.innerHTML = `
+                        <div class="day-header">
+                            <span>${dia.label}</span>
+                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" class="action-btn" style="background:${blqDia ? '#2C1A1A' : '#242424'}; color:${blqDia ? '#e74c3c' : '#FFF'}; border:1px solid ${blqDia ? '#e74c3c' : '#444'};">
+                                ${blqDia ? 'Desbloq' : 'Bloq'}
+                            </button>
+                        </div>
+                    `;
+
+                    const slotsDiv = document.createElement("div");
+                    slotsDiv.style.cssText = "display: flex; flex-direction: column; gap: 5px;";
+
+                    if (blqDia) {
+                        slotsDiv.innerHTML = `<div style="color:#e74c3c; text-align:center; padding: 20px 0; font-size: 0.8rem;"><i class="fa-solid fa-lock"></i> Fechado</div>`;
+                    } else {
+                        const ocupadosDia = new Map();
+                        const duracaoExtra = new Set();
+
+                        (agendamentos || []).filter(a => {
+                            if(a.status === 'cancelado') return false;
+                            return String(a.data).substring(0, 10) === dia.iso;
+                        }).forEach(ag => {
+                            if(!ag.horario) return;
+                            const horaReal = String(ag.horario).substring(0, 5); 
+                            const inicioMin = toMin(horaReal);
+                            ocupadosDia.set(inicioMin, ag);
+
+                            let dur = 0;
+                            if (ag.servico) { ag.servico.split(",").forEach(s => dur += (duracoesServicos[s.trim()] || 30)); }
+                            if(dur === 0) dur = 30;
+                            
+                            const nSlots = Math.ceil(dur / 30);
+                            for(let i = 1; i < nSlots; i++) duracaoExtra.add(inicioMin + (i * 30));
+                        });
+
+                        horariosPadrao.forEach(horario => {
+                            const min = toMin(horario);
+                            const ag = ocupadosDia.get(min);
+                            const isExtraBusy = duracaoExtra.has(min);
+                            const blq = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && String(b.horario).substring(0,5) === horario);
+                            
+                            const item = document.createElement("div");
+
+                            if (blq) {
+                                item.className = "slot-item blocked";
+                                item.innerHTML = `<span><i class="fa-solid fa-ban"></i> ${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', true)" class="action-btn" style="background:#2C1A1A; color:#e74c3c; border:1px solid #e74c3c;">Desbl</button>`;
+                            } else if (ag) {
+                                const isDone = ag.status === 'concluido';
+                                item.className = isDone ? "slot-item booked-done" : "slot-item booked";
+                                item.innerHTML = `
+                                    <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        <strong>${horario}</strong> ${isDone ? '<i class="fa-solid fa-check" style="color:#25D366;"></i>' : ''}<br>
+                                        <span style="color:#DDD; font-size:0.75rem;">${ag.cliente}</span>
+                                    </div>
+                                    <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF;"><i class="fa-solid fa-gear"></i></button>
+                                `;
+                            } else if (isExtraBusy) {
+                                item.className = "slot-item busy";
+                                item.innerHTML = `<span style="color:#AAA; font-size: 0.72rem;"><i class="fa-solid fa-scissors"></i> ${horario} (Ocupado)</span>`;
+                            } else {
+                                item.className = "slot-item available";
+                                item.innerHTML = `<span>${horario}</span><button onclick="alternarBloqueioHorario('${dia.iso}', '${horario}', false)" class="action-btn" style="background:#242424; color:#FFF; border:1px solid #444;">Bloq</button>`;
+                            }
+                            slotsDiv.appendChild(item);
+                        });
+                    }
+                    coluna.appendChild(slotsDiv);
+                    container.appendChild(coluna);
+                });
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = "<p style='color:#e74c3c; padding: 15px;'>Erro ao carregar agenda.</p>";
+            }
+        }
+
+        async function alternarBloqueioDia(data, bloqueado) {
+            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado.trim()}%`).like("data", `${data}%`).eq("horario", "TODOS");
+            else await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: data, horario: "TODOS", tipo: "dia_todo" }]);
+            carregarAgendaSemanal();
+        }
+
+        async function alternarBloqueioHorario(data, horario, bloqueado) {
+            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado.trim()}%`).like("data", `${data}%`).like("horario", `${horario}%`);
+            else await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: data, horario: horario, tipo: "horario" }]);
+            carregarAgendaSemanal();
+        }
+
+        async function abrirAcao(id) {
+            const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
+            if (!data) return;
+
+            const modal = document.getElementById("custom-action-modal");
+            document.getElementById("action-modal-details").innerHTML = `
+                <strong>Cliente:</strong> ${data.cliente}<br>
+                <strong>Telefone:</strong> ${data.telefone}<br>
+                <strong>Serviços:</strong> ${data.servico}<br>
+                <strong>Valor:</strong> R$ ${Number(data.preco_total || 35).toFixed(2).replace(".", ",")}<br>
+                <strong>Horário:</strong> ${String(data.horario).substring(0,5)}
+            `;
+            
+            const btns = document.getElementById("action-modal-buttons");
+            const selectPg = document.getElementById("select-forma-pagamento");
+            btns.innerHTML = "";
+
+            if (data.status !== 'concluido') {
+                selectPg.style.display = "block";
+                
+                const btnOk = document.createElement("button");
+                btnOk.className = "custom-modal-btn"; btnOk.style.background = "#25D366"; btnOk.style.color = "#FFF";
+                btnOk.textContent = "Concluir e Confirmar Pgto";
+                btnOk.onclick = async () => {
+                    await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: selectPg.value }).eq("id", id);
+                    modal.classList.remove("active"); carregarAgendaSemanal();
+                };
+                btns.appendChild(btnOk);
+                
+                const btnCanc = document.createElement("button");
+                btnCanc.className = "custom-modal-btn"; btnCanc.style.background = "#2C1A1A"; btnCanc.style.color = "#e74c3c"; btnCanc.style.border = "1px solid #e74c3c";
+                btnCanc.textContent = "Cancelar Agendamento";
+                btnCanc.onclick = async () => {
+                    if (confirm("Deseja cancelar a reserva?")) {
+                        await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                        modal.classList.remove("active"); carregarAgendaSemanal();
+                    }
+                };
+                btns.appendChild(btnCanc);
+            } else { selectPg.style.display = "none"; }
+
+            const btnVoltar = document.createElement("button");
+            btnVoltar.className = "custom-modal-btn"; btnVoltar.style.background = "#333"; btnVoltar.style.color = "#FFF";
+            btnVoltar.textContent = "Fechar";
+            btnVoltar.onclick = () => modal.classList.remove("active");
+            btns.appendChild(btnVoltar);
+
+            modal.classList.add("active");
+        }
+
+        async function carregarResumoAdmin() {
+            const dataFiltro = document.getElementById("filter-date-admin").value;
+            const barbeiroFiltro = document.getElementById("admin-select-barbeiro").value;
+            const container = document.getElementById("agendamentos-list-admin");
+            
+            if(!dataFiltro) return;
+            container.innerHTML = "<p style='color:#888; text-align:center;'>A carregar...</p>";
+
+            try {
+                let query = _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
+                if (barbeiroFiltro !== "TODOS") query = query.ilike("barbeiro", `%${barbeiroFiltro}%`);
+
+                const { data, error } = await query;
+                if (error) throw error;
+                
+                const filtrados = (data || []).filter(a => a.status !== 'cancelado');
+
+                container.innerHTML = "";
+                if (filtrados.length === 0) {
+                    container.innerHTML = "<p style='color:#AAA; text-align:center; padding: 15px; background: #242424; border-radius: 8px; font-size: 0.85rem;'>Sem agendamentos ativos.</p>";
+                    return;
+                }
+
+                filtrados.forEach(item => {
+                    const card = document.createElement("div");
+                    const isConcluido = item.status === 'concluido';
+                    const horaFormatada = String(item.horario).substring(0,5); 
+
+                    card.style.cssText = "background: #242424; padding: 12px; border-radius: 8px; border: 1px solid #333; border-left: 5px solid " + (isConcluido ? '#3498db' : '#FF6600');
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <strong style="font-size:0.95rem; color:#FFF;">${horaFormatada} - ${item.barbeiro}</strong>
+                            ${isConcluido ? '<span style="color:#3498db; font-size:0.75rem; font-weight:bold;">Concluído</span>' : ''} 
+                        </div>
+                        <div style="color:#CCC; font-size: 0.85rem;">
+                            <strong>Cliente:</strong> ${item.cliente} (${item.telefone})<br>
+                            <strong>Serviço:</strong> ${item.servico}<br>
+                            <strong>Valor:</strong> R$ ${Number(item.preco_total).toFixed(2).replace(".", ",")}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                container.innerHTML = "<p style='color:#e74c3c; text-align:center;'>Erro ao carregar.</p>";
+            }
+        }
+    </script>
+</body>
+</html>
