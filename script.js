@@ -130,7 +130,7 @@ async function checkAvailableTimes() {
         const ocupados = new Set();
         (agendamentos || []).forEach(a => {
             if (!a.horario) return;
-            const horaFormatada = a.horario.substring(0, 5); // CORREÇÃO DE FORMATAÇÃO HH:MM:SS para HH:MM APLICADA
+            const horaFormatada = a.horario.substring(0, 5); 
             const inicio = toMin(horaFormatada);
             let dur = 0;
             if (a.servico) a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
@@ -217,18 +217,30 @@ async function confirmarEEnviar() {
         const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
 
-        const { error } = await _supabase.from("agendamentos_barreto").insert([{
-            cliente: name,
-            telefone: phone,
-            barbeiro: selectedBarber,
-            servico: servicosNome,
-            preco_total: precoTotal,
-            data: date,
-            horario: time,
-            status: 'ativo'
-        }]);
+        // RESTAURAÇÃO DO RPC: Contorna falhas de RLS (Policies do Banco de Dados)
+        const { error: rpcError } = await _supabase.rpc("criar_agendamento", {
+            p_cliente: name,
+            p_telefone: phone,
+            p_barbeiro: selectedBarber,
+            p_servicos: selectedServices.map(s => s.name),
+            p_data: date,
+            p_horario: String(time)
+        });
 
-        if (error) throw error;
+        // Caso o RPC não exista na base de dados, tenta a inserção normal
+        if (rpcError) {
+            const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
+                cliente: name,
+                telefone: phone,
+                barbeiro: selectedBarber,
+                servico: servicosNome,
+                preco_total: precoTotal,
+                data: date,
+                horario: time,
+                status: 'ativo'
+            }]);
+            if (insertError) throw insertError;
+        }
 
         fecharModalConfirmacao();
         const num = telefonesBarbeiros[selectedBarber] || "5531997193193";
