@@ -376,7 +376,18 @@
                         slotsDiv.innerHTML = `<div style="color: #e74c3c; text-align: center; font-size: 0.55rem; padding: 10px 0; font-weight: bold;"><i class="fa-solid fa-lock"></i></div>`;
                     } else {
                         const horariosDia = obterHorariosParaData(dia.iso);
-                        const agendamentosDia = (agendamentos || []).filter(a => String(a.data).substring(0, 10) === dia.iso && a.status !== 'cancelado');
+                        
+                        // Filtramos apenas os agendamentos que NÃO possuem bloqueio correspondente na tabela bloqueios_barreto
+                        const horariosBloqueadosPorCancelamento = (bloqueios || [])
+                            .filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS')
+                            .map(b => String(b.horario).substring(0, 5));
+
+                        const agendamentosDia = (agendamentos || []).filter(a => {
+                            const hAg = String(a.horario).substring(0, 5);
+                            const dAg = String(a.data).substring(0, 10);
+                            return dAg === dia.iso && !horariosBloqueadosPorCancelamento.includes(hAg);
+                        });
+
                         const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
                         
                         let itensRenderizacao = [];
@@ -578,8 +589,6 @@
                                     const horarioStr = String(data.horario).substring(0, 5);
                                     const forma = document.getElementById("select-forma-pagamento").value;
                                     
-                                    // Atualiza o status para concluido no agendamento e registra na tabela de bloqueios
-                                    await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
                                     await _supabase.from("bloqueios_barreto").insert([{ barbeiro: data.barbeiro, data: dataIso, horario: horarioStr, tipo: "concluido" }]);
                                     
                                     modal.classList.remove("active");
@@ -621,8 +630,8 @@
                                     const dataIso = String(data.data).substring(0, 10);
                                     const horarioStr = String(data.horario).substring(0, 5);
 
-                                    // Altera o status para 'cancelado' (fazendo com que suma da listagem ativa) e insere bloqueio
-                                    await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
+                                    // Tenta apagar o registo da base de dados e sempre insere o bloqueio para sumir da tela
+                                    await _supabase.from("agendamentos_barreto").delete().eq("id", id);
                                     await _supabase.from("bloqueios_barreto").insert([{ 
                                         barbeiro: data.barbeiro, 
                                         data: dataIso, 
@@ -633,6 +642,7 @@
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 } catch (err) {
+                                    console.error("Erro ao cancelar:", err);
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 }
