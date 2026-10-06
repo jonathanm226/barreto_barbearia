@@ -2,13 +2,15 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Pro. Barreto Barbearia</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Barreto">
     <link rel="apple-touch-icon" href="logo.jpg.jpg">
+    <link rel="icon" href="logo.jpg.jpg" type="image/jpeg">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
@@ -545,80 +547,14 @@
                         btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
                         btnSalvarPg.textContent = "Salvar Pagamento";
                         btnSalvarPg.onclick = async () => {
-                            const forma = document.getElementById("select-forma-pagamento").value;
-                            await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
-                            modal.classList.remove("active");
-                            carregarAgendaSemanal();
+                            try {
+                                btnSalvarPg.textContent = "Salvando...";
+                                btnSalvarPg.disabled = true;
+                                const forma = document.getElementById("select-forma-pagamento").value;
+                                await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
+                                modal.classList.remove("active");
+                                carregarAgendaSemanal();
+                            } catch (err) {
+                                alert("Erro ao concluir: " + err.message);
+                            }
                         };
-
-                        const btnVoltar = document.createElement("button");
-                        btnVoltar.className = "custom-modal-btn btn-modal-cancelar";
-                        btnVoltar.textContent = "Voltar";
-                        btnVoltar.onclick = () => abrirGerenciadorAgendamento(id);
-
-                        buttonsBox.appendChild(btnSalvarPg);
-                        buttonsBox.appendChild(btnVoltar);
-                    };
-
-                    const btnCancelar = document.createElement("button");
-                    btnCancelar.className = "custom-modal-btn btn-modal-excluir";
-                    btnCancelar.textContent = "Cancelar Agendamento";
-                    btnCancelar.onclick = async () => {
-                        if (confirm("Deseja cancelar esta reserva?")) {
-                            await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq("id", id);
-                            modal.classList.remove("active");
-                            carregarAgendaSemanal();
-                        }
-                    };
-
-                    buttonsBox.appendChild(btnAtendido);
-                    buttonsBox.appendChild(btnCancelar);
-                }
-
-                const btnFechar = document.createElement("button");
-                btnFechar.className = "custom-modal-btn btn-modal-cancelar";
-                btnFechar.textContent = "Fechar";
-                btnFechar.onclick = () => modal.classList.remove("active");
-                buttonsBox.appendChild(btnFechar);
-
-                modal.classList.add("active");
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function carregarResumoAdmin() {
-            const dataFiltro = document.getElementById("filter-date-admin").value;
-            const container = document.getElementById("agendamentos-list-admin");
-            if (!dataFiltro) return;
-            
-            container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
-
-            try {
-                const { data } = await _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
-                
-                container.innerHTML = "";
-                const filtrados = (data || []).filter(a => a.status !== 'cancelado');
-
-                if (filtrados.length === 0) {
-                    container.innerHTML = "<p style='color: #aaa; text-align: center; padding: 10px; background: #1A1A1A; border-radius: 6px;'>Sem agendamentos ativos.</p>";
-                    return;
-                }
-
-                filtrados.forEach(item => {
-                    const card = document.createElement("div");
-                    const isConcluido = item.status === 'concluido';
-                    card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600');
-                    card.innerHTML = `
-                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
-                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")}</span>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch (err) {
-                container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar.</p>";
-            }
-        }
-    </script>
-</body>
-</html>
