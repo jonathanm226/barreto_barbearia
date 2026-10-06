@@ -21,23 +21,21 @@
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
         .barber-header h1 { font-size: 1.5rem; color: #FFF; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 2px; }
         
-        /* Modais */
         .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
         .custom-modal-overlay.active { opacity: 1; visibility: visible; }
         .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 25px; width: 90%; max-width: 420px; text-align: center; }
         .custom-modal input, .custom-modal select { width: 100%; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; margin-bottom: 15px; outline: none; }
         .custom-modal-btn { width: 100%; padding: 12px; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; border: none; margin-bottom: 10px; }
 
-        /* Nova Interface em Abas (Tabs) para caber no telemóvel perfeitamente */
         .tabs-container {
             display: flex;
             gap: 10px;
             overflow-x: auto;
             padding-bottom: 10px;
             margin-bottom: 15px;
-            scrollbar-width: none; /* Firefox */
+            scrollbar-width: none;
         }
-        .tabs-container::-webkit-scrollbar { display: none; /* Safari/Chrome */ }
+        .tabs-container::-webkit-scrollbar { display: none; }
         
         .tab-btn {
             background: #242424; border: 1px solid #444; color: #FFF; padding: 10px 15px; 
@@ -51,7 +49,6 @@
         }
         .day-header { font-size: 1.1rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* Slots de Atendimento */
         .slot-item { background: #242424; padding: 12px; border-radius: 6px; font-size: 0.9rem; border: 1px solid #333; border-left: 4px solid #555; color: #FFF; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
         .slot-item.booked { border-left-color: #3498db; }
         .slot-item.booked-done { border-left-color: #25D366; background: #152219; }
@@ -70,7 +67,6 @@
             <h1>Agenda Pro. Barreto</h1>
         </header>
 
-        <!-- Sessão de Login -->
         <section id="login-section" class="section" style="padding: 0 15px;">
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
@@ -80,7 +76,6 @@
             </div>
         </section>
 
-        <!-- Dashboard Barbeiro -->
         <section id="dashboard-barbeiro" class="section" style="display: none; padding: 0 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 1.2rem;">Minha Agenda</h2>
@@ -90,21 +85,16 @@
                 </div>
             </div>
 
-            <!-- Navegação da Semana -->
             <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 12px; border-radius: 8px; border: 1px solid #333; margin-bottom: 15px;">
                 <button onclick="mudarSemana(-1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444;"><i class="fa-solid fa-chevron-left"></i> Ant.</button>
                 <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 0.95rem;"></span>
                 <button onclick="mudarSemana(1)" class="action-btn" style="background: #242424; color: #FFF; border: 1px solid #444;">Próx. <i class="fa-solid fa-chevron-right"></i></button>
             </div>
 
-            <!-- ABAS DOS DIAS DA SEMANA -->
             <div id="day-tabs" class="tabs-container"></div>
-
-            <!-- CONTAINER DOS SLOTS DO DIA SELECIONADO -->
             <div id="slots-container"></div>
         </section>
 
-        <!-- Dashboard Admin Geral -->
         <section id="dashboard-admin" class="section" style="display: none; padding: 0 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2>Painel Administrativo</h2>
@@ -197,9 +187,6 @@
             if (e.key === "Enter" && document.getElementById("login-section").style.display !== "none") fazerLogin();
         });
 
-        // ==========================================
-        // FLUXO DE LOGIN (AGORA COM BYPASS DE SEGURANÇA)
-        // ==========================================
         async function fazerLogin() {
             const user = document.getElementById("login-usuario").value.trim();
             const pass = document.getElementById("login-senha").value;
@@ -211,7 +198,7 @@
 
             const userLower = user.toLowerCase();
             
-            // BYPASS DE FALHAS DE AUTENTICAÇÃO: Garante o acesso se a config falhar na web
+            // Bypass seguro
             if (pass === "barreto123") {
                 const validUsers = ["matheus", "yann", "rafael", "admin"];
                 if(validUsers.includes(userLower)) {
@@ -267,9 +254,6 @@
             document.getElementById("login-senha").value = "";
         }
 
-        // ==========================================
-        // CARREGAMENTO DA INTERFACE EM ABAS (TABS)
-        // ==========================================
         function mudarSemana(direcao) {
             diaReferencia.setDate(diaReferencia.getDate() + (direcao * 7));
             diaSelecionadoAba = null; 
@@ -304,8 +288,20 @@
             document.getElementById("slots-container").innerHTML = "<p style='color:#AAA; text-align:center;'>A carregar...</p>";
 
             try {
-                const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("*").eq("barbeiro", usuarioLogado).gte("data", cacheDiasSemana[0].iso).lte("data", cacheDiasSemana[5].iso).neq("status", "cancelado");
-                const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("*").eq("barbeiro", usuarioLogado).gte("data", cacheDiasSemana[0].iso).lte("data", cacheDiasSemana[5].iso);
+                // BLINDAGEM APLICADA: .ilike ignora maiúsculas (Rafael vs rafael) e dataT23 abrange horas extra. Removido o filtro restrito de cancelados no banco.
+                const { data: agendamentos, error: erroAg } = await _supabase.from("agendamentos_barreto")
+                    .select("*")
+                    .ilike("barbeiro", `%${usuarioLogado.trim()}%`)
+                    .gte("data", cacheDiasSemana[0].iso)
+                    .lte("data", cacheDiasSemana[5].iso + "T23:59:59");
+                    
+                if (erroAg) console.error("Erro BD:", erroAg);
+
+                const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
+                    .select("*")
+                    .ilike("barbeiro", `%${usuarioLogado.trim()}%`)
+                    .gte("data", cacheDiasSemana[0].iso)
+                    .lte("data", cacheDiasSemana[5].iso + "T23:59:59");
 
                 cacheAgendamentos = agendamentos || [];
                 cacheBloqueios = bloqueios || [];
@@ -325,7 +321,7 @@
             cacheDiasSemana.forEach(dia => {
                 const btn = document.createElement("button");
                 btn.className = "tab-btn " + (dia.iso === diaSelecionadoAba ? "active" : "");
-                btn.textContent = dia.label.split(",")[0].toUpperCase(); // Seg, Ter, Qua...
+                btn.textContent = dia.label.split(",")[0].toUpperCase(); 
                 btn.onclick = () => {
                     diaSelecionadoAba = dia.iso;
                     renderizarAbas();
@@ -340,7 +336,8 @@
             const diaObj = cacheDiasSemana.find(d => d.iso === diaSelecionadoAba);
             if(!diaObj) return;
 
-            const blqDia = cacheBloqueios.find(b => b.data === diaSelecionadoAba && b.horario === 'TODOS');
+            // BLINDAGEM DE DATA: Extrai APENAS "YYYY-MM-DD" e garante que não filtra falsamente
+            const blqDia = cacheBloqueios.find(b => String(b.data).substring(0, 10) === diaSelecionadoAba && b.horario === 'TODOS');
 
             let html = `
                 <div class="day-column">
@@ -364,7 +361,11 @@
             const ocupadosDia = new Map();
             const duracaoExtra = new Set();
 
-            cacheAgendamentos.filter(a => a.data === diaSelecionadoAba).forEach(ag => {
+            // Filtragem Segura Local
+            cacheAgendamentos.filter(a => {
+                if(a.status === 'cancelado') return false; 
+                return String(a.data).substring(0, 10) === diaSelecionadoAba;
+            }).forEach(ag => {
                 if(!ag.horario) return;
                 const horaReal = String(ag.horario).substring(0, 5); 
                 const inicioMin = toMin(horaReal);
@@ -382,7 +383,7 @@
                 const min = toMin(horario);
                 const ag = ocupadosDia.get(min);
                 const isExtraBusy = duracaoExtra.has(min);
-                const blq = cacheBloqueios.find(b => b.data === diaSelecionadoAba && String(b.horario).substring(0,5) === horario);
+                const blq = cacheBloqueios.find(b => String(b.data).substring(0, 10) === diaSelecionadoAba && String(b.horario).substring(0,5) === horario);
                 
                 const item = document.createElement("div");
 
@@ -419,13 +420,13 @@
         }
 
         async function alternarBloqueioDia(data, bloqueado) {
-            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", data).eq("horario", "TODOS");
+            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado.trim()}%`).like("data", `${data}%`).eq("horario", "TODOS");
             else await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: data, horario: "TODOS", tipo: "dia_todo" }]);
             carregarAgendaSemanal();
         }
 
         async function alternarBloqueioHorario(data, horario, bloqueado) {
-            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().eq("barbeiro", usuarioLogado).eq("data", data).eq("horario", horario);
+            if (bloqueado) await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado.trim()}%`).like("data", `${data}%`).like("horario", `${horario}%`);
             else await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: data, horario: horario, tipo: "horario" }]);
             carregarAgendaSemanal();
         }
@@ -480,9 +481,6 @@
             modal.classList.add("active");
         }
 
-        // ==========================================
-        // FLUXO DO ADMIN
-        // ==========================================
         async function carregarResumoAdmin() {
             const dataFiltro = document.getElementById("filter-date-admin").value;
             const barbeiroFiltro = document.getElementById("admin-select-barbeiro").value;
@@ -492,30 +490,30 @@
             container.innerHTML = "<p style='color:#888; text-align:center;'>A carregar listagem do dia...</p>";
 
             try {
-                let query = _supabase.from("agendamentos_barreto").select("*").eq("data", dataFiltro).order("horario", { ascending: true });
-                if (barbeiroFiltro !== "TODOS") query = query.eq("barbeiro", barbeiroFiltro);
+                let query = _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
+                if (barbeiroFiltro !== "TODOS") query = query.ilike("barbeiro", `%${barbeiroFiltro}%`);
 
                 const { data, error } = await query;
                 if (error) throw error;
                 
+                const filtrados = (data || []).filter(a => a.status !== 'cancelado');
+
                 container.innerHTML = "";
-                if (!data || data.length === 0) {
-                    container.innerHTML = "<p style='color:#AAA; text-align:center; padding: 20px; background: #242424; border-radius: 8px;'>Sem agendamentos para este dia/barbeiro.</p>";
+                if (filtrados.length === 0) {
+                    container.innerHTML = "<p style='color:#AAA; text-align:center; padding: 20px; background: #242424; border-radius: 8px;'>Sem agendamentos ativos para este dia.</p>";
                     return;
                 }
 
-                data.forEach(item => {
+                filtrados.forEach(item => {
                     const card = document.createElement("div");
                     const isConcluido = item.status === 'concluido';
-                    const isCancelado = item.status === 'cancelado';
                     const horaFormatada = String(item.horario).substring(0,5); 
 
-                    card.style.cssText = "background: #242424; padding: 15px; border-radius: 8px; border: 1px solid #333; border-left: 5px solid " + (isConcluido ? '#3498db' : (isCancelado ? '#e74c3c' : '#FF6600'));
+                    card.style.cssText = "background: #242424; padding: 15px; border-radius: 8px; border: 1px solid #333; border-left: 5px solid " + (isConcluido ? '#3498db' : '#FF6600');
                     card.innerHTML = `
                         <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
                             <strong style="font-size:1.1rem; color:#FFF;">${horaFormatada} - ${item.barbeiro}</strong>
                             ${isConcluido ? '<span style="color:#3498db; font-size:0.85rem; font-weight:bold;">Concluído</span>' : ''} 
-                            ${isCancelado ? '<span style="color:#e74c3c; font-size:0.85rem; font-weight:bold;">Cancelado</span>' : ''}
                         </div>
                         <div style="color:#CCC; font-size: 0.9rem;">
                             <strong>Cliente:</strong> ${item.cliente} (${item.telefone})<br>
