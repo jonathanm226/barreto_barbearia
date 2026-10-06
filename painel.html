@@ -507,4 +507,28 @@
                 data.forEach(item => {
                     const card = document.createElement("div");
                     const isConcluido = item.status === 'concluido';
-                    const isCancelado
+                    const isCancelado = item.status === 'cancelado';
+                    const horaFormatada = String(item.horario).substring(0,5); 
+
+                    card.style.cssText = "background: #242424; padding: 15px; border-radius: 8px; border: 1px solid #333; border-left: 5px solid " + (isConcluido ? '#3498db' : (isCancelado ? '#e74c3c' : '#FF6600'));
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <strong style="font-size:1.1rem; color:#FFF;">${horaFormatada} - ${item.barbeiro}</strong>
+                            ${isConcluido ? '<span style="color:#3498db; font-size:0.85rem; font-weight:bold;">Concluído</span>' : ''} 
+                            ${isCancelado ? '<span style="color:#e74c3c; font-size:0.85rem; font-weight:bold;">Cancelado</span>' : ''}
+                        </div>
+                        <div style="color:#CCC; font-size: 0.9rem;">
+                            <strong>Cliente:</strong> ${item.cliente} (${item.telefone})<br>
+                            <strong>Serviço:</strong> ${item.servico}<br>
+                            <strong>Valor:</strong> R$ ${Number(item.preco_total).toFixed(2).replace(".", ",")}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                container.innerHTML = "<p style='color:#e74c3c; text-align:center;'>Erro ao carregar dados do admin.</p>";
+            }
+        }
+    </script>
+</body>
+</html>
