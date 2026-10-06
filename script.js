@@ -122,15 +122,24 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
-        const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("horario, servico").eq("barbeiro", selectedBarber).eq("data", selDate).neq("status", "cancelado");
-        const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("horario").eq("barbeiro", selectedBarber).eq("data", selDate);
+        const { data: agsDB } = await _supabase.from("agendamentos_barreto")
+            .select("horario, servico, status")
+            .ilike("barbeiro", `%${selectedBarber.trim()}%`)
+            .like("data", `${selDate}%`);
+
+        const agendamentos = (agsDB || []).filter(a => a.status !== 'cancelado');
+
+        const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
+            .select("horario")
+            .ilike("barbeiro", `%${selectedBarber.trim()}%`)
+            .like("data", `${selDate}%`);
 
         if ((bloqueios || []).some(b => b.horario === "TODOS")) return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
 
         const ocupados = new Set();
         (agendamentos || []).forEach(a => {
             if (!a.horario) return;
-            const horaFormatada = a.horario.substring(0, 5); 
+            const horaFormatada = String(a.horario).substring(0, 5); 
             const inicio = toMin(horaFormatada);
             let dur = 0;
             if (a.servico) a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
@@ -138,7 +147,7 @@ async function checkAvailableTimes() {
             for (let k = 0; k < numSlots; k++) ocupados.add(inicio + (30 * k));
         });
 
-        const bloqueados = new Set((bloqueios || []).map(b => toMin(b.horario.substring(0, 5))));
+        const bloqueados = new Set((bloqueios || []).map(b => toMin(String(b.horario).substring(0, 5))));
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
 
         timeSel.innerHTML = "";
@@ -217,17 +226,15 @@ async function confirmarEEnviar() {
         const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
 
-        // RESTAURAÇÃO DO RPC: Contorna falhas de RLS (Policies do Banco de Dados)
         const { error: rpcError } = await _supabase.rpc("criar_agendamento", {
             p_cliente: name,
             p_telefone: phone,
             p_barbeiro: selectedBarber,
-            p_servicos: selectedServices.map(s => s.name),
+            p_servicos: servicosNome,
             p_data: date,
             p_horario: String(time)
         });
 
-        // Caso o RPC não exista na base de dados, tenta a inserção normal
         if (rpcError) {
             const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
                 cliente: name,
