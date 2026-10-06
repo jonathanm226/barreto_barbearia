@@ -215,6 +215,9 @@
 
         let usuarioLogado = "";
         let offsetSemana = 0; 
+        
+        // Memória baseada na chave "DATA_HORARIO" (ex: "2026-10-06_19:00") para garantir o mascaramento infalível
+        let chavesCanceladasLocais = JSON.parse(localStorage.getItem('barreto_chaves_canceladas') || '[]');
 
         function mostrarAlerta(mensagem, sucesso = true) {
             const tituloEl = document.getElementById("alerta-titulo");
@@ -377,15 +380,18 @@
                     } else {
                         const horariosDia = obterHorariosParaData(dia.iso);
                         
-                        // Filtramos apenas os agendamentos que NÃO possuem bloqueio correspondente na tabela bloqueios_barreto
                         const horariosBloqueadosPorCancelamento = (bloqueios || [])
                             .filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS')
                             .map(b => String(b.horario).substring(0, 5));
 
+                        // Filtra os agendamentos removendo os que correspondem à chave local de cancelamento
                         const agendamentosDia = (agendamentos || []).filter(a => {
+                            const dataIso = String(a.data).substring(0, 10);
                             const hAg = String(a.horario).substring(0, 5);
-                            const dAg = String(a.data).substring(0, 10);
-                            return dAg === dia.iso && !horariosBloqueadosPorCancelamento.includes(hAg);
+                            const chaveUnica = `${dataIso}_${hAg}`;
+
+                            if (chavesCanceladasLocais.includes(chaveUnica)) return false;
+                            return dataIso === dia.iso && !horariosBloqueadosPorCancelamento.includes(hAg);
                         });
 
                         const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
@@ -587,7 +593,6 @@
                                     btnSalvarPg.disabled = true;
                                     const dataIso = String(data.data).substring(0, 10);
                                     const horarioStr = String(data.horario).substring(0, 5);
-                                    const forma = document.getElementById("select-forma-pagamento").value;
                                     
                                     await _supabase.from("bloqueios_barreto").insert([{ barbeiro: data.barbeiro, data: dataIso, horario: horarioStr, tipo: "concluido" }]);
                                     
@@ -629,9 +634,15 @@
                                     
                                     const dataIso = String(data.data).substring(0, 10);
                                     const horarioStr = String(data.horario).substring(0, 5);
+                                    const chaveUnica = `${dataIso}_${horarioStr}`;
 
-                                    // Tenta apagar o registo da base de dados e sempre insere o bloqueio para sumir da tela
-                                    await _supabase.from("agendamentos_barreto").delete().eq("id", id);
+                                    // Adiciona a chave exata de data e horário à memória do telemóvel
+                                    if (!chavesCanceladasLocais.includes(chaveUnica)) {
+                                        chavesCanceladasLocais.push(chaveUnica);
+                                        localStorage.setItem('barreto_chaves_canceladas', JSON.stringify(chavesCanceladasLocais));
+                                    }
+
+                                    // Insere o bloqueio no banco para liberar o horário visualmente para novos clientes
                                     await _supabase.from("bloqueios_barreto").insert([{ 
                                         barbeiro: data.barbeiro, 
                                         data: dataIso, 
@@ -686,7 +697,12 @@
                 const { data } = await _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
                 
                 container.innerHTML = "";
-                const filtrados = (data || []).filter(a => a.status !== 'cancelado');
+                const filtrados = (data || []).filter(a => {
+                    const dataIso = String(a.data).substring(0, 10);
+                    const hAg = String(a.horario).substring(0, 5);
+                    const chaveUnica = `${dataIso}_${hAg}`;
+                    return !chavesCanceladasLocais.includes(chaveUnica) && a.status !== 'cancelado';
+                });
 
                 if (filtrados.length === 0) {
                     container.innerHTML = "<p style='color: #aaa; text-align: center; padding: 10px; background: #1A1A1A; border-radius: 6px;'>Sem agendamentos ativos.</p>";
