@@ -199,6 +199,15 @@
         </div>
     </div>
 
+    <!-- NOVO: Modal Genérico para Alertas (Substitui os alerts nativos) -->
+    <div id="modal-alerta" class="custom-modal-overlay" style="z-index: 10000;">
+        <div class="custom-modal" style="max-width: 320px;">
+            <h3 id="alerta-titulo" style="margin-bottom: 12px; font-size: 1.1rem;">Aviso</h3>
+            <p id="alerta-mensagem" style="color: #FFF; font-size: 0.95rem; margin-bottom: 20px; text-align: center;"></p>
+            <button class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlerta()">OK</button>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
@@ -206,6 +215,19 @@
 
         let usuarioLogado = "";
         let offsetSemana = 0; 
+
+        // Funções do Novo Alerta Customizado
+        function mostrarAlerta(mensagem, sucesso = true) {
+            const tituloEl = document.getElementById("alerta-titulo");
+            tituloEl.textContent = sucesso ? "Sucesso!" : "Aviso!";
+            tituloEl.style.color = sucesso ? "#25D366" : "#FF6600";
+            document.getElementById("alerta-mensagem").textContent = mensagem;
+            document.getElementById("modal-alerta").classList.add("active");
+        }
+
+        function fecharAlerta() {
+            document.getElementById("modal-alerta").classList.remove("active");
+        }
 
         function obterHorariosParaData(dataString) {
             if (!dataString) return [];
@@ -225,12 +247,11 @@
         }
 
         function fazerLogin() {
-            // Remove TODOS os espaços (mesmo os invisíveis no meio) e força minúsculas
             const usuarioInput = document.getElementById("login-usuario").value.replace(/\s+/g, '').toLowerCase();
             const senhaInput = document.getElementById("login-senha").value.replace(/\s+/g, '').toLowerCase();
 
             if (!usuarioInput || !senhaInput) {
-                alert("Preencha o utilizador e a senha.");
+                mostrarAlerta("Preencha o utilizador e a senha.", false);
                 return;
             }
 
@@ -264,8 +285,7 @@
                     carregarAgendaSemanal();
                 }
             } else {
-                // ALERTA DE TESTE: Vai mostrar exatamente onde está o erro de digitação
-                alert(`Credenciais incorretas.\nO sistema tentou ler:\nUtilizador: "${usuarioInput}"\nSenha: "${senhaInput}"`);
+                mostrarAlerta("Utilizador ou senha incorretos!", false);
             }
         }
 
@@ -451,7 +471,7 @@
                 }
                 carregarAgendaSemanal();
             } catch (err) {
-                alert("Erro ao alterar bloqueio.");
+                mostrarAlerta("Erro ao alterar bloqueio no banco de dados.", false);
             }
         }
 
@@ -464,13 +484,15 @@
                 }
                 carregarAgendaSemanal();
             } catch (err) {
-                alert("Erro ao alterar bloqueio.");
+                mostrarAlerta("Erro ao alterar bloqueio no banco de dados.", false);
             }
         }
 
         function abrirModalAgendamentoManual() {
             const hoje = new Date();
             document.getElementById("manual-data").value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+            document.getElementById("manual-cliente").value = "";
+            document.getElementById("manual-telefone").value = "";
             document.getElementById("modal-agendamento-manual").classList.add("active");
         }
 
@@ -487,7 +509,7 @@
             const horario = document.getElementById("manual-horario").value;
 
             if (!cliente || !data || !horario) {
-                alert("Preencha pelo menos o Nome, a Data e o Horário.");
+                mostrarAlerta("Preencha pelo menos o Nome, a Data e o Horário.", false);
                 return;
             }
 
@@ -506,10 +528,10 @@
                 if (error) throw error;
 
                 fecharModalAgendamentoManual();
-                alert("Agendamento avulso efetuado com sucesso!");
+                mostrarAlerta("Agendamento avulso efetuado com sucesso!", true);
                 carregarAgendaSemanal();
             } catch (err) {
-                alert("Erro ao efetuar agendamento manual: " + err.message);
+                mostrarAlerta("Erro ao efetuar agendamento manual: " + err.message, false);
             }
         }
 
@@ -560,7 +582,7 @@
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 } catch (err) {
-                                    alert("Erro ao concluir: " + err.message);
+                                    mostrarAlerta("Erro ao concluir: " + err.message, false);
                                     btnSalvarPg.textContent = "Salvar Pagamento";
                                     btnSalvarPg.disabled = false;
                                 }
@@ -599,7 +621,7 @@
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 } catch (err) {
-                                    alert("Erro do banco de dados ao cancelar: " + err.message + "\n\nLembre-se de verificar as permissões de UPDATE da sua tabela no Supabase.");
+                                    mostrarAlerta("Erro do banco de dados ao cancelar: " + err.message + "\n\nVerifique as permissões de UPDATE no Supabase.", false);
                                     renderizarBotoesPrincipais();
                                 }
                             };
