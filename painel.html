@@ -225,8 +225,9 @@
         }
 
         function fazerLogin() {
+            // CORREÇÃO: Forçar minúsculas e limpar espaços nulos em ambos os campos para evitar erros de teclado
             const usuarioInput = document.getElementById("login-usuario").value.trim().toLowerCase();
-            const senhaInput = document.getElementById("login-senha").value;
+            const senhaInput = document.getElementById("login-senha").value.trim().toLowerCase();
 
             if (!usuarioInput || !senhaInput) {
                 alert("Preencha o utilizador e a senha.");
@@ -263,7 +264,7 @@
                     carregarAgendaSemanal();
                 }
             } else {
-                alert("Utilizador ou senha incorretos!");
+                alert("Utilizador ou senha incorretos! Verifique se o teclado não inseriu espaços vazios.");
             }
         }
 
@@ -326,7 +327,6 @@
 
                 container.innerHTML = "";
 
-                // Bloqueios de almoço padrão automáticos diários por barbeiro
                 const bloqueiosAlmocoAutomaticos = {
                     "Rafael": ["13:00", "13:30"],
                     "Yann": ["12:00", "12:30", "13:00"],
@@ -382,179 +382,4 @@
                             if (dia.iso < dataHojeIso) {
                                 isRetroativo = true;
                             } else if (dia.iso === dataHojeIso) {
-                                const [hSlot, mSlot] = item.horario.split(':').map(Number);
-                                const minSlotTotal = hSlot * 60 + mSlot;
-                                if (minSlotTotal < horaAtualMinutos) {
-                                    isRetroativo = true;
-                                }
-                            }
-
-                            if (item.tipo === 'bloqueio') {
-                                itemSlot.className = "slot-item blocked";
-                                itemSlot.innerHTML = `
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-weight:bold;">${item.horario}</span>
-                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${item.horario}', true)" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 1px 2px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Desbl</button>
-                                    </div>
-                                `;
-                            } else if (item.tipo === 'agendamento') {
-                                const ag = item.dado;
-                                const isConcluido = ag.status === 'concluido';
-                                itemSlot.className = isConcluido ? "slot-item concluded" : "slot-item booked";
-                                itemSlot.onclick = () => abrirGerenciadorAgendamento(ag.id);
-                                itemSlot.innerHTML = `
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-weight:bold;">${item.horario}</span>
-                                        <span style="font-size: 0.48rem; color: ${isConcluido ? '#25D366' : '#3498db'}; font-weight: bold;">
-                                            ${isConcluido ? 'OK' : 'AG'}
-                                        </span>
-                                    </div>
-                                    <div style="font-weight: 600; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${ag.cliente}">
-                                        ${ag.cliente}
-                                    </div>
-                                `;
-                            } else if (isRetroativo) {
-                                itemSlot.className = "slot-item retroactive";
-                                itemSlot.innerHTML = `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                        <span style="color:#666;">${item.horario}</span>
-                                        <span style="font-size: 0.4rem; color: #666;">Expirado</span>
-                                    </div>
-                                `;
-                            } else {
-                                itemSlot.className = "slot-item available";
-                                itemSlot.innerHTML = `
-                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                        <span style="color:#AAA;">${item.horario}</span>
-                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${item.horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 0px 3px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Bloq</button>
-                                    </div>
-                                `;
-                            }
-                            slotsDiv.appendChild(itemSlot);
-                        });
-                    }
-                    coluna.appendChild(slotsDiv);
-                    container.appendChild(coluna);
-                });
-            } catch (err) {
-                console.error("Erro agenda:", err);
-            }
-        }
-
-        async function alternarBloqueioDia(dataIso, estaBloqueado) {
-            try {
-                if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado}%`).eq("data", dataIso).eq("horario", "TODOS");
-                } else {
-                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
-                }
-                carregarAgendaSemanal();
-            } catch (err) {
-                alert("Erro ao alterar bloqueio.");
-            }
-        }
-
-        async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
-            try {
-                if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado}%`).eq("data", dataIso).eq("horario", horario);
-                } else {
-                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
-                }
-                carregarAgendaSemanal();
-            } catch (err) {
-                alert("Erro ao alterar bloqueio.");
-            }
-        }
-
-        function abrirModalAgendamentoManual() {
-            const hoje = new Date();
-            document.getElementById("manual-data").value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-            document.getElementById("modal-agendamento-manual").classList.add("active");
-        }
-
-        function fecharModalAgendamentoManual() {
-            document.getElementById("modal-agendamento-manual").classList.remove("active");
-        }
-
-        async function salvarAgendamentoManual() {
-            const cliente = document.getElementById("manual-cliente").value.trim();
-            const telefone = document.getElementById("manual-telefone").value.trim();
-            const servico = document.getElementById("manual-servico").value.trim();
-            const preco = parseFloat(document.getElementById("manual-preco").value) || 35.00;
-            const data = document.getElementById("manual-data").value;
-            const horario = document.getElementById("manual-horario").value;
-
-            if (!cliente || !data || !horario) {
-                alert("Preencha pelo menos o Nome, a Data e o Horário.");
-                return;
-            }
-
-            try {
-                const { error } = await _supabase.from("agendamentos_barreto").insert([{
-                    barbeiro: usuarioLogado,
-                    cliente: cliente,
-                    telefone: telefone || "Balcão",
-                    servico: servico,
-                    preco_total: preco,
-                    data: data,
-                    horario: horario,
-                    status: 'ativo'
-                }]);
-
-                if (error) throw error;
-
-                fecharModalAgendamentoManual();
-                alert("Agendamento avulso efetuado com sucesso!");
-                carregarAgendaSemanal();
-            } catch (err) {
-                alert("Erro ao efetuar agendamento manual: " + err.message);
-            }
-        }
-
-        async function abrirGerenciadorAgendamento(id) {
-            try {
-                const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
-                if (!data) return;
-
-                const modal = document.getElementById("custom-action-modal");
-                const detailsBox = document.getElementById("action-modal-details");
-                const paymentBox = document.getElementById("payment-box");
-                const buttonsBox = document.getElementById("action-modal-buttons");
-
-                const preco = Number(data.preco_total || 35).toFixed(2).replace(".", ",");
-
-                detailsBox.innerHTML = `
-                    <strong>Cliente:</strong> ${data.cliente}<br>
-                    <strong>Telefone:</strong> ${data.telefone || 'Não informado'}<br>
-                    <strong>Serviço:</strong> ${data.servico}<br>
-                    <strong>Valor:</strong> R$ ${preco}<br>
-                    <strong>Horário:</strong> ${String(data.horario).substring(0,5)}
-                `;
-
-                paymentBox.style.display = "none";
-                buttonsBox.innerHTML = "";
-
-                if (data.status !== 'concluido') {
-                    const btnAtendido = document.createElement("button");
-                    btnAtendido.className = "custom-modal-btn btn-modal-atendido";
-                    btnAtendido.textContent = "Concluir e Confirmar Pgto";
-                    btnAtendido.onclick = () => {
-                        paymentBox.style.display = "block";
-                        buttonsBox.innerHTML = "";
-
-                        const btnSalvarPg = document.createElement("button");
-                        btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
-                        btnSalvarPg.textContent = "Salvar Pagamento";
-                        btnSalvarPg.onclick = async () => {
-                            try {
-                                btnSalvarPg.textContent = "Salvando...";
-                                btnSalvarPg.disabled = true;
-                                const forma = document.getElementById("select-forma-pagamento").value;
-                                await _supabase.from("agendamentos_barreto").update({ status: 'concluido', pagamentos: forma }).eq("id", id);
-                                modal.classList.remove("active");
-                                carregarAgendaSemanal();
-                            } catch (err) {
-                                alert("Erro ao concluir: " + err.message);
-                            }
-                        };
+                                const
