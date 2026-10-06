@@ -51,6 +51,7 @@
         .slot-item.concluded { border-left-color: #25D366; background: #13271C; }
         .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
         .slot-item.available { border-left-color: #FF6600; background: #1A1A1A; }
+        .slot-item.retroactive { border-left-color: #333; background: #161616; opacity: 0.4; cursor: not-allowed; }
 
         .datetime-inputs { display: flex; flex-direction: column; gap: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 4px; }
@@ -198,9 +199,15 @@
                 return;
             }
 
-            // Aceita os usuários padrão com a senha barreto123 ou a senha específica de cada um
-            const usuariosValidos = ["rafael", "matheus", "yann", "admin"];
-            if (usuariosValidos.includes(usuarioInput) && senhaInput === "barreto123") {
+            // Senhas específicas do tipo nome + 123 (ex: rafael123)
+            const senhasPermitidas = {
+                "rafael": "rafael123",
+                "matheus": "matheus123",
+                "yann": "yann123",
+                "admin": "admin123"
+            };
+
+            if (senhasPermitidas[usuarioInput] && senhaInput === senhasPermitidas[usuarioInput]) {
                 document.getElementById("login-usuario").value = "";
                 document.getElementById("login-senha").value = "";
 
@@ -273,6 +280,10 @@
             const diasSemana = obterDiasDaSemana(offsetSemana);
             lblPeriodo.textContent = `${diasSemana[0].label} até ${diasSemana[5].label}`;
 
+            const agora = new Date();
+            const dataHojeIso = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+            const horaAtualMinutos = agora.getHours() * 60 + agora.getMinutes();
+
             try {
                 const primeiraData = diasSemana[0].iso;
                 const ultimaData = diasSemana[5].iso;
@@ -325,6 +336,18 @@
                         itensRenderizacao.forEach(item => {
                             const itemSlot = document.createElement("div");
 
+                            // Validação de horário retroativo
+                            let isRetroativo = false;
+                            if (dia.iso < dataHojeIso) {
+                                isRetroativo = true;
+                            } else if (dia.iso === dataHojeIso) {
+                                const [hSlot, mSlot] = item.horario.split(':').map(Number);
+                                const minSlotTotal = hSlot * 60 + mSlot;
+                                if (minSlotTotal < horaAtualMinutos) {
+                                    isRetroativo = true;
+                                }
+                            }
+
                             if (item.tipo === 'bloqueio') {
                                 itemSlot.className = "slot-item blocked";
                                 itemSlot.innerHTML = `
@@ -347,6 +370,14 @@
                                     </div>
                                     <div style="font-weight: 600; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${ag.cliente}">
                                         ${ag.cliente}
+                                    </div>
+                                `;
+                            } else if (isRetroativo) {
+                                itemSlot.className = "slot-item retroactive";
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <span style="color:#666;">${item.horario}</span>
+                                        <span style="font-size: 0.4rem; color: #666;">Expirado</span>
                                     </div>
                                 `;
                             } else {
