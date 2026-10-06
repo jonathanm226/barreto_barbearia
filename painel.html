@@ -18,11 +18,15 @@
         html, body { height: 100vh; background: #121212; color: #FFF; margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; }
         .app-container { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
         
-        .barber-header { text-align: center; padding: 6px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .barber-header { text-align: center; padding: 6px 10px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: center; gap: 10px; flex-shrink: 0; }
         .brand-logo-container { width: 35px; height: 35px; border-radius: 50%; overflow: hidden; border: 2px solid #FF6600; flex-shrink: 0; }
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
         .barber-header h1 { font-size: 0.9rem; color: #FFF; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
         
+        /* Controle de visibilidade das seções */
+        .section-view { display: none; width: 100%; height: 100%; flex-direction: column; overflow: hidden; }
+        .section-view.active { display: flex; }
+
         /* Modais */
         .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s; }
         .custom-modal-overlay.active { opacity: 1; visibility: visible; }
@@ -58,9 +62,9 @@
         }
         .day-header { font-size: 0.58rem; color: #FFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
         
-        /* Slots de Atendimento Compactos para caber perfeitamente na tela */
+        /* Slots de Atendimento Compactos e Organizados */
         .slots-wrapper { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; }
-        .slot-item { background: #242424; padding: 3px 2px; border-radius: 3px; font-size: 0.55rem; border: 1px solid #333; border-left: 2px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+        .slot-item { background: #242424; padding: 4px 3px; border-radius: 3px; font-size: 0.55rem; border: 1px solid #333; border-left: 2px solid #555; color: #FFF; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
         .slot-item.booked { border-left-color: #3498db; }
         .slot-item.booked-done { border-left-color: #25D366; background: #152219; }
         .slot-item.blocked { border-left-color: #e74c3c; background: #2C1A1A; }
@@ -79,8 +83,8 @@
         </header>
 
         <!-- Sessão de Login -->
-        <section id="login-section" class="section" style="max-width: 380px; margin: auto; padding: 0 15px; width: 100%;">
-            <h2 style="border-left: 3px solid #FF6600; padding-left: 10px; font-size: 1rem;">ACESSO AO PAINEL</h2>
+        <section id="login-section" class="section-view active" style="justify-content: center; padding: 0 15px; max-width: 380px; margin: auto;">
+            <h2 style="border-left: 3px solid #FF6600; padding-left: 10px; font-size: 1rem; margin-bottom: 12px;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
                 <label style="font-size: 0.75rem; color: #aaa; display: block; margin-bottom: 3px;">Utilizador (Rafael, Matheus, Yann ou Admin):</label>
                 <input type="text" id="login-usuario" placeholder="Utilizador" style="width:100%; padding:10px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:8px; box-sizing: border-box; font-size: 0.9rem;">
@@ -92,8 +96,8 @@
             </div>
         </section>
 
-        <!-- Dashboard Barbeiro (Grelha da Semana Inteira Lado a Lado) -->
-        <section id="dashboard-barbeiro" class="section" style="display: none; height: 100%; display: flex; flex-direction: column; overflow: hidden; padding: 2px 4px;">
+        <!-- Dashboard Barbeiro -->
+        <section id="dashboard-barbeiro" class="section-view" style="padding: 2px 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; padding: 0 4px; flex-wrap: wrap; gap: 4px;">
                 <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none; font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
                 <div style="display: flex; gap: 3px;">
@@ -114,8 +118,8 @@
         </section>
 
         <!-- Dashboard Admin Geral -->
-        <section id="dashboard-admin" class="section" style="display: none; padding: 0 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <section id="dashboard-admin" class="section-view" style="padding: 0 10px; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; padding-top: 10px;">
                 <h2 style="font-size: 1rem; margin:0;">Painel Administrativo</h2>
                 <div style="display: flex; gap: 6px;">
                     <button onclick="carregarResumoAdmin()" class="action-btn" style="background: #FF6600; color: #FFF; padding: 6px 10px;"><i class="fa-solid fa-rotate"></i></button>
@@ -141,7 +145,7 @@
                 </div>
             </div>
 
-            <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            <div id="agendamentos-list-admin" style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 15px;"></div>
         </section>
 
     </div>
@@ -198,8 +202,14 @@
         }
 
         document.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && document.getElementById("login-section").style.display !== "none") fazerLogin();
+            const loginSection = document.getElementById("login-section");
+            if (e.key === "Enter" && loginSection.classList.contains("active")) fazerLogin();
         });
+
+        function alternarTela(idTela) {
+            document.querySelectorAll('.section-view').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(idTela).classList.add('active');
+        }
 
         async function fazerLogin() {
             const user = document.getElementById("login-usuario").value.trim().toLowerCase();
@@ -234,16 +244,12 @@
 
                 if (papel === "admin") {
                     usuarioLogado = "Admin";
-                    document.getElementById("login-section").style.display = "none";
-                    document.getElementById("dashboard-barbeiro").style.display = "none";
-                    document.getElementById("dashboard-admin").style.display = "block";
+                    alternarTela("dashboard-admin");
                     document.getElementById("filter-date-admin").value = hojeISO();
                     carregarResumoAdmin();
                 } else {
                     usuarioLogado = nomeReal;
-                    document.getElementById("login-section").style.display = "none";
-                    document.getElementById("dashboard-admin").style.display = "none";
-                    document.getElementById("dashboard-barbeiro").style.display = "flex";
+                    alternarTela("dashboard-barbeiro");
                     document.getElementById("titulo-agenda-barbeiro").innerHTML = `<i class="fa-solid fa-calendar-days"></i> Agenda: ${usuarioLogado}`;
                     diaReferencia = new Date();
                     carregarAgendaSemanal();
@@ -259,10 +265,8 @@
 
         function fazerLogout() {
             _supabase.auth.signOut();
-            document.getElementById("dashboard-barbeiro").style.display = "none";
-            document.getElementById("dashboard-admin").style.display = "none";
-            document.getElementById("login-section").style.display = "block";
             document.getElementById("login-senha").value = "";
+            alternarTela("login-section");
         }
 
         function mudarSemana(direcao) {
@@ -363,10 +367,10 @@
                                 item.className = isDone ? "slot-item booked-done" : "slot-item booked";
                                 item.innerHTML = `
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                                        <strong>${horario}</strong>
-                                        <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF; font-size:0.45rem; padding: 0px 2px;"><i class="fa-solid fa-gear"></i></button>
+                                        <strong style="font-size: 0.58rem;">${horario}</strong>
+                                        <button onclick="abrirAcao('${ag.id}')" class="action-btn" style="background:${isDone ? '#27ae60' : '#3498db'}; color:#FFF; font-size:0.45rem; padding: 1px 3px;"><i class="fa-solid fa-gear"></i></button>
                                     </div>
-                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#DDD;" title="${ag.cliente}">
+                                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color:#FFD0B0; font-weight: 500;" title="${ag.cliente}">
                                         ${ag.cliente}
                                     </div>
                                 `;
