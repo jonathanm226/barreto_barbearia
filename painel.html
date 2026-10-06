@@ -38,7 +38,7 @@
             width: 100%;
         }
         .day-column {
-            min-width: 250px; 
+            min-width: 260px; 
             background: #1A1A1A;
             border: 1px solid #333;
             border-radius: 8px;
@@ -72,16 +72,16 @@
         </header>
 
         <!-- Sessão de Login -->
-        <section id="login-section" class="section" style="max-width: 500px; margin: 0 auto;">
+        <section id="login-section" class="section" style="max-width: 450px; margin: 0 auto;">
             <h2 style="border-left: 3px solid #FF6600; padding-left: 10px;">ACESSO AO PAINEL</h2>
             <div class="datetime-inputs">
-                <input type="text" id="login-usuario" placeholder="Login (Matheus, Yann, Rafael ou admin)" style="width:100%; padding:15px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:10px;">
+                <input type="text" id="login-usuario" placeholder="Login (Matheus, Yann, Rafael...)" style="width:100%; padding:15px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:10px;">
                 <input type="password" id="login-senha" placeholder="Senha" style="width:100%; padding:15px; background:#1A1A1A; border:1px solid #333; color:#FFF; border-radius:6px; margin-bottom:10px;">
-                <button onclick="fazerLogin()" style="width:100%; padding:15px; background:#FF6600; color:#FFF; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 1.1rem;">ENTRAR</button>
+                <button id="btn-login" onclick="fazerLogin()" style="width:100%; padding:15px; background:#FF6600; color:#FFF; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size: 1.1rem; text-transform: uppercase;">Entrar</button>
             </div>
         </section>
 
-        <!-- Dashboard Barbeiro (Com Grade Horizontal) -->
+        <!-- Dashboard Barbeiro (Grade Horizontal) -->
         <section id="dashboard-barbeiro" class="section" style="display: none; padding: 0 15px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                 <h2 id="titulo-agenda-barbeiro" style="margin:0; border:none;">Minha Agenda</h2>
@@ -94,34 +94,9 @@
             <!-- Navegação da Semana -->
             <div style="display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 15px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px;">
                 <button onclick="mudarSemana(-1)" style="padding: 10px 15px; background: #242424; border: 1px solid #444; color: #FFF; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-chevron-left"></i> Semana Anterior</button>
-                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 1rem;"></span>
-                <button onclick="mudarSemana(1)" style="padding: 10px 15px; background: #242424; border: 1px solid #444; color: #FFF; border-radius: 6px; cursor: pointer;">Próxima Semana <i class="fa-solid fa-chevron-right"></i></button>
+                <span id="label-periodo-semana" style="font-weight: bold; color: #FFF; font-size: 1rem; text-align: center;"></span>
+                <button onclick="mudarSemana(1)" style="padding: 10px 15px; background: #242424; border: 1px solid #444; color: #FFF; border-radius: 6px; cursor: pointer;">Próxima <i class="fa-solid fa-chevron-right"></i></button>
             </div>
 
-            <!-- GRADE HORIZONTAL -->
-            <div id="grade-semanal-container" class="week-horizontal-container"></div>
-        </section>
-
-        <!-- Dashboard Admin Geral -->
-        <section id="dashboard-admin" class="section" style="display: none; padding: 0 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h2>Painel Administrativo (Geral)</h2>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="carregarResumoAdmin()" style="padding: 10px 15px; background: #FF6600; color: #FFF; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;"><i class="fa-solid fa-rotate"></i> Atualizar</button>
-                    <button onclick="fazerLogout()" style="padding: 10px 15px; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; border-radius: 6px; font-weight: bold; cursor: pointer;">Sair</button>
-                </div>
-            </div>
-
-            <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 180px;">
-                        <label style="font-size: 0.85rem; color: #888; display: block; margin-bottom: 5px;">Data Específica:</label>
-                        <input type="date" id="filter-date-admin" onchange="carregarResumoAdmin()" style="width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; outline: none;">
-                    </div>
-                    <div style="flex: 1; min-width: 180px;">
-                        <label style="font-size: 0.85rem; color: #888; display: block; margin-bottom: 5px;">Filtrar Barbeiro:</label>
-                        <select id="admin-select-barbeiro" onchange="carregarResumoAdmin()" style="width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; outline: none;">
-                            <option value="TODOS">Todos os Barbeiros</option>
-                            <option value="Matheus">Matheus</option>
-                            <option value="Yann">Yann</option>
-                            <option
+            <!-- CONTAINER DA GRADE -->
+            <div id="
