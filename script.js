@@ -18,6 +18,37 @@ let selectedBarber = "Matheus";
 let selectedServices = [];
 let enviandoAgendamento = false;
 
+// Função de Alerta Customizado para substituir o alert nativo
+function mostrarAlertaCliente(mensagem, sucesso = true) {
+    let modalAlerta = document.getElementById("modal-alerta-cliente");
+    if (!modalAlerta) {
+        const div = document.createElement("div");
+        div.id = "modal-alerta-cliente";
+        div.className = "custom-modal-overlay";
+        div.style.zIndex = "10000";
+        div.innerHTML = `
+            <div class="custom-modal" style="max-width: 320px;">
+                <h3 id="alerta-cliente-titulo" style="margin-bottom: 12px; font-size: 1.1rem;">Aviso</h3>
+                <p id="alerta-cliente-mensagem" style="color: #FFF; font-size: 0.95rem; margin-bottom: 20px; text-align: center;"></p>
+                <button class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlertaCliente()">OK</button>
+            </div>
+        `;
+        document.body.appendChild(div);
+        modalAlerta = div;
+    }
+
+    const tituloEl = document.getElementById("alerta-cliente-titulo");
+    tituloEl.textContent = sucesso ? "Sucesso!" : "Aviso!";
+    tituloEl.style.color = sucesso ? "#25D366" : "#FF6600";
+    document.getElementById("alerta-cliente-mensagem").textContent = mensagem;
+    modalAlerta.classList.add("active");
+}
+
+function fecharAlertaCliente() {
+    const modalAlerta = document.getElementById("modal-alerta-cliente");
+    if (modalAlerta) modalAlerta.classList.remove("active");
+}
+
 function isoLocal(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -147,7 +178,6 @@ async function checkAvailableTimes() {
             for (let k = 0; k < numSlots; k++) ocupados.add(inicio + (30 * k));
         });
 
-        // BLOQUEIOS AUTOMÁTICOS DIÁRIOS POR BARBEIRO (Almoço / Pausa)
         const bloqueiosAlmocoAutomaticos = {
             "Rafael": ["13:00", "13:30"],
             "Yann": ["12:00", "12:30", "13:00"],
@@ -194,9 +224,18 @@ function abrirModalConfirmacao() {
     const date = document.getElementById("date")?.value;
     const time = document.getElementById("time")?.value;
 
-    if (!name || !phone || phone.replace(/\D/g,"").length < 10) return alert("Preencha o seu nome e um WhatsApp válido.");
-    if (selectedServices.length === 0) return alert("Selecione um serviço.");
-    if (!time || document.getElementById("time").selectedOptions[0]?.disabled) return alert("Selecione um horário válido.");
+    if (!name || !phone || phone.replace(/\D/g,"").length < 10) {
+        mostrarAlertaCliente("Preencha o seu nome e um WhatsApp válido.", false);
+        return;
+    }
+    if (selectedServices.length === 0) {
+        mostrarAlertaCliente("Selecione um serviço.", false);
+        return;
+    }
+    if (!time || document.getElementById("time").selectedOptions[0]?.disabled) {
+        mostrarAlertaCliente("Selecione um horário válido.", false);
+        return;
+    }
 
     const diaSem = diaDaSemana(date);
     const minTime = toMin(time);
@@ -256,7 +295,7 @@ async function confirmarEEnviar() {
         window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 
     } catch (err) {
-        alert("Erro ao gravar na base de dados: " + err.message);
+        mostrarAlertaCliente("Erro ao gravar na base de dados: " + err.message, false);
         enviandoAgendamento = false; btn.disabled = false; btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
     }
 }
