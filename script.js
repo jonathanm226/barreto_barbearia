@@ -4,14 +4,8 @@ const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// === CONFIGURAÇÕES DO NEGÓCIO ===
 const DIAS_ANTECEDENCIA_MAX = 21;
-
-const telefonesBarbeiros = {
-    "Matheus": "5531997193193",
-    "Yann": "5531993789798",
-    "Rafael": "5531975470879"
-};
+const telefonesBarbeiros = { "Matheus": "5531997193193", "Yann": "5531993789798", "Rafael": "5531975470879" };
 
 const duracoesServicos = {
     "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
@@ -22,32 +16,20 @@ const duracoesServicos = {
 
 let selectedBarber = "Matheus";
 let selectedServices = [];
-let requisicaoHorariosAtual = 0;
 let enviandoAgendamento = false;
 
-// === FUNÇÕES AUXILIARES ===
 function isoLocal(d) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const dia = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${dia}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function toMin(hhmm) {
+    if(!hhmm) return 0;
     const [h, m] = String(hhmm).split(":").map(Number);
     return h * 60 + m;
 }
 
 function fromMin(min) {
     return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
-}
-
-function formatarBRL(valor) {
-    return "R$ " + Number(valor).toFixed(2).replace(".", ",");
-}
-
-function escapeHtml(valor) {
-    return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function calcularTotal() {
@@ -59,7 +41,6 @@ function diaDaSemana(dateString) {
     return new Date(y, m - 1, d).getDay();
 }
 
-// === INICIALIZAÇÃO ===
 document.addEventListener("DOMContentLoaded", () => {
     const dateInput = document.getElementById("date");
     if (dateInput) {
@@ -88,32 +69,23 @@ function toggleService(element, serviceName, price) {
     if (index > -1) {
         selectedServices.splice(index, 1);
         element.classList.remove("active");
-        if (icon) {
-            icon.classList.remove("fa-solid", "fa-square-check");
-            icon.classList.add("fa-regular", "fa-square");
-        }
+        if (icon) { icon.classList.remove("fa-solid", "fa-square-check"); icon.classList.add("fa-regular", "fa-square"); }
     } else {
         selectedServices.push({ name: serviceName, price: price, duration: duration });
         element.classList.add("active");
-        if (icon) {
-            icon.classList.remove("fa-regular", "fa-square");
-            icon.classList.add("fa-solid", "fa-square-check");
-        }
+        if (icon) { icon.classList.remove("fa-regular", "fa-square"); icon.classList.add("fa-solid", "fa-square-check"); }
     }
     checkAvailableTimes();
 }
 
-// === HORÁRIOS ===
 function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
     const diaSem = diaDaSemana(dateString); 
     if (diaSem === 0) return [];
-
     if (barbeiro === "Matheus" && diaSem === 3) return [];
     if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return [];
 
     let inicioExpediente = 600, fimExpedienteLimite = 1320, inicioEmergencia = 1200;
-
     if (diaSem >= 4 && diaSem <= 5) { inicioExpediente = 540; inicioEmergencia = 1260; } 
     else if (diaSem === 6) { inicioExpediente = 540; inicioEmergencia = 1080; fimExpedienteLimite = 1320; }
 
@@ -134,60 +106,39 @@ function mostrarMensagemNoSelect(timeSelect, texto) {
     timeSelect.appendChild(option);
 }
 
-// === VALIDAÇÃO DE HORÁRIOS DIRETA DA TABELA ===
 async function checkAvailableTimes() {
-    const minhaReq = ++requisicaoHorariosAtual;
     const dateEl = document.getElementById("date");
     const timeSel = document.getElementById("time");
 
-    if (!dateEl || !timeSel) return;
+    if (!dateEl || !timeSel || !dateEl.value) return;
     const selDate = dateEl.value;
-    if (!selDate) return;
+    const previousSelection = timeSel.value;
 
     const allSlots = getTimesForDate(selDate, selectedBarber);
-    if (allSlots.length === 0) {
-        mostrarMensagemNoSelect(timeSel, "Barbeiro não atende neste dia");
-        return;
-    }
+    if (allSlots.length === 0) return mostrarMensagemNoSelect(timeSel, "Barbeiro não atende neste dia");
 
     const durationMin = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
     const slotsNeeded = Math.ceil(durationMin / 30);
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
-        // Consultas Diretas para evitar falhas de RPC
-        const { data: agendamentos, error: errAg } = await _supabase
-            .from("agendamentos_barreto")
-            .select("horario, servico")
-            .eq("barbeiro", selectedBarber)
-            .eq("data", selDate)
-            .neq("status", "cancelado");
+        const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("horario, servico").eq("barbeiro", selectedBarber).eq("data", selDate).neq("status", "cancelado");
+        const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("horario").eq("barbeiro", selectedBarber).eq("data", selDate);
 
-        const { data: bloqueios, error: errBlq } = await _supabase
-            .from("bloqueios_barreto")
-            .select("horario")
-            .eq("barbeiro", selectedBarber)
-            .eq("data", selDate);
-
-        if (errAg || errBlq) throw new Error("Erro no Supabase");
-        if (minhaReq !== requisicaoHorariosAtual) return;
-
-        if ((bloqueios || []).some(b => b.horario === "TODOS")) {
-            mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
-            return;
-        }
+        if ((bloqueios || []).some(b => b.horario === "TODOS")) return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
 
         const ocupados = new Set();
         (agendamentos || []).forEach(a => {
             if (!a.horario) return;
-            const inicio = toMin(a.horario);
+            const horaFormatada = a.horario.substring(0, 5); // CORREÇÃO DE FORMATAÇÃO HH:MM:SS para HH:MM APLICADA
+            const inicio = toMin(horaFormatada);
             let dur = 0;
             if (a.servico) a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
             const numSlots = Math.max(1, Math.ceil(dur / 30));
-            for (let k = 0; k < numSlots; k++) ocupados.add(inicio + 30 * k);
+            for (let k = 0; k < numSlots; k++) ocupados.add(inicio + (30 * k));
         });
 
-        const bloqueados = new Set((bloqueios || []).map(b => toMin(b.horario)));
+        const bloqueados = new Set((bloqueios || []).map(b => toMin(b.horario.substring(0, 5))));
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
 
         timeSel.innerHTML = "";
@@ -198,7 +149,7 @@ async function checkAvailableTimes() {
             
             let conflito = false;
             for (let i = 0; i < slotsNeeded; i++) {
-                const s = inicio + 30 * i;
+                const s = inicio + (30 * i);
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { conflito = true; break; }
             }
 
@@ -206,22 +157,25 @@ async function checkAvailableTimes() {
             timeSel.appendChild(opt);
         });
 
-        const primeiroLivre = Array.from(timeSel.options).find(o => !o.disabled);
-        if (primeiroLivre) timeSel.value = primeiroLivre.value;
+        const anteriorDisp = Array.from(timeSel.options).find(o => o.value === previousSelection && !o.disabled);
+        if (anteriorDisp) timeSel.value = previousSelection;
+        else {
+            const primeiroLivre = Array.from(timeSel.options).find(o => !o.disabled);
+            if (primeiroLivre) timeSel.value = primeiroLivre.value;
+        }
 
     } catch (err) {
         mostrarMensagemNoSelect(timeSel, "Erro ao carregar horários");
     }
 }
 
-// === CONFIRMAÇÃO ===
 function abrirModalConfirmacao() {
     const name = document.getElementById("client-name")?.value.trim();
     const phone = document.getElementById("client-phone")?.value.trim();
     const date = document.getElementById("date")?.value;
     const time = document.getElementById("time")?.value;
 
-    if (!name || !phone || phone.replace(/\D/g,"").length < 10) return alert("Preencha nome e WhatsApp válido.");
+    if (!name || !phone || phone.replace(/\D/g,"").length < 10) return alert("Preencha o seu nome e um WhatsApp válido.");
     if (selectedServices.length === 0) return alert("Selecione um serviço.");
     if (!time || document.getElementById("time").selectedOptions[0]?.disabled) return alert("Selecione um horário válido.");
 
@@ -233,11 +187,11 @@ function abrirModalConfirmacao() {
     const servNomes = ehEmergencia ? ["Corte Emergencial"] : selectedServices.map(s => s.name);
 
     document.getElementById("resumo-agendamento").innerHTML = `
-        <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${escapeHtml(selectedBarber)}</div>
+        <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
         <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
-        <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${escapeHtml(servNomes.join(", "))}</div>
+        <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servNomes.join(", ")}</div>
         <div style="margin-top: 12px; border-top: 1px solid #333333; padding-top: 8px; font-size: 1.1rem;">
-            <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">${formatarBRL(preco)}</span>
+            <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">R$ ${preco.toFixed(2).replace(".", ",")}</span>
         </div>
     `;
     document.getElementById("modal-confirmacao").style.display = "flex";
@@ -283,13 +237,12 @@ async function confirmarEEnviar() {
         window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 
     } catch (err) {
-        alert("Erro ao agendar. Tente novamente.");
+        alert("Erro ao agendar. Verifique a internet e tente novamente.");
         enviandoAgendamento = false; btn.disabled = false; btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
     }
 }
 
 async function buscarClientePorTelefone() {
-    // Mantido da versão original para não perder funcionalidade
     const tel = document.getElementById("client-phone").value.replace(/\D/g, "");
     if (tel.length < 10) return;
     const { data } = await _supabase.from("agendamentos_barreto").select("cliente").eq("telefone", tel).limit(1).maybeSingle();
