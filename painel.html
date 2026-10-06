@@ -18,7 +18,6 @@
         body { background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; }
         .app-container { width: 100%; max-width: 100%; background-color: #121212; padding: 8px; padding-bottom: 90px; }
         
-        /* Cabeçalho com Logo Bem Destacada */
         .barber-header { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px; text-align: center; background: #181818; border-radius: 6px; padding-top: 8px; }
         .brand-logo-container { width: 65px; height: 65px; background: #1A1A1A; border: 2px solid #FF6600; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px auto; overflow: hidden; box-shadow: 0 0 12px rgba(255, 102, 0, 0.5); }
         .brand-logo-container img { width: 100%; height: 100%; object-fit: cover; }
@@ -40,7 +39,6 @@
         .btn-modal-atendido { background: #25D366; color: #FFFFFF; }
         .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
 
-        /* Grade da Semana Alinhada */
         .week-horizontal-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin-top: 6px; width: 100%; overflow-x: hidden; }
         .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 4px; padding: 2px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .day-header { font-size: 0.58rem; color: #FFFFFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
@@ -98,6 +96,9 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
                 <h2 id="titulo-agenda-barbeiro" style="font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
                 <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+                    <button onclick="abrirModalAgendamentoManual()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #25D366; color: #FFF;">
+                        <i class="fa-solid fa-plus"></i> Novo Agendamento
+                    </button>
                     <button onclick="carregarAgendaSemanal()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
                     </button>
@@ -165,6 +166,37 @@
         </div>
     </div>
 
+    <!-- Modal de Agendamento Avulso pelo Barbeiro -->
+    <div id="modal-agendamento-manual" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <h3>Agendamento Avulso (Barbeiro)</h3>
+            <div style="text-align: left;">
+                <label style="font-size: 0.75rem; color: #aaa;">Nome do Cliente (ex: Idoso / Balcão):</label>
+                <input type="text" id="manual-cliente" placeholder="Nome do Cliente">
+
+                <label style="font-size: 0.75rem; color: #aaa;">Telefone / WhatsApp:</label>
+                <input type="text" id="manual-telefone" placeholder="00000000000">
+
+                <label style="font-size: 0.75rem; color: #aaa;">Serviço:</label>
+                <input type="text" id="manual-servico" value="Corte" placeholder="Serviço prestado">
+
+                <label style="font-size: 0.75rem; color: #aaa;">Preço (R$):</label>
+                <input type="number" id="manual-preco" value="35.00" placeholder="35.00">
+
+                <label style="font-size: 0.75rem; color: #aaa;">Data:</label>
+                <input type="date" id="manual-data">
+
+                <label style="font-size: 0.75rem; color: #aaa;">Horário:</label>
+                <input type="time" id="manual-horario" value="10:00">
+            </div>
+
+            <div class="custom-modal-buttons" style="margin-top: 10px;">
+                <button class="custom-modal-btn btn-modal-confirmar" onclick="salvarAgendamentoManual()">Salvar Agendamento</button>
+                <button class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalAgendamentoManual()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
@@ -199,7 +231,6 @@
                 return;
             }
 
-            // Senhas específicas do tipo nome + 123 (ex: rafael123)
             const senhasPermitidas = {
                 "rafael": "rafael123",
                 "matheus": "matheus123",
@@ -293,6 +324,14 @@
 
                 container.innerHTML = "";
 
+                // Bloqueios de almoço padrão automáticos diários por barbeiro
+                const bloqueiosAlmocoAutomaticos = {
+                    "Rafael": ["13:00", "13:30"],
+                    "Yann": ["12:00", "12:30", "13:00"],
+                    "Matheus": ["13:30", "14:00", "14:30"]
+                };
+                const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
+
                 diasSemana.forEach(dia => {
                     const coluna = document.createElement("div");
                     coluna.className = "day-column";
@@ -323,11 +362,12 @@
                         horariosDia.forEach(h => {
                             let ag = agendamentosDia.find(a => String(a.horario).substring(0, 5) === h);
                             let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
+                            let ehAlmocoAutomatico = almocoPadrao.includes(h) && !blq;
 
                             if (ag) {
                                 itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
-                            } else if (blq) {
-                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq });
+                            } else if (blq || ehAlmocoAutomatico) {
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: ehAlmocoAutomatico });
                             } else {
                                 itensRenderizacao.push({ tipo: 'vazio', horario: h });
                             }
@@ -336,7 +376,6 @@
                         itensRenderizacao.forEach(item => {
                             const itemSlot = document.createElement("div");
 
-                            // Validação de horário retroativo
                             let isRetroativo = false;
                             if (dia.iso < dataHojeIso) {
                                 isRetroativo = true;
@@ -423,6 +462,51 @@
                 carregarAgendaSemanal();
             } catch (err) {
                 alert("Erro ao alterar bloqueio.");
+            }
+        }
+
+        function abrirModalAgendamentoManual() {
+            const hoje = new Date();
+            document.getElementById("manual-data").value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+            document.getElementById("modal-agendamento-manual").classList.add("active");
+        }
+
+        function fecharModalAgendamentoManual() {
+            document.getElementById("modal-agendamento-manual").classList.remove("active");
+        }
+
+        async function salvarAgendamentoManual() {
+            const cliente = document.getElementById("manual-cliente").value.trim();
+            const telefone = document.getElementById("manual-telefone").value.trim();
+            const servico = document.getElementById("manual-servico").value.trim();
+            const preco = parseFloat(document.getElementById("manual-preco").value) || 35.00;
+            const data = document.getElementById("manual-data").value;
+            const horario = document.getElementById("manual-horario").value;
+
+            if (!cliente || !data || !horario) {
+                alert("Preencha pelo menos o Nome, a Data e o Horário.");
+                return;
+            }
+
+            try {
+                const { error } = await _supabase.from("agendamentos_barreto").insert([{
+                    barbeiro: usuarioLogado,
+                    cliente: cliente,
+                    telefone: telefone || "Balcão",
+                    servico: servico,
+                    preco_total: preco,
+                    data: data,
+                    horario: horario,
+                    status: 'ativo'
+                }]);
+
+                if (error) throw error;
+
+                fecharModalAgendamentoManual();
+                alert("Agendamento avulso efetuado com sucesso!");
+                carregarAgendaSemanal();
+            } catch (err) {
+                alert("Erro ao efetuar agendamento manual: " + err.message);
             }
         }
 
