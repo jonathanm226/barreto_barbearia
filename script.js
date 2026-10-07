@@ -29,7 +29,7 @@ function mostrarAlertaCliente(mensagem, sucesso = true) {
             <div class="custom-modal" style="max-width: 320px;">
                 <h3 id="alerta-cliente-titulo" style="margin-bottom: 12px; font-size: 1.1rem;">Aviso</h3>
                 <p id="alerta-cliente-mensagem" style="color: #FFF; font-size: 0.95rem; margin-bottom: 20px; text-align: center;"></p>
-                <button class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlertaCliente()">OK</button>
+                <button type="button" class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlertaCliente()">OK</button>
             </div>
         `;
         document.body.appendChild(div);
@@ -82,6 +82,18 @@ document.addEventListener("DOMContentLoaded", () => {
         dateInput.value = isoLocal(hoje);
     }
     checkAvailableTimes();
+
+    // Novo bloqueio visual (Permite mostrar no iOS sem sumir, mas emite aviso ao clicar)
+    const timeSelect = document.getElementById("time");
+    if (timeSelect) {
+        timeSelect.addEventListener("change", function(e) {
+            const selOpt = this.options[this.selectedIndex];
+            if (selOpt && selOpt.dataset.ocupado === "true") {
+                mostrarAlertaCliente("Este horário já está ocupado ou indisponível. Por favor, escolha um horário livre.", false);
+                this.value = ""; 
+            }
+        });
+    }
 });
 
 function selectBarber(element, barberName) {
@@ -201,15 +213,24 @@ async function checkAvailableTimes() {
         const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
 
         timeSel.innerHTML = "";
+        
+        // Placeholder padrao
+        const optDefault = document.createElement("option");
+        optDefault.value = ""; 
+        optDefault.textContent = "Selecione um horário";
+        optDefault.disabled = true;
+        timeSel.appendChild(optDefault);
+
         allSlots.forEach(slot => {
             const opt = document.createElement("option");
             opt.value = slot.valor; opt.textContent = slot.texto;
             const inicio = toMin(slot.valor);
             
             let conflito = false;
+            let expirado = false;
 
             if (selDate === hojeIso && inicio < minutosAtuais) {
-                conflito = true;
+                expirado = true;
                 opt.textContent = `${slot.valor} - (Expirado)`;
             }
 
@@ -218,19 +239,21 @@ async function checkAvailableTimes() {
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { conflito = true; break; }
             }
 
-            if (conflito && !opt.disabled) { 
-                if (!opt.textContent.includes("Expirado")) opt.textContent = `${slot.valor} - (Indisponível)`; 
-                opt.disabled = true; 
+            // Não usa opt.disabled = true para evitar bugs nativos do iOS (Ocultamento de Options)
+            if (conflito || expirado) { 
+                if (conflito && !expirado) opt.textContent = `${slot.valor} - (Ocupado)`; 
+                opt.dataset.ocupado = "true"; 
+            } else {
+                opt.dataset.ocupado = "false";
             }
             timeSel.appendChild(opt);
         });
 
-        const anteriorDisp = Array.from(timeSel.options).find(o => o.value === previousSelection && !o.disabled);
-        if (anteriorDisp) timeSel.value = previousSelection;
-        else {
-            const primeiroLivre = Array.from(timeSel.options).find(o => !o.disabled);
-            if (primeiroLivre) timeSel.value = primeiroLivre.value;
-            else mostrarMensagemNoSelect(timeSel, "Sem horários disponíveis");
+        const anteriorDisp = Array.from(timeSel.options).find(o => o.value === previousSelection && o.dataset.ocupado !== "true" && o.value !== "");
+        if (anteriorDisp) {
+            timeSel.value = previousSelection;
+        } else {
+            timeSel.value = ""; // Fica no placeholder
         }
 
     } catch (err) {
@@ -242,7 +265,8 @@ function abrirModalConfirmacao() {
     const name = document.getElementById("client-name")?.value.trim();
     const phone = document.getElementById("client-phone")?.value.trim();
     const date = document.getElementById("date")?.value;
-    const time = document.getElementById("time")?.value;
+    const timeSelect = document.getElementById("time");
+    const time = timeSelect?.value;
 
     if (!name || !phone || phone.replace(/\D/g,"").length < 10) {
         mostrarAlertaCliente("Preencha o seu nome e um WhatsApp válido.", false);
@@ -252,8 +276,11 @@ function abrirModalConfirmacao() {
         mostrarAlertaCliente("Selecione um serviço.", false);
         return;
     }
-    if (!time || document.getElementById("time").selectedOptions[0]?.disabled) {
-        mostrarAlertaCliente("Selecione um horário válido.", false);
+    
+    // Validação estrita do dataset Ocupado
+    const selectedOpt = timeSelect.options[timeSelect.selectedIndex];
+    if (!time || !selectedOpt || selectedOpt.dataset.ocupado === "true") {
+        mostrarAlertaCliente("Por favor, selecione um horário válido e livre.", false);
         return;
     }
 
