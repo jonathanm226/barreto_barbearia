@@ -71,7 +71,7 @@
         .btn-acao { width: 100%; padding: 10px; background-color: #FF6600; color: #FFFFFF; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-acao:hover { background-color: #e05b00; }
 
-        /* NOVO ESTILO: Seleção de Serviços com Cards (Pills) */
+        /* Estilo moderno para a seleção de serviços em cards (Pills) */
         .servicos-selector-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -117,7 +117,7 @@
             font-size: 0.7rem;
             color: #FF6600;
             font-weight: bold;
-            padding-left: 18px; /* Alinha com o texto pulando o ícone */
+            padding-left: 18px;
         }
     </style>
 </head>
@@ -235,8 +235,6 @@
             
             <div id="payment-box" style="display: none; text-align: left; margin-bottom: 12px;">
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Adicionar Serviços Extras:</label>
-                
-                <!-- CONTAINER ATUALIZADO (Sem estilos inline, usará a classe nova) -->
                 <div id="extras-servicos-container"></div>
 
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Forma de Pagamento:</label>
@@ -272,8 +270,6 @@
                 <input type="text" id="manual-telefone" placeholder="00000000000">
 
                 <label style="font-size: 0.75rem; color: #aaa;">Serviços (Selecione um ou mais):</label>
-                
-                <!-- CONTAINER ATUALIZADO (Sem estilos inline, usará a classe nova) -->
                 <div id="manual-servicos-container"></div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #444;">
@@ -328,14 +324,13 @@
         let usuarioLogado = "";
         let offsetSemana = 0; 
 
-        // === NOVA FUNÇÃO: Renderiza a seleção moderna de serviços ===
+        // Função de renderização moderna de serviços (Pills)
         function renderizarSeletorServicos(containerId, classeCheckbox, callbackMudanca) {
             const container = document.getElementById(containerId);
             if (!container) return;
             
             container.innerHTML = "";
-            container.className = "servicos-selector-grid"; // Aplica o novo grid visual
-            container.removeAttribute("style");
+            container.className = "servicos-selector-grid";
 
             Object.keys(precosServicosTabela).forEach(serv => {
                 const preco = precosServicosTabela[serv];
@@ -539,7 +534,7 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button type="button" onclick="event.stopPropagation(); alternarBloqueioDia('${dia.iso}',${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
+                            <button type="button" onclick="event.stopPropagation(); alternarBloqueioDia('${dia.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
@@ -689,7 +684,6 @@
             document.getElementById("manual-cliente").value = "";
             document.getElementById("manual-telefone").value = "";
             
-            // Renderiza o grid de serviços moderno
             renderizarSeletorServicos("manual-servicos-container", "manual-servico-chk", calcularTotalManual);
 
             calcularTotalManual();
@@ -863,7 +857,6 @@
                 paymentBox.style.display = "none";
                 rescheduleBox.style.display = "none";
 
-                // Renderiza o grid de serviços moderno para os serviços EXTRAS
                 renderizarSeletorServicos("extras-servicos-container", "extra-servico-chk", null);
                 
                 function renderizarBotoesPrincipais() {
@@ -1120,8 +1113,8 @@
                     const isConcluido = item.status === 'concluido';
                     card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600');
                     card.innerHTML = `
-                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} -${item.barbeiro}</strong><br>
-                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} \vert{} R$ ${Number(item.preco_total \vert{}\vert{} 35).toFixed(2).replace(".", ",")} ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
+                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
+                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")} ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
                     `;
                     container.appendChild(card);
                 });
