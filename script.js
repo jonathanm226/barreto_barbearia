@@ -122,13 +122,17 @@ function toggleService(element, serviceName, price) {
 function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
     const diaSem = diaDaSemana(dateString); 
-    if (diaSem === 0) return [];
-    if (barbeiro === "Matheus" && diaSem === 3) return [];
-    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return [];
+    if (diaSem === 0) return []; // Domingo fechado
+    if (barbeiro === "Matheus" && diaSem === 3) return []; // Quarta folga Matheus
+    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; // Segunda folga Yann/Rafael
 
-    let inicioExpediente = 600, fimExpedienteLimite = 1320, inicioEmergencia = 1200;
-    if (diaSem >= 4 && diaSem <= 5) { inicioExpediente = 540; inicioEmergencia = 1260; } 
-    else if (diaSem === 6) { inicioExpediente = 540; inicioEmergencia = 1080; fimExpedienteLimite = 1320; }
+    // ALINHAMENTO DE HORÁRIO: Todos começam às 08:00 (480 minutos) para combinar com o painel
+    let inicioExpediente = 480, fimExpedienteLimite = 1320, inicioEmergencia = 1200;
+    if (diaSem >= 4 && diaSem <= 5) { 
+        inicioExpediente = 480; inicioEmergencia = 1260; 
+    } else if (diaSem === 6) { 
+        inicioExpediente = 480; inicioEmergencia = 1080; fimExpedienteLimite = 1320; 
+    }
 
     const slots = [];
     for (let m = inicioExpediente; m <= fimExpedienteLimite; m += 30) {
@@ -163,18 +167,19 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
+        // FILTRO EXATO (.eq) PARA COMUNICAR CORRETAMENTE COM O BANCO DE DADOS
         const { data: agsDB } = await _supabase.from("agendamentos_barreto")
             .select("horario, servico, status, data")
             .ilike("barbeiro", `%${selectedBarber.trim()}%`)
-            .like("data", `${selDate}%`);
+            .eq("data", selDate);
 
-        // FILTRO DEFINITIVO: Apenas agendamentos que NÃO estão cancelados
+        // Remove do cálculo os que foram cancelados no painel
         const agendamentos = (agsDB || []).filter(a => a.status !== 'cancelado');
 
         const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
             .select("horario")
             .ilike("barbeiro", `%${selectedBarber.trim()}%`)
-            .like("data", `${selDate}%`);
+            .eq("data", selDate);
 
         if ((bloqueios || []).some(b => b.horario === "TODOS")) return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
 
@@ -324,8 +329,9 @@ async function confirmarEEnviar() {
         }]);
 
         if (insertError) {
+            // Se o Supabase barrar por conta da UNIQUE CONSTRAINT (Dois clientes ao mesmo tempo)
             if (insertError.code === '23505') {
-                throw new Error("Este horário acabou de ser reservado por outra pessoa. Atualize a página.");
+                throw new Error("Este horário acabou de ser reservado por outra pessoa. Atualize a página e escolha outro horário.");
             }
             throw new Error(insertError.message);
         }
