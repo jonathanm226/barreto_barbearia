@@ -130,24 +130,27 @@ function toggleService(element, serviceName, price) {
 function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
     const diaSem = diaDaSemana(dateString); 
-    if (diaSem === 0) return []; 
-    if (barbeiro === "Matheus" && diaSem === 3) return []; 
-    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; 
+    if (diaSem === 0) return []; // Domingo fechado
+    if (barbeiro === "Matheus" && diaSem === 3) return []; // Quarta folga Matheus
+    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; // Segunda folga Yann/Rafael
 
-    let inicioExpediente = 480, fimExpedienteLimite = 1320, inicioEmergencia = 1200;
-    if (diaSem >= 4 && diaSem <= 5) { 
-        inicioExpediente = 480; inicioEmergencia = 1260; 
-    } else if (diaSem === 6) { 
-        inicioExpediente = 480; inicioEmergencia = 1080; fimExpedienteLimite = 1320; 
-    }
+    let horarios = [];
+    let horaInicio = 8;
+    let horaFim = 22;
+    let currentMin = horaInicio * 60;
+    let endMin = horaFim * 60;
+    
+    let inicioEmergencia = 1200;
+    if (diaSem >= 4 && diaSem <= 5) inicioEmergencia = 1260;
+    if (diaSem === 6) inicioEmergencia = 1080;
 
-    const slots = [];
-    for (let m = inicioExpediente; m <= fimExpedienteLimite; m += 30) {
-        const horaStr = fromMin(m);
-        let textoSlot = m >= inicioEmergencia ? `${horaStr} - (Corte Emergencial: R$ 45,00)` : horaStr;
-        slots.push({ valor: horaStr, texto: textoSlot });
+    while (currentMin <= endMin) {
+        const horaStr = fromMin(currentMin);
+        let textoSlot = currentMin >= inicioEmergencia ? `${horaStr} - (Corte Emergencial: R$ 45,00)` : horaStr;
+        horarios.push({ valor: horaStr, texto: textoSlot });
+        currentMin += 30;
     }
-    return slots;
+    return horarios;
 }
 
 function mostrarMensagemNoSelect(timeSelect, texto) {
@@ -158,13 +161,13 @@ function mostrarMensagemNoSelect(timeSelect, texto) {
     timeSelect.appendChild(option);
 }
 
-// SINCRONIZAÇÃO UNIVERSAL E BLINDADA
+// SINCRONIZAÇÃO UNIFICADA E BLINDADA
 async function checkAvailableTimes() {
     const dateEl = document.getElementById("date");
     const timeSel = document.getElementById("time");
 
     if (!dateEl || !timeSel || !dateEl.value) return;
-    const selDate = dateEl.value; // Formato YYYY-MM-DD
+    const selDate = dateEl.value; 
     const previousSelection = timeSel.value;
 
     const allSlots = getTimesForDate(selDate, selectedBarber);
@@ -175,7 +178,7 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
-        // BUSCA GERAL: Traz todos os agendamentos e valida a data e o barbeiro em JavaScript para evitar falhas de tipagem no Supabase
+        // Busca direta no Supabase comparando exatamente o dia e o barbeiro
         const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto")
             .select("horario, servico, status, data, barbeiro");
 
@@ -317,7 +320,7 @@ function abrirModalConfirmacao() {
     const preco = ehEmergencia ? 45.0 : calcularTotal();
     const servNomes = ehEmergencia ? ["Corte Emergencial"] : selectedServices.map(s => s.name);
 
-    document.getElementById("resumo-agendamento").innerHTML = `
+.   document.getElementById("resumo-agendamento").innerHTML = `
         <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
         <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
         <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servNomes.join(", ")}</div>
