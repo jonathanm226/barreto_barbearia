@@ -30,7 +30,7 @@
         
         .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s ease-in-out; }
         .custom-modal-overlay.active { opacity: 1; visibility: visible; }
-        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
         .custom-modal h3 { color: #FFFFFF; font-size: 1rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .custom-modal p { color: #CCCCCC; font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4; text-align: left; }
         .custom-modal input, .custom-modal select { width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; margin-bottom: 12px; outline: none; }
@@ -40,6 +40,7 @@
         .btn-modal-confirmar { background: #FF6600; color: #FFFFFF; }
         .btn-modal-atendido { background: #25D366; color: #FFFFFF; }
         .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
+        .btn-modal-reagendar { background: #3498db; color: #FFFFFF; }
 
         /* Dashboard Financeiro Card */
         .dashboard-card { background: #181818; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 0.75rem; }
@@ -183,6 +184,9 @@
             <div id="action-modal-details" style="text-align: left; background: #242424; padding: 10px; border-radius: 6px; border: 1px solid #444; margin-bottom: 12px; font-size: 0.85rem; color: #DDD;"></div>
             
             <div id="payment-box" style="display: none; text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Adicionar Serviços Extras:</label>
+                <div id="extras-servicos-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; max-height: 120px; overflow-y: auto; background: #242424; padding: 6px; border-radius: 6px; border: 1px solid #444;"></div>
+
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Forma de Pagamento:</label>
                 <select id="select-forma-pagamento">
                     <option value="Pix">Pix</option>
@@ -190,6 +194,14 @@
                     <option value="Débito">Débito</option>
                     <option value="Crédito">Crédito</option>
                 </select>
+            </div>
+
+            <div id="reschedule-box" style="display: none; text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Nova Data:</label>
+                <input type="date" id="new-reschedule-date">
+
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Novo Horário:</label>
+                <input type="time" id="new-reschedule-time" value="10:00">
             </div>
 
             <div class="custom-modal-buttons" id="action-modal-buttons"></div>
@@ -240,6 +252,13 @@
         const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const precosServicosTabela = {
+            "Corte": 35.00, "Barba": 30.00, "Barba simples": 20.00, "Bigode simples": 10.00,
+            "Sobrancelha": 10.00, "Hidratação profunda": 30.00, "Relaxamento": 40.00,
+            "Escova": 25.00, "Luzes": 120.00, "Platinado": 150.00, "Botox (selagem)": 90.00,
+            "Coloração": 100.00, "Pigmentação": 30.00, "Pezinho simples": 10.00, "Pezinho Gourmet": 15.00
+        };
 
         let usuarioLogado = "";
         let offsetSemana = 0; 
@@ -373,7 +392,6 @@
                 const { data: agendamentos } = await _supabase.from("agendamentos_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
                 const { data: bloqueios } = await _supabase.from("bloqueios_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
 
-                // Calcular Dashboard do Barbeiro para esta semana
                 let qtdConcluidos = 0;
                 let faturamentoTotal = 0;
                 (agendamentos || []).forEach(a => {
@@ -615,44 +633,79 @@
                 const modal = document.getElementById("custom-action-modal");
                 const detailsBox = document.getElementById("action-modal-details");
                 const paymentBox = document.getElementById("payment-box");
+                const rescheduleBox = document.getElementById("reschedule-box");
                 const buttonsBox = document.getElementById("action-modal-buttons");
+                const extrasContainer = document.getElementById("extras-servicos-container");
 
-                const preco = Number(data.preco_total || 35).toFixed(2).replace(".", ",");
-
+                const precoOriginal = Number(data.preco_total || 35);
                 detailsBox.innerHTML = `
                     <strong>Cliente:</strong> ${data.cliente}<br>
                     <strong>Telefone:</strong> ${data.telefone || 'Não informado'}<br>
-                    <strong>Serviço:</strong> ${data.servico}<br>
-                    <strong>Valor:</strong> R$ ${preco}<br>
-                    <strong>Horário:</strong> ${String(data.horario).substring(0,5)}
+                    <strong>Serviço Atual:</strong> ${data.servico}<br>
+                    <strong>Valor Base:</strong> R$ ${precoOriginal.toFixed(2).replace(".", ",")}<br>
+                    <strong>Data/Hora:</strong> ${String(data.data).split("-").reverse().join("/")} às ${String(data.horario).substring(0,5)}
                 `;
 
                 paymentBox.style.display = "none";
+                rescheduleBox.style.display = "none";
+
+                // Preencher checkboxes de serviços extras
+                extrasContainer.innerHTML = "";
+                Object.keys(precosServicosTabela).forEach(serv => {
+                    const lbl = document.createElement("label");
+                    lbl.style.cssText = "font-size: 0.7rem; display: flex; align-items: center; gap: 4px; color: #ddd; cursor: pointer;";
+                    lbl.innerHTML = `<input type="checkbox" class="extra-servico-chk" value="${serv}" data-preco="${precosServicosTabela[serv]}"> ${serv} (R$ ${precosServicosTabela[serv].toFixed(2).replace(".", ",")})`;
+                    extrasContainer.appendChild(lbl);
+                });
                 
                 function renderizarBotoesPrincipais() {
                     buttonsBox.innerHTML = "";
 
                     if (data.status !== 'concluido') {
+                        // Botão Concluir com Extras e Pagamento
                         const btnAtendido = document.createElement("button");
                         btnAtendido.type = "button";
                         btnAtendido.className = "custom-modal-btn btn-modal-atendido";
                         btnAtendido.textContent = "Concluir e Confirmar Pgto";
                         btnAtendido.onclick = () => {
                             paymentBox.style.display = "block";
+                            rescheduleBox.style.display = "none";
                             buttonsBox.innerHTML = "";
 
                             const btnSalvarPg = document.createElement("button");
                             btnSalvarPg.type = "button";
                             btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
-                            btnSalvarPg.textContent = "Salvar Pagamento";
+                            btnSalvarPg.textContent = "Salvar Atendimento e Pgto";
                             btnSalvarPg.onclick = async () => {
                                 try {
                                     btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
                                     
                                     const formaPgto = document.getElementById("select-forma-pagamento").value;
+                                    
+                                    // Coletar extras selecionados
+                                    let servicosSelecionadosList = data.servico ? data.servico.split(",").map(s => s.trim()) : [];
+                                    let acréscimoPreco = 0;
+
+                                    document.querySelectorAll(".extra-servico-chk:checked").forEach(chk => {
+                                        const nomeServ = chk.value;
+                                        const pServ = Number(chk.dataset.preco);
+                                        if (!servicosSelecionadosList.includes(nomeServ)) {
+                                            servicosSelecionadosList.push(nomeServ);
+                                            acréscimoPreco += pServ;
+                                        }
+                                    });
+
+                                    const novoPrecoTotal = precoOriginal + acréscimoPreco;
+                                    const novaStringServicos = servicosSelecionadosList.join(", ");
+
                                     const { error } = await _supabase.from("agendamentos_barreto_v2")
-                                        .update({ status: 'concluido', pagamentos: formaPgto })
+                                        .update({ 
+                                            status: 'concluido', 
+                                            pagamentos: formaPgto,
+                                            servico: novaStringServicos,
+                                            preco_total: novoPrecoTotal
+                                        })
                                         .eq('id', data.id);
 
                                     if (error) throw error;
@@ -661,7 +714,7 @@
                                     carregarAgendaSemanal();
                                 } catch (err) {
                                     mostrarAlerta("Erro ao concluir: " + err.message, false);
-                                    btnSalvarPg.textContent = "Salvar Pagamento";
+                                    btnSalvarPg.textContent = "Salvar Atendimento e Pgto";
                                     btnSalvarPg.disabled = false;
                                 }
                             };
@@ -679,6 +732,65 @@
                             buttonsBox.appendChild(btnVoltar);
                         };
 
+                        // Botão Reagendar
+                        const btnReagendar = document.createElement("button");
+                        btnReagendar.type = "button";
+                        btnReagendar.className = "custom-modal-btn btn-modal-reagendar";
+                        btnReagendar.textContent = "Reagendar Horário";
+                        btnReagendar.onclick = () => {
+                            rescheduleBox.style.display = "block";
+                            paymentBox.style.display = "none";
+                            document.getElementById("new-reschedule-date").value = data.data;
+                            document.getElementById("new-reschedule-time").value = String(data.horario).substring(0,5);
+                            buttonsBox.innerHTML = "";
+
+                            const btnSalvarReagendamento = document.createElement("button");
+                            btnSalvarReagendamento.type = "button";
+                            btnSalvarReagendamento.className = "custom-modal-btn btn-modal-confirmar";
+                            btnSalvarReagendamento.textContent = "Confirmar Novo Horário";
+                            btnSalvarReagendamento.onclick = async () => {
+                                const novaData = document.getElementById("new-reschedule-date").value;
+                                const novoHorario = document.getElementById("new-reschedule-time").value;
+
+                                if (!novaData || !novoHorario) {
+                                    mostrarAlerta("Preencha a nova data e horário.", false);
+                                    return;
+                                }
+
+                                try {
+                                    btnSalvarReagendamento.textContent = "A reagendar...";
+                                    btnSalvarReagendamento.disabled = true;
+
+                                    const { error } = await _supabase.from("agendamentos_barreto_v2")
+                                        .update({ data: novaData, horario: novoHorario })
+                                        .eq('id', data.id);
+
+                                    if (error) throw error;
+
+                                    modal.classList.remove("active");
+                                    mostrarAlerta("Agendamento reagendado com sucesso!", true);
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    mostrarAlerta("Erro ao reagendar: " + err.message, false);
+                                    btnSalvarReagendamento.textContent = "Confirmar Novo Horário";
+                                    btnSalvarReagendamento.disabled = false;
+                                }
+                            };
+
+                            const btnVoltarReag = document.createElement("button");
+                            btnVoltarReag.type = "button";
+                            btnVoltarReag.className = "custom-modal-btn btn-modal-cancelar";
+                            btnVoltarReag.textContent = "Voltar";
+                            btnVoltarReag.onclick = () => {
+                                rescheduleBox.style.display = "none";
+                                renderizarBotoesPrincipais();
+                            };
+
+                            buttonsBox.appendChild(btnSalvarReagendamento);
+                            buttonsBox.appendChild(btnVoltarReag);
+                        };
+
+                        // Botão Cancelar Agendamento
                         const btnCancelar = document.createElement("button");
                         btnCancelar.type = "button";
                         btnCancelar.className = "custom-modal-btn btn-modal-excluir";
@@ -726,6 +838,7 @@
                         };
 
                         buttonsBox.appendChild(btnAtendido);
+                        buttonsBox.appendChild(btnReagendar);
                         buttonsBox.appendChild(btnCancelar);
                     }
 
@@ -763,7 +876,6 @@
                 container.innerHTML = "";
                 const ativosOuConcluidos = (data || []).filter(a => a.status !== 'cancelado');
 
-                // Agrupar dados por Barbeiro para o Resumo Financeiro Admin
                 const statsBarbeiros = {
                     "Matheus": { qtd: 0, faturamento: 0 },
                     "Yann": { qtd: 0, faturamento: 0 },
