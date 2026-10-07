@@ -130,9 +130,9 @@ function toggleService(element, serviceName, price) {
 function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
     const diaSem = diaDaSemana(dateString); 
-    if (diaSem === 0) return []; // Domingo fechado
-    if (barbeiro === "Matheus" && diaSem === 3) return []; // Quarta folga Matheus
-    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; // Segunda folga Yann/Rafael
+    if (diaSem === 0) return [];
+    if (barbeiro === "Matheus" && diaSem === 3) return [];
+    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return [];
 
     let horarios = [];
     let horaInicio = 8;
@@ -161,7 +161,6 @@ function mostrarMensagemNoSelect(timeSelect, texto) {
     timeSelect.appendChild(option);
 }
 
-// SINCRONIZAÇÃO UNIFICADA E BLINDADA
 async function checkAvailableTimes() {
     const dateEl = document.getElementById("date");
     const timeSel = document.getElementById("time");
@@ -178,7 +177,7 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
-        const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto")
+        const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2")
             .select("horario, servico, status, data, barbeiro");
 
         if (errAgs) console.error("Erro ao buscar agendamentos:", errAgs);
@@ -191,7 +190,7 @@ async function checkAvailableTimes() {
             return dataBanco === selDate && mesmoBarbeiro && ativo;
         });
 
-        const { data: bloqueiosDB, error: errBlq } = await _supabase.from("bloqueios_barreto")
+        const { data: bloqueiosDB, error: errBlq } = await _supabase.from("bloqueios_barreto_v2")
             .select("horario, data, barbeiro");
 
         if (errBlq) console.error("Erro ao buscar bloqueios:", errBlq);
@@ -350,7 +349,7 @@ async function confirmarEEnviar() {
         const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
 
-        const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
+        const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
             cliente: name,
             telefone: phone,
             barbeiro: selectedBarber,
@@ -383,6 +382,6 @@ async function confirmarEEnviar() {
 async function buscarClientePorTelefone() {
     const tel = document.getElementById("client-phone").value.replace(/\D/g, "");
     if (tel.length < 10) return;
-    const { data } = await _supabase.from("agendamentos_barreto").select("cliente").eq("telefone", tel).limit(1).maybeSingle();
+    const { data } = await _supabase.from("agendamentos_barreto_v2").select("cliente").eq("telefone", tel).limit(1).maybeSingle();
     if (data && !document.getElementById("client-name").value) document.getElementById("client-name").value = data.cliente;
 }
