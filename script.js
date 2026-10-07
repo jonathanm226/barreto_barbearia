@@ -95,7 +95,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// CLIQUE BLINDADO PARA BARBEIROS
 function selectBarber(element, barberName) {
     if (!element) return;
     document.querySelectorAll(".barber-card").forEach(card => card.classList.remove("active"));
@@ -104,7 +103,6 @@ function selectBarber(element, barberName) {
     checkAvailableTimes();
 }
 
-// CLIQUE BLINDADO PARA SERVIÇOS
 function toggleService(element, serviceName, price) {
     if (!element) return;
     const icon = element.querySelector(".checkbox-icon");
@@ -160,12 +158,13 @@ function mostrarMensagemNoSelect(timeSelect, texto) {
     timeSelect.appendChild(option);
 }
 
+// SINCRONIZAÇÃO BLINDADA COM O SUPABASE
 async function checkAvailableTimes() {
     const dateEl = document.getElementById("date");
     const timeSel = document.getElementById("time");
 
     if (!dateEl || !timeSel || !dateEl.value) return;
-    const selDate = dateEl.value;
+    const selDate = dateEl.value; // Formato YYYY-MM-DD
     const previousSelection = timeSel.value;
 
     const allSlots = getTimesForDate(selDate, selectedBarber);
@@ -176,25 +175,37 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
+        // BUSCA SEGURA: Traz todos os agendamentos do dia sem filtrar o barbeiro na query para evitar falhas de case-sensitivity
         const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto")
-            .select("horario, servico, status, data")
-            .ilike("barbeiro", `%${selectedBarber.trim()}%`)
-            .gte("data", selDate)
-            .lte("data", selDate + " 23:59:59");
+            .select("horario, servico, status, data, barbeiro");
 
         if (errAgs) console.error("Erro banco agendamentos:", errAgs);
 
-        const agendamentos = (agsDB || []).filter(a => a.status !== 'cancelado');
+        // FILTRAGEM SEGURA EM JS: Compara data (YYYY-MM-DD) e barbeiro ignorando maiúsculas/minúsculas e espaços
+        const agendamentos = (agsDB || []).filter(a => {
+            if (!a.data || !a.barbeiro) return false;
+            const dataBanco = String(a.data).substring(0, 10);
+            const mesmoBarbeiro = a.barbeiro.trim().toLowerCase() === selectedBarber.trim().toLowerCase();
+            const naoCancelado = a.status !== 'cancelado';
+            return dataBanco === selDate && mesmoBarbeiro && naoCancelado;
+        });
 
-        const { data: bloqueios, error: errBlq } = await _supabase.from("bloqueios_barreto")
-            .select("horario")
-            .ilike("barbeiro", `%${selectedBarber.trim()}%`)
-            .gte("data", selDate)
-            .lte("data", selDate + " 23:59:59");
+        // BUSCA SEGURA DE BLOQUEIOS DO DIA
+        const { data: bloqueiosDB, error: errBlq } = await _supabase.from("bloqueios_barreto")
+            .select("horario, data, barbeiro");
 
         if (errBlq) console.error("Erro banco bloqueios:", errBlq);
 
-        if ((bloqueios || []).some(b => b.horario === "TODOS")) return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
+        const bloqueios = (bloqueiosDB || []).filter(b => {
+            if (!b.data || !b.barbeiro) return false;
+            const dataBanco = String(b.data).substring(0, 10);
+            const mesmoBarbeiro = b.barbeiro.trim().toLowerCase() === selectedBarber.trim().toLowerCase();
+            return dataBanco === selDate && mesmoBarbeiro;
+        });
+
+        if (bloqueios.some(b => b.horario === "TODOS")) {
+            return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
+        }
 
         const ocupados = new Set();
         agendamentos.forEach(a => {
@@ -202,9 +213,15 @@ async function checkAvailableTimes() {
             const horaFormatada = String(a.horario).substring(0, 5); 
             const inicio = toMin(horaFormatada);
             let dur = 0;
-            if (a.servico) a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
+            if (a.servico) {
+                a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
+            } else {
+                dur = 30;
+            }
             const numSlots = Math.max(1, Math.ceil(dur / 30));
-            for (let k = 0; k < numSlots; k++) ocupados.add(inicio + (30 * k));
+            for (let k = 0; k < numSlots; k++) {
+                ocupados.add(inicio + (30 * k));
+            }
         });
 
         const bloqueiosAlmocoAutomaticos = {
@@ -214,7 +231,7 @@ async function checkAvailableTimes() {
         };
         const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber] || [];
 
-        const bloqueados = new Set((bloqueios || []).map(b => toMin(String(b.horario).substring(0, 5))));
+        const bloqueados = new Set(bloqueios.map(b => toMin(String(b.horario).substring(0, 5))));
         almocoPadrao.forEach(h => bloqueados.add(toMin(h)));
 
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
@@ -233,7 +250,8 @@ async function checkAvailableTimes() {
 
         allSlots.forEach(slot => {
             const opt = document.createElement("option");
-            opt.value = slot.valor; opt.textContent = slot.texto;
+            opt.value = slot.valor; 
+            opt.textContent = slot.texto;
             const inicio = toMin(slot.valor);
             
             let conflito = false;
@@ -246,7 +264,10 @@ async function checkAvailableTimes() {
 
             for (let i = 0; i < slotsNeeded; i++) {
                 const s = inicio + (30 * i);
-                if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { conflito = true; break; }
+                if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { 
+                    conflito = true; 
+                    break; 
+                }
             }
 
             if (conflito || expirado) { 
@@ -267,7 +288,7 @@ async function checkAvailableTimes() {
 
     } catch (err) {
         mostrarMensagemNoSelect(timeSel, "Erro ao carregar horários");
-        console.error("Catch error:", err);
+        console.error("Erro crítico em checkAvailableTimes:", err);
     }
 }
 
