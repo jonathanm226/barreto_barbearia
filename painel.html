@@ -70,6 +70,55 @@
         
         .btn-acao { width: 100%; padding: 10px; background-color: #FF6600; color: #FFFFFF; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-acao:hover { background-color: #e05b00; }
+
+        /* NOVO ESTILO: Seleção de Serviços com Cards (Pills) */
+        .servicos-selector-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 10px;
+            max-height: 160px;
+            overflow-y: auto;
+            background: #242424;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #444;
+        }
+        .servico-pill {
+            background: #1A1A1A;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 8px 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 2px;
+            text-align: left;
+        }
+        .servico-pill:hover {
+            border-color: #FF6600;
+        }
+        .servico-pill.selected {
+            background: #2D221B;
+            border-color: #FF6600;
+            box-shadow: 0 0 8px rgba(255, 102, 0, 0.3);
+        }
+        .servico-pill span.nome {
+            font-size: 0.75rem;
+            color: #FFF;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .servico-pill span.valor {
+            font-size: 0.7rem;
+            color: #FF6600;
+            font-weight: bold;
+            padding-left: 18px; /* Alinha com o texto pulando o ícone */
+        }
     </style>
 </head>
 <body>
@@ -186,7 +235,9 @@
             
             <div id="payment-box" style="display: none; text-align: left; margin-bottom: 12px;">
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Adicionar Serviços Extras:</label>
-                <div id="extras-servicos-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; max-height: 120px; overflow-y: auto; background: #242424; padding: 6px; border-radius: 6px; border: 1px solid #444;"></div>
+                
+                <!-- CONTAINER ATUALIZADO (Sem estilos inline, usará a classe nova) -->
+                <div id="extras-servicos-container"></div>
 
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Forma de Pagamento:</label>
                 <select id="select-forma-pagamento">
@@ -221,7 +272,9 @@
                 <input type="text" id="manual-telefone" placeholder="00000000000">
 
                 <label style="font-size: 0.75rem; color: #aaa;">Serviços (Selecione um ou mais):</label>
-                <div id="manual-servicos-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; max-height: 120px; overflow-y: auto; background: #242424; padding: 6px; border-radius: 6px; border: 1px solid #444;"></div>
+                
+                <!-- CONTAINER ATUALIZADO (Sem estilos inline, usará a classe nova) -->
+                <div id="manual-servicos-container"></div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #444;">
                     <span style="font-size: 0.8rem; color: #aaa;">Total Estimado:</span>
@@ -274,6 +327,48 @@
 
         let usuarioLogado = "";
         let offsetSemana = 0; 
+
+        // === NOVA FUNÇÃO: Renderiza a seleção moderna de serviços ===
+        function renderizarSeletorServicos(containerId, classeCheckbox, callbackMudanca) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.innerHTML = "";
+            container.className = "servicos-selector-grid"; // Aplica o novo grid visual
+            container.removeAttribute("style");
+
+            Object.keys(precosServicosTabela).forEach(serv => {
+                const preco = precosServicosTabela[serv];
+                
+                const pill = document.createElement("div");
+                pill.className = "servico-pill";
+                pill.innerHTML = `
+                    <span class="nome"><i class="fa-regular fa-square uncheck-icon"></i> ${serv}</span>
+                    <span class="valor">R$ ${preco.toFixed(2).replace(".", ",")}</span>
+                    <input type="checkbox" class="${classeCheckbox}" value="${serv}" data-preco="${preco}" style="display: none;">
+                `;
+
+                pill.onclick = () => {
+                    const chk = pill.querySelector("input");
+                    chk.checked = !chk.checked;
+                    
+                    const icon = pill.querySelector("i");
+                    if (chk.checked) {
+                        pill.classList.add("selected");
+                        icon.className = "fa-solid fa-square-check";
+                        icon.style.color = "#FF6600";
+                    } else {
+                        pill.classList.remove("selected");
+                        icon.className = "fa-regular fa-square";
+                        icon.style.color = "";
+                    }
+
+                    if (callbackMudanca) callbackMudanca();
+                };
+
+                container.appendChild(pill);
+            });
+        }
 
         function mostrarAlerta(mensagem, sucesso = true) {
             const tituloEl = document.getElementById("alerta-titulo");
@@ -444,7 +539,7 @@
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button type="button" onclick="event.stopPropagation(); alternarBloqueioDia('${dia.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
+                            <button type="button" onclick="event.stopPropagation(); alternarBloqueioDia('${dia.iso}',${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
@@ -594,15 +689,8 @@
             document.getElementById("manual-cliente").value = "";
             document.getElementById("manual-telefone").value = "";
             
-            // Popular serviços manuais
-            const servContainer = document.getElementById("manual-servicos-container");
-            servContainer.innerHTML = "";
-            Object.keys(precosServicosTabela).forEach(serv => {
-                const lbl = document.createElement("label");
-                lbl.style.cssText = "font-size: 0.7rem; display: flex; align-items: center; gap: 4px; color: #ddd; cursor: pointer;";
-                lbl.innerHTML = `<input type="checkbox" class="manual-servico-chk" value="${serv}" data-preco="${precosServicosTabela[serv]}" onchange="calcularTotalManual()"> ${serv} (R$ ${precosServicosTabela[serv].toFixed(2).replace(".", ",")})`;
-                servContainer.appendChild(lbl);
-            });
+            // Renderiza o grid de serviços moderno
+            renderizarSeletorServicos("manual-servicos-container", "manual-servico-chk", calcularTotalManual);
 
             calcularTotalManual();
             atualizarHorariosManuaisDisponiveis();
@@ -762,7 +850,6 @@
                 const paymentBox = document.getElementById("payment-box");
                 const rescheduleBox = document.getElementById("reschedule-box");
                 const buttonsBox = document.getElementById("action-modal-buttons");
-                const extrasContainer = document.getElementById("extras-servicos-container");
 
                 const precoOriginal = Number(data.preco_total || 35);
                 detailsBox.innerHTML = `
@@ -776,13 +863,8 @@
                 paymentBox.style.display = "none";
                 rescheduleBox.style.display = "none";
 
-                extrasContainer.innerHTML = "";
-                Object.keys(precosServicosTabela).forEach(serv => {
-                    const lbl = document.createElement("label");
-                    lbl.style.cssText = "font-size: 0.7rem; display: flex; align-items: center; gap: 4px; color: #ddd; cursor: pointer;";
-                    lbl.innerHTML = `<input type="checkbox" class="extra-servico-chk" value="${serv}" data-preco="${precosServicosTabela[serv]}"> ${serv} (R$ ${precosServicosTabela[serv].toFixed(2).replace(".", ",")})`;
-                    extrasContainer.appendChild(lbl);
-                });
+                // Renderiza o grid de serviços moderno para os serviços EXTRAS
+                renderizarSeletorServicos("extras-servicos-container", "extra-servico-chk", null);
                 
                 function renderizarBotoesPrincipais() {
                     buttonsBox.innerHTML = "";
@@ -1038,8 +1120,8 @@
                     const isConcluido = item.status === 'concluido';
                     card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600');
                     card.innerHTML = `
-                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
-                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")} ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
+                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} -${item.barbeiro}</strong><br>
+                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} \vert{} R$ ${Number(item.preco_total \vert{}\vert{} 35).toFixed(2).replace(".", ",")} ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
                     `;
                     container.appendChild(card);
                 });
