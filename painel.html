@@ -684,7 +684,10 @@
             document.getElementById("manual-cliente").value = "";
             document.getElementById("manual-telefone").value = "";
             
-            renderizarSeletorServicos("manual-servicos-container", "manual-servico-chk", calcularTotalManual);
+            renderizarSeletorServicos("manual-servicos-container", "manual-servico-chk", () => {
+                calcularTotalManual();
+                atualizarHorariosManuaisDisponiveis();
+            });
 
             calcularTotalManual();
             atualizarHorariosManuaisDisponiveis();
@@ -699,6 +702,7 @@
             document.getElementById("manual-preco-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
         }
 
+        // FUNÇÃO ATUALIZADA: Valida horários expirados, ocupados e duração dos serviços
         async function atualizarHorariosManuaisDisponiveis() {
             const dataSel = document.getElementById("manual-data").value;
             const horarioSelect = document.getElementById("manual-horario");
@@ -711,6 +715,14 @@
                 horarioSelect.innerHTML = "<option value=''>Barbeiro fechado neste dia</option>";
                 return;
             }
+
+            let duracaoMinutos = 0;
+            document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
+                const nomeServ = chk.value;
+                duracaoMinutos += duracoesServicosTabela[nomeServ] || 30;
+            });
+            if (duracaoMinutos === 0) duracaoMinutos = 30;
+            const slotsNeeded = Math.ceil(duracaoMinutos / 30);
 
             try {
                 const { data: ags } = await _supabase.from("agendamentos_barreto_v2")
@@ -753,18 +765,50 @@
                 const bloqueadosSet = new Set((blqs || []).map(b => String(b.horario).substring(0, 5)));
                 almocoPadrao.forEach(h => bloqueadosSet.add(h));
 
+                const gradeBase = new Set(allSlots.map(s => {
+                    const [h, m] = s.split(":").map(Number);
+                    return h * 60 + m;
+                }));
+
+                const agora = new Date();
+                const hojeIso = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+                const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
+
                 horarioSelect.innerHTML = "<option value='' disabled selected>Selecione um horário livre</option>";
 
                 allSlots.forEach(slotStr => {
                     const [h, m] = slotStr.split(":").map(Number);
                     const minSlot = h * 60 + m;
                     
-                    let ocupado = ocupados.has(minSlot) || bloqueadosSet.has(slotStr);
+                    let expirado = false;
+                    if (dataSel === hojeIso && minSlot < minutosAtuais) {
+                        expirado = true;
+                    }
+
+                    let conflito = false;
+                    for (let i = 0; i < slotsNeeded; i++) {
+                        const s = minSlot + (30 * i);
+                        const horaStrCheck = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+                        
+                        if (!gradeBase.has(s) || ocupados.has(s) || bloqueadosSet.has(horaStrCheck)) {
+                            conflito = true;
+                            break;
+                        }
+                    }
 
                     const opt = document.createElement("option");
                     opt.value = slotStr;
-                    opt.textContent = ocupado ? `${slotStr} (Ocupado)` : slotStr;
-                    if (ocupado) opt.disabled = true;
+
+                    if (expirado) {
+                        opt.textContent = `${slotStr} - (Expirado)`;
+                        opt.disabled = true;
+                    } else if (conflito) {
+                        opt.textContent = `${slotStr} - (Ocupado)`;
+                        opt.disabled = true;
+                    } else {
+                        opt.textContent = slotStr;
+                    }
+
                     horarioSelect.appendChild(opt);
                 });
 
