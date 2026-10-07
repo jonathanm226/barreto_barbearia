@@ -377,7 +377,6 @@
                     } else {
                         const horariosDia = obterHorariosParaData(dia.iso);
                         
-                        // O FILTRO DEFINITIVO: Agendamentos deste dia que NÃO estão cancelados.
                         const agendamentosDia = (agendamentos || []).filter(a => {
                             const dataIso = String(a.data).substring(0, 10);
                             return dataIso === dia.iso && a.status !== 'cancelado';
@@ -488,7 +487,6 @@
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
                 if (estaBloqueado) {
-                    // USO DO .like PARA APAGAR HORÁRIO CORRETAMENTE DO SUPABASE (TIME VS STRING)
                     await _supabase.from("bloqueios_barreto")
                         .delete()
                         .eq("barbeiro", usuarioLogado)
@@ -573,7 +571,6 @@
             }
         }
 
-        // --- ATUALIZAÇÃO DIRETA NO BANCO DE DADOS (STATUS) ---
         async function abrirGerenciadorAgendamento(id) {
             try {
                 const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
@@ -617,13 +614,15 @@
                                     btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
                                     
-                                    await _supabase.from("agendamentos_barreto").update({ status: 'concluido' }).eq('id', data.id);
+                                    const { error } = await _supabase.from("agendamentos_barreto").update({ status: 'concluido' }).eq('id', data.id);
+                                    if (error) throw error;
                                     
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 } catch (err) {
-                                    modal.classList.remove("active");
-                                    carregarAgendaSemanal();
+                                    mostrarAlerta("Erro ao concluir: " + err.message, false);
+                                    btnSalvarPg.textContent = "Salvar Pagamento";
+                                    btnSalvarPg.disabled = false;
                                 }
                             };
 
@@ -658,13 +657,21 @@
                                     btnConfirmarCancelamento.textContent = "A cancelar...";
                                     btnConfirmarCancelamento.disabled = true;
                                     
-                                    await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq('id', data.id);
+                                    const { error } = await _supabase
+                                        .from("agendamentos_barreto")
+                                        .update({ status: 'cancelado' })
+                                        .eq('id', data.id);
+
+                                    if (error) throw error;
                                     
                                     modal.classList.remove("active");
+                                    mostrarAlerta("Reserva cancelada com sucesso!", true);
                                     carregarAgendaSemanal();
                                 } catch (err) {
-                                    modal.classList.remove("active");
-                                    carregarAgendaSemanal();
+                                    console.error("Erro ao cancelar:", err);
+                                    mostrarAlerta("Erro ao cancelar no banco: " + err.message, false);
+                                    btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
+                                    btnConfirmarCancelamento.disabled = false;
                                 }
                             };
 
@@ -705,7 +712,6 @@
             container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
 
             try {
-                // COMUNICAÇÃO EXATA DE DATA PARA ADMIN (.eq)
                 const { data } = await _supabase.from("agendamentos_barreto")
                     .select("*")
                     .eq("data", dataFiltro)
