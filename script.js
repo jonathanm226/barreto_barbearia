@@ -178,7 +178,6 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
-        // Busca direta no Supabase comparando exatamente o dia e o barbeiro
         const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto")
             .select("horario, servico, status, data, barbeiro");
 
@@ -320,7 +319,7 @@ function abrirModalConfirmacao() {
     const preco = ehEmergencia ? 45.0 : calcularTotal();
     const servNomes = ehEmergencia ? ["Corte Emergencial"] : selectedServices.map(s => s.name);
 
-.   document.getElementById("resumo-agendamento").innerHTML = `
+    document.getElementById("resumo-agendamento").innerHTML = `
         <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
         <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
         <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servNomes.join(", ")}</div>
