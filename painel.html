@@ -89,7 +89,7 @@
                     <label for="login-senha">Senha:</label>
                     <input type="password" id="login-senha" placeholder="Senha">
                 </div>
-                <button class="btn-acao" onclick="fazerLogin()" style="padding: 12px; margin-top: 4px;">ENTRAR</button>
+                <button type="button" class="btn-acao" onclick="fazerLogin()" style="padding: 12px; margin-top: 4px;">ENTRAR</button>
             </div>
         </section>
 
@@ -98,13 +98,13 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
                 <h2 id="titulo-agenda-barbeiro" style="font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
                 <div style="display: flex; gap: 3px; flex-wrap: wrap;">
-                    <button onclick="abrirModalAgendamentoManual()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #25D366; color: #FFF;">
+                    <button type="button" onclick="abrirModalAgendamentoManual()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #25D366; color: #FFF;">
                         <i class="fa-solid fa-plus"></i> Novo Agendamento
                     </button>
-                    <button onclick="carregarAgendaSemanal()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #FF6600; color: #FFF;">
+                    <button type="button" onclick="carregarAgendaSemanal()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
                     </button>
-                    <button onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
+                    <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
                         <i class="fa-solid fa-right-from-bracket"></i> Sair
                     </button>
                 </div>
@@ -115,10 +115,10 @@
                 <div style="font-size: 0.58rem; color: #AAAAAA; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Período da Agenda</div>
                 <span id="label-periodo-semana" style="font-weight: bold; color: #FFFFFF; font-size: 0.7rem; display: block; margin-bottom: 5px;"></span>
                 <div style="display: flex; justify-content: space-between; gap: 4px;">
-                    <button onclick="mudarSemana(-1)" class="btn-acao" style="flex: 1; padding: 3px; font-size: 0.58rem; border: 1px solid #444; background: #242424; color: #FFF;">
+                    <button type="button" onclick="mudarSemana(-1)" class="btn-acao" style="flex: 1; padding: 3px; font-size: 0.58rem; border: 1px solid #444; background: #242424; color: #FFF;">
                         <i class="fa-solid fa-chevron-left"></i> Anterior
                     </button>
-                    <button onclick="mudarSemana(1)" class="btn-acao" style="flex: 1; padding: 3px; font-size: 0.58rem; border: 1px solid #444; background: #242424; color: #FFF;">
+                    <button type="button" onclick="mudarSemana(1)" class="btn-acao" style="flex: 1; padding: 3px; font-size: 0.58rem; border: 1px solid #444; background: #242424; color: #FFF;">
                         Próxima <i class="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
@@ -133,8 +133,8 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h2 style="font-size: 0.95rem;">Resumo Administrativo</h2>
                 <div style="display: flex; gap: 6px;">
-                    <button onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i></button>
-                    <button onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></button>
+                    <button type="button" onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i></button>
+                    <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></button>
                 </div>
             </div>
 
@@ -183,7 +183,7 @@
                 <input type="text" id="manual-servico" value="Corte" placeholder="Serviço prestado">
 
                 <label style="font-size: 0.75rem; color: #aaa;">Preço (R$):</label>
-                <input type="number" id="manual-preco" value="35.00" placeholder="35.00">
+                <input type="number" id="manual-preco" value="35.00" placeholder="35.00" step="0.01">
 
                 <label style="font-size: 0.75rem; color: #aaa;">Data:</label>
                 <input type="date" id="manual-data">
@@ -193,8 +193,9 @@
             </div>
 
             <div class="custom-modal-buttons" style="margin-top: 10px;">
-                <button class="custom-modal-btn btn-modal-confirmar" onclick="salvarAgendamentoManual()">Salvar Agendamento</button>
-                <button class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalAgendamentoManual()">Cancelar</button>
+                <!-- Type="button" + event explícito para não forçar Refresh e gerar Load Failed -->
+                <button type="button" id="btn-salvar-manual" class="custom-modal-btn btn-modal-confirmar" onclick="salvarAgendamentoManual(event)">Salvar Agendamento</button>
+                <button type="button" class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalAgendamentoManual()">Cancelar</button>
             </div>
         </div>
     </div>
@@ -204,7 +205,7 @@
         <div class="custom-modal" style="max-width: 320px;">
             <h3 id="alerta-titulo" style="margin-bottom: 12px; font-size: 1.1rem;">Aviso</h3>
             <p id="alerta-mensagem" style="color: #FFF; font-size: 0.95rem; margin-bottom: 20px; text-align: center;"></p>
-            <button class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlerta()">OK</button>
+            <button type="button" class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlerta()">OK</button>
         </div>
     </div>
 
@@ -216,7 +217,7 @@
         let usuarioLogado = "";
         let offsetSemana = 0; 
         
-        // Memória baseada na chave "DATA_HORARIO" (ex: "2026-10-06_19:00") para garantir o mascaramento infalível
+        // Memória baseada na chave "DATA_HORARIO" 
         let chavesCanceladasLocais = JSON.parse(localStorage.getItem('barreto_chaves_canceladas') || '[]');
 
         function mostrarAlerta(mensagem, sucesso = true) {
@@ -363,10 +364,11 @@
 
                     const blqDia = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && b.horario === 'TODOS');
                     
+                    // Ajuste na propagação do bloqueio Dia (evitar clicks fantasma)
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
-                            <button onclick="alternarBloqueioDia('${dia.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
+                            <button type="button" onclick="event.stopPropagation(); alternarBloqueioDia('${dia.iso}', ${!!blqDia})" style="background: ${blqDia ? '#2C1A1A' : '#242424'}; color: ${blqDia ? '#e74c3c' : '#FFF'}; border: 1px solid ${blqDia ? '#e74c3c' : '#444'}; padding: 1px 2px; border-radius: 2px; font-size: 0.5rem; cursor: pointer;">
                                 ${blqDia ? 'Desbl' : 'Bloq'}
                             </button>
                         </div>
@@ -384,7 +386,6 @@
                             .filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS')
                             .map(b => String(b.horario).substring(0, 5));
 
-                        // Filtra os agendamentos removendo os que correspondem à chave local de cancelamento
                         const agendamentosDia = (agendamentos || []).filter(a => {
                             const dataIso = String(a.data).substring(0, 10);
                             const hAg = String(a.horario).substring(0, 5);
@@ -428,10 +429,11 @@
 
                             if (item.tipo === 'bloqueio') {
                                 itemSlot.className = "slot-item blocked";
+                                // Adicionado stopPropagation()
                                 itemSlot.innerHTML = `
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <span style="font-weight:bold;">${item.horario}</span>
-                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${item.horario}', true)" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 1px 2px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Desbl</button>
+                                        <button type="button" onclick="event.stopPropagation(); alternarBloqueioHorario('${dia.iso}', '${item.horario}', true)" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 1px 2px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Desbl</button>
                                     </div>
                                 `;
                             } else if (item.tipo === 'agendamento') {
@@ -460,10 +462,11 @@
                                 `;
                             } else {
                                 itemSlot.className = "slot-item available";
+                                // Adicionado stopPropagation()
                                 itemSlot.innerHTML = `
                                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                         <span style="color:#AAA;">${item.horario}</span>
-                                        <button onclick="alternarBloqueioHorario('${dia.iso}', '${item.horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 0px 3px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Bloq</button>
+                                        <button type="button" onclick="event.stopPropagation(); alternarBloqueioHorario('${dia.iso}', '${item.horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 0px 3px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Bloq</button>
                                     </div>
                                 `;
                             }
@@ -481,9 +484,14 @@
         async function alternarBloqueioDia(dataIso, estaBloqueado) {
             try {
                 if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado}%`).eq("data", dataIso).eq("horario", "TODOS");
+                    await _supabase.from("bloqueios_barreto")
+                        .delete()
+                        .eq("barbeiro", usuarioLogado)
+                        .eq("data", dataIso)
+                        .eq("horario", "TODOS");
                 } else {
-                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
+                    await _supabase.from("bloqueios_barreto")
+                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
                 }
                 carregarAgendaSemanal();
             } catch (err) {
@@ -494,9 +502,15 @@
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
                 if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto").delete().ilike("barbeiro", `%${usuarioLogado}%`).eq("data", dataIso).eq("horario", horario);
+                    // Proteção de query: utilizar LIKE resolve o problema do banco esperar Time (10:00:00) vs Texto (10:00)
+                    await _supabase.from("bloqueios_barreto")
+                        .delete()
+                        .eq("barbeiro", usuarioLogado)
+                        .eq("data", dataIso)
+                        .like("horario", `${horario}%`);
                 } else {
-                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
+                    await _supabase.from("bloqueios_barreto")
+                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
                 }
                 carregarAgendaSemanal();
             } catch (err) {
@@ -516,17 +530,30 @@
             document.getElementById("modal-agendamento-manual").classList.remove("active");
         }
 
-        async function salvarAgendamentoManual() {
+        // Blindagem no envio do formulário manual
+        async function salvarAgendamentoManual(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const btn = document.getElementById("btn-salvar-manual");
             const cliente = document.getElementById("manual-cliente").value.trim();
             const telefone = document.getElementById("manual-telefone").value.trim();
             const servico = document.getElementById("manual-servico").value.trim();
-            const preco = parseFloat(document.getElementById("manual-preco").value) || 35.00;
+            const precoBruto = document.getElementById("manual-preco").value.replace(",", ".");
+            const preco = parseFloat(precoBruto) || 35.00;
             const data = document.getElementById("manual-data").value;
             const horario = document.getElementById("manual-horario").value;
 
             if (!cliente || !data || !horario) {
                 mostrarAlerta("Preencha pelo menos o Nome, a Data e o Horário.", false);
                 return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = "A salvar...";
             }
 
             try {
@@ -547,7 +574,12 @@
                 mostrarAlerta("Agendamento avulso efetuado com sucesso!", true);
                 carregarAgendaSemanal();
             } catch (err) {
-                mostrarAlerta("Erro ao efetuar agendamento manual: " + err.message, false);
+                mostrarAlerta("Falha de conexão: " + err.message, false);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = "Salvar Agendamento";
+                }
             }
         }
 
@@ -578,6 +610,7 @@
 
                     if (data.status !== 'concluido') {
                         const btnAtendido = document.createElement("button");
+                        btnAtendido.type = "button";
                         btnAtendido.className = "custom-modal-btn btn-modal-atendido";
                         btnAtendido.textContent = "Concluir e Confirmar Pgto";
                         btnAtendido.onclick = () => {
@@ -585,11 +618,12 @@
                             buttonsBox.innerHTML = "";
 
                             const btnSalvarPg = document.createElement("button");
+                            btnSalvarPg.type = "button";
                             btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
                             btnSalvarPg.textContent = "Salvar Pagamento";
                             btnSalvarPg.onclick = async () => {
                                 try {
-                                    btnSalvarPg.textContent = "Salvando...";
+                                    btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
                                     const dataIso = String(data.data).substring(0, 10);
                                     const horarioStr = String(data.horario).substring(0, 5);
@@ -605,6 +639,7 @@
                             };
 
                             const btnVoltar = document.createElement("button");
+                            btnVoltar.type = "button";
                             btnVoltar.className = "custom-modal-btn btn-modal-cancelar";
                             btnVoltar.textContent = "Voltar";
                             btnVoltar.onclick = () => {
@@ -617,6 +652,7 @@
                         };
 
                         const btnCancelar = document.createElement("button");
+                        btnCancelar.type = "button";
                         btnCancelar.className = "custom-modal-btn btn-modal-excluir";
                         btnCancelar.textContent = "Cancelar Agendamento";
                         btnCancelar.onclick = () => {
@@ -625,6 +661,7 @@
                             `;
                             
                             const btnConfirmarCancelamento = document.createElement("button");
+                            btnConfirmarCancelamento.type = "button";
                             btnConfirmarCancelamento.className = "custom-modal-btn btn-modal-excluir";
                             btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
                             btnConfirmarCancelamento.onclick = async () => {
@@ -636,13 +673,11 @@
                                     const horarioStr = String(data.horario).substring(0, 5);
                                     const chaveUnica = `${dataIso}_${horarioStr}`;
 
-                                    // Adiciona a chave exata de data e horário à memória do telemóvel
                                     if (!chavesCanceladasLocais.includes(chaveUnica)) {
                                         chavesCanceladasLocais.push(chaveUnica);
                                         localStorage.setItem('barreto_chaves_canceladas', JSON.stringify(chavesCanceladasLocais));
                                     }
 
-                                    // Insere o bloqueio no banco para liberar o horário visualmente para novos clientes
                                     await _supabase.from("bloqueios_barreto").insert([{ 
                                         barbeiro: data.barbeiro, 
                                         data: dataIso, 
@@ -653,13 +688,13 @@
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 } catch (err) {
-                                    console.error("Erro ao cancelar:", err);
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
                                 }
                             };
 
                             const btnVoltarCancelamento = document.createElement("button");
+                            btnVoltarCancelamento.type = "button";
                             btnVoltarCancelamento.className = "custom-modal-btn btn-modal-cancelar";
                             btnVoltarCancelamento.textContent = "Não, Voltar";
                             btnVoltarCancelamento.onclick = renderizarBotoesPrincipais;
@@ -673,6 +708,7 @@
                     }
 
                     const btnFechar = document.createElement("button");
+                    btnFechar.type = "button";
                     btnFechar.className = "custom-modal-btn btn-modal-cancelar";
                     btnFechar.textContent = "Fechar";
                     btnFechar.onclick = () => modal.classList.remove("active");
