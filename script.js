@@ -83,7 +83,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     checkAvailableTimes();
 
-    // Novo bloqueio visual (Permite mostrar no iOS sem sumir, mas emite aviso ao clicar)
     const timeSelect = document.getElementById("time");
     if (timeSelect) {
         timeSelect.addEventListener("change", function(e) {
@@ -169,14 +168,8 @@ async function checkAvailableTimes() {
             .ilike("barbeiro", `%${selectedBarber.trim()}%`)
             .like("data", `${selDate}%`);
 
-        const chavesCanceladas = JSON.parse(localStorage.getItem('barreto_chaves_canceladas') || '[]');
-        
-        const agendamentos = (agsDB || []).filter(a => {
-            if (a.status === 'cancelado') return false;
-            const hAg = String(a.horario).substring(0, 5);
-            const chaveUnica = `${selDate}_${hAg}`;
-            return !chavesCanceladas.includes(chaveUnica);
-        });
+        // FILTRO DEFINITIVO: Apenas agendamentos que NÃO estão cancelados
+        const agendamentos = (agsDB || []).filter(a => a.status !== 'cancelado');
 
         const { data: bloqueios } = await _supabase.from("bloqueios_barreto")
             .select("horario")
@@ -186,7 +179,7 @@ async function checkAvailableTimes() {
         if ((bloqueios || []).some(b => b.horario === "TODOS")) return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
 
         const ocupados = new Set();
-        (agendamentos || []).forEach(a => {
+        agendamentos.forEach(a => {
             if (!a.horario) return;
             const horaFormatada = String(a.horario).substring(0, 5); 
             const inicio = toMin(horaFormatada);
@@ -214,7 +207,6 @@ async function checkAvailableTimes() {
 
         timeSel.innerHTML = "";
         
-        // Placeholder padrao
         const optDefault = document.createElement("option");
         optDefault.value = ""; 
         optDefault.textContent = "Selecione um horário";
@@ -239,7 +231,6 @@ async function checkAvailableTimes() {
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { conflito = true; break; }
             }
 
-            // Não usa opt.disabled = true para evitar bugs nativos do iOS (Ocultamento de Options)
             if (conflito || expirado) { 
                 if (conflito && !expirado) opt.textContent = `${slot.valor} - (Ocupado)`; 
                 opt.dataset.ocupado = "true"; 
@@ -253,7 +244,7 @@ async function checkAvailableTimes() {
         if (anteriorDisp) {
             timeSel.value = previousSelection;
         } else {
-            timeSel.value = ""; // Fica no placeholder
+            timeSel.value = ""; 
         }
 
     } catch (err) {
@@ -277,7 +268,6 @@ function abrirModalConfirmacao() {
         return;
     }
     
-    // Validação estrita do dataset Ocupado
     const selectedOpt = timeSelect.options[timeSelect.selectedIndex];
     if (!time || !selectedOpt || selectedOpt.dataset.ocupado === "true") {
         mostrarAlertaCliente("Por favor, selecione um horário válido e livre.", false);
@@ -333,7 +323,12 @@ async function confirmarEEnviar() {
             status: 'ativo'
         }]);
 
-        if (insertError) throw new Error(insertError.message);
+        if (insertError) {
+            if (insertError.code === '23505') {
+                throw new Error("Este horário acabou de ser reservado por outra pessoa. Atualize a página.");
+            }
+            throw new Error(insertError.message);
+        }
 
         fecharModalConfirmacao();
         const num = telefonesBarbeiros[selectedBarber] || "5531997193193";
@@ -342,7 +337,7 @@ async function confirmarEEnviar() {
         window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 
     } catch (err) {
-        mostrarAlertaCliente("Erro ao gravar na base de dados: " + err.message, false);
+        mostrarAlertaCliente("Aviso: " + err.message, false);
         enviandoAgendamento = false; btn.disabled = false; btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
     }
 }
