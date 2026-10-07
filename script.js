@@ -158,7 +158,7 @@ function mostrarMensagemNoSelect(timeSelect, texto) {
     timeSelect.appendChild(option);
 }
 
-// SINCRONIZAÇÃO BLINDADA COM O SUPABASE
+// SINCRONIZAÇÃO UNIVERSAL E BLINDADA
 async function checkAvailableTimes() {
     const dateEl = document.getElementById("date");
     const timeSel = document.getElementById("time");
@@ -175,26 +175,24 @@ async function checkAvailableTimes() {
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
 
     try {
-        // BUSCA SEGURA: Traz todos os agendamentos do dia sem filtrar o barbeiro na query para evitar falhas de case-sensitivity
+        // BUSCA GERAL: Traz todos os agendamentos e valida a data e o barbeiro em JavaScript para evitar falhas de tipagem no Supabase
         const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto")
             .select("horario, servico, status, data, barbeiro");
 
-        if (errAgs) console.error("Erro banco agendamentos:", errAgs);
+        if (errAgs) console.error("Erro ao buscar agendamentos:", errAgs);
 
-        // FILTRAGEM SEGURA EM JS: Compara data (YYYY-MM-DD) e barbeiro ignorando maiúsculas/minúsculas e espaços
         const agendamentos = (agsDB || []).filter(a => {
-            if (!a.data || !a.barbeiro) return false;
+            if (!a.data || !a.barbeiro || !a.horario) return false;
             const dataBanco = String(a.data).substring(0, 10);
             const mesmoBarbeiro = a.barbeiro.trim().toLowerCase() === selectedBarber.trim().toLowerCase();
-            const naoCancelado = a.status !== 'cancelado';
-            return dataBanco === selDate && mesmoBarbeiro && naoCancelado;
+            const ativo = a.status !== 'cancelado';
+            return dataBanco === selDate && mesmoBarbeiro && ativo;
         });
 
-        // BUSCA SEGURA DE BLOQUEIOS DO DIA
         const { data: bloqueiosDB, error: errBlq } = await _supabase.from("bloqueios_barreto")
             .select("horario, data, barbeiro");
 
-        if (errBlq) console.error("Erro banco bloqueios:", errBlq);
+        if (errBlq) console.error("Erro ao buscar bloqueios:", errBlq);
 
         const bloqueios = (bloqueiosDB || []).filter(b => {
             if (!b.data || !b.barbeiro) return false;
@@ -209,14 +207,12 @@ async function checkAvailableTimes() {
 
         const ocupados = new Set();
         agendamentos.forEach(a => {
-            if (!a.horario) return;
             const horaFormatada = String(a.horario).substring(0, 5); 
             const inicio = toMin(horaFormatada);
-            let dur = 0;
+            let dur = 30;
             if (a.servico) {
+                dur = 0;
                 a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
-            } else {
-                dur = 30;
             }
             const numSlots = Math.max(1, Math.ceil(dur / 30));
             for (let k = 0; k < numSlots; k++) {
