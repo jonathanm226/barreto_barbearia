@@ -41,6 +41,13 @@
         .btn-modal-atendido { background: #25D366; color: #FFFFFF; }
         .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
 
+        /* Dashboard Financeiro Card */
+        .dashboard-card { background: #181818; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 0.75rem; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
+        .metric-box { background: #222; border: 1px solid #333; border-radius: 4px; padding: 6px; text-align: center; }
+        .metric-box span { display: block; color: #888; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 2px; }
+        .metric-box strong { font-size: 0.85rem; color: #25D366; }
+
         .week-horizontal-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin-top: 6px; width: 100%; overflow-x: hidden; }
         .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 4px; padding: 2px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
         .day-header { font-size: 0.58rem; color: #FFFFFF; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
@@ -99,7 +106,7 @@
                 <h2 id="titulo-agenda-barbeiro" style="font-size: 0.75rem; text-transform: uppercase;">Minha Agenda</h2>
                 <div style="display: flex; gap: 3px; flex-wrap: wrap;">
                     <button type="button" onclick="abrirModalAgendamentoManual()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #25D366; color: #FFF;">
-                        <i class="fa-solid fa-plus"></i> Novo Agendamento
+                        <i class="fa-solid fa-plus"></i> Novo
                     </button>
                     <button type="button" onclick="carregarAgendaSemanal()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #FF6600; color: #FFF;">
                         <i class="fa-solid fa-rotate"></i> Atualizar
@@ -107,6 +114,21 @@
                     <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 3px 6px; font-size: 0.55rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;">
                         <i class="fa-solid fa-right-from-bracket"></i> Sair
                     </button>
+                </div>
+            </div>
+
+            <!-- Dashboard de Fechamento da Semana (Barbeiro) -->
+            <div class="dashboard-card">
+                <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 4px; text-align: center;">Resumo da Semana (Fechamento)</div>
+                <div class="dashboard-grid">
+                    <div class="metric-box">
+                        <span>Atendimentos Concluídos</span>
+                        <strong id="barber-total-atendidos">0</strong>
+                    </div>
+                    <div class="metric-box">
+                        <span>Total Faturado</span>
+                        <strong id="barber-total-faturamento" style="color: #FF6600;">R$ 0,00</strong>
+                    </div>
                 </div>
             </div>
 
@@ -136,6 +158,12 @@
                     <button type="button" onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i></button>
                     <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></button>
                 </div>
+            </div>
+
+            <!-- Resumo Financeiro Geral por Barbeiro (Admin) -->
+            <div class="dashboard-card" style="margin-bottom: 12px;">
+                <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 6px; text-align: center;">Resumo Financeiro por Barbeiro (Data Selecionada / Geral)</div>
+                <div id="admin-resumo-barbeiros" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
 
             <div class="input-group" style="margin-bottom: 10px;">
@@ -173,7 +201,7 @@
         <div class="custom-modal">
             <h3>Agendamento Avulso (Barbeiro)</h3>
             <div style="text-align: left;">
-                <label style="font-size: 0.75rem; color: #aaa;">Nome do Cliente (ex: Idoso / Balcão):</label>
+                <label style="font-size: 0.75rem; color: #aaa;">Nome do Cliente:</label>
                 <input type="text" id="manual-cliente" placeholder="Nome do Cliente">
 
                 <label style="font-size: 0.75rem; color: #aaa;">Telefone / WhatsApp:</label>
@@ -344,6 +372,19 @@
 
                 const { data: agendamentos } = await _supabase.from("agendamentos_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
                 const { data: bloqueios } = await _supabase.from("bloqueios_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
+
+                // Calcular Dashboard do Barbeiro para esta semana
+                let qtdConcluidos = 0;
+                let faturamentoTotal = 0;
+                (agendamentos || []).forEach(a => {
+                    if (a.status === 'concluido') {
+                        qtdConcluidos++;
+                        faturamentoTotal += Number(a.preco_total || 35);
+                    }
+                });
+
+                document.getElementById("barber-total-atendidos").textContent = qtdConcluidos;
+                document.getElementById("barber-total-faturamento").textContent = `R$ ${faturamentoTotal.toFixed(2).replace(".", ",")}`;
 
                 container.innerHTML = "";
 
@@ -551,12 +592,7 @@
                     status: 'ativo'
                 }]);
 
-                if (error) {
-                    if (error.code === '23505') {
-                        throw new Error("Este horário já foi ocupado. Atualize a página e tente outro.");
-                    }
-                    throw error;
-                }
+                if (error) throw error;
 
                 fecharModalAgendamentoManual();
                 mostrarAlerta("Agendamento avulso efetuado com sucesso!", true);
@@ -614,7 +650,11 @@
                                     btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
                                     
-                                    const { error } = await _supabase.from("agendamentos_barreto_v2").update({ status: 'concluido' }).eq('id', data.id);
+                                    const formaPgto = document.getElementById("select-forma-pagamento").value;
+                                    const { error } = await _supabase.from("agendamentos_barreto_v2")
+                                        .update({ status: 'concluido', pagamentos: formaPgto })
+                                        .eq('id', data.id);
+
                                     if (error) throw error;
                                     
                                     modal.classList.remove("active");
@@ -707,9 +747,12 @@
         async function carregarResumoAdmin() {
             const dataFiltro = document.getElementById("filter-date-admin").value;
             const container = document.getElementById("agendamentos-list-admin");
+            const resumoBarbeirosDiv = document.getElementById("admin-resumo-barbeiros");
+            
             if (!dataFiltro) return;
             
             container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
+            resumoBarbeirosDiv.innerHTML = "<p style='color: #888; text-align: center; font-size: 0.75rem;'>A calcular...</p>";
 
             try {
                 const { data } = await _supabase.from("agendamentos_barreto_v2")
@@ -718,20 +761,51 @@
                     .order("horario", { ascending: true });
                 
                 container.innerHTML = "";
-                const filtrados = (data || []).filter(a => a.status !== 'cancelado');
+                const ativosOuConcluidos = (data || []).filter(a => a.status !== 'cancelado');
 
-                if (filtrados.length === 0) {
-                    container.innerHTML = "<p style='color: #aaa; text-align: center; padding: 10px; background: #1A1A1A; border-radius: 6px;'>Sem agendamentos ativos.</p>";
+                // Agrupar dados por Barbeiro para o Resumo Financeiro Admin
+                const statsBarbeiros = {
+                    "Matheus": { qtd: 0, faturamento: 0 },
+                    "Yann": { qtd: 0, faturamento: 0 },
+                    "Rafael": { qtd: 0, faturamento: 0 }
+                };
+
+                ativosOuConcluidos.forEach(item => {
+                    const nomeBarbeiro = Object.keys(statsBarbeiros).find(b => item.barbeiro && item.barbeiro.toLowerCase().includes(b.toLowerCase())) || item.barbeiro;
+                    if (!statsBarbeiros[nomeBarbeiro]) {
+                        statsBarbeiros[nomeBarbeiro] = { qtd: 0, faturamento: 0 };
+                    }
+                    statsBarbeiros[nomeBarbeiro].qtd++;
+                    if (item.status === 'concluido') {
+                        statsBarbeiros[nomeBarbeiro].faturamento += Number(item.preco_total || 35);
+                    }
+                });
+
+                resumoBarbeirosDiv.innerHTML = "";
+                Object.keys(statsBarbeiros).forEach(barb => {
+                    const info = statsBarbeiros[barb];
+                    const cardBarb = document.createElement("div");
+                    cardBarb.style.cssText = "background: #222; padding: 6px 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;";
+                    cardBarb.innerHTML = `
+                        <strong style="color: #FFF;">${barb}</strong>
+                        <span style="color: #AAA;">Atendimentos: <strong>${info.qtd}</strong></span>
+                        <span style="color: #25D366; font-weight: bold;">R$ ${info.faturamento.toFixed(2).replace(".", ",")}</span>
+                    `;
+                    resumoBarbeirosDiv.appendChild(cardBarb);
+                });
+
+                if (ativosOuConcluidos.length === 0) {
+                    container.innerHTML = "<p style='color: #aaa; text-align: center; padding: 10px; background: #1A1A1A; border-radius: 6px;'>Sem agendamentos ativos para esta data.</p>";
                     return;
                 }
 
-                filtrados.forEach(item => {
+                ativosOuConcluidos.forEach(item => {
                     const card = document.createElement("div");
                     const isConcluido = item.status === 'concluido';
                     card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600');
                     card.innerHTML = `
                         <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
-                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")}</span>
+                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")} ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
                     `;
                     container.appendChild(card);
                 });
