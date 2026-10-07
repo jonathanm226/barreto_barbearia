@@ -95,14 +95,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+// CLIQUE BLINDADO PARA BARBEIROS
 function selectBarber(element, barberName) {
+    if (!element) return;
     document.querySelectorAll(".barber-card").forEach(card => card.classList.remove("active"));
     element.classList.add("active");
     selectedBarber = barberName;
     checkAvailableTimes();
 }
 
+// CLIQUE BLINDADO PARA SERVIÇOS
 function toggleService(element, serviceName, price) {
+    if (!element) return;
     const icon = element.querySelector(".checkbox-icon");
     const index = selectedServices.findIndex(s => s.name === serviceName);
     const duration = duracoesServicos[serviceName] || 30;
@@ -110,6 +114,256 @@ function toggleService(element, serviceName, price) {
     if (index > -1) {
         selectedServices.splice(index, 1);
         element.classList.remove("active");
-        if (icon) { icon.classList.remove("fa-solid", "fa-square-check"); icon.classList.add("fa-regular", "fa-square"); }
+        if (icon) { 
+            icon.classList.remove("fa-solid", "fa-square-check"); 
+            icon.classList.add("fa-regular", "fa-square"); 
+        }
     } else {
-        selectedServices.push
+        selectedServices.push({ name: serviceName, price: price, duration: duration });
+        element.classList.add("active");
+        if (icon) { 
+            icon.classList.remove("fa-regular", "fa-square"); 
+            icon.classList.add("fa-solid", "fa-square-check"); 
+        }
+    }
+    checkAvailableTimes();
+}
+
+function getTimesForDate(dateString, barbeiro) {
+    if (!dateString) return [];
+    const diaSem = diaDaSemana(dateString); 
+    if (diaSem === 0) return []; 
+    if (barbeiro === "Matheus" && diaSem === 3) return []; 
+    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; 
+
+    let inicioExpediente = 480, fimExpedienteLimite = 1320, inicioEmergencia = 1200;
+    if (diaSem >= 4 && diaSem <= 5) { 
+        inicioExpediente = 480; inicioEmergencia = 1260; 
+    } else if (diaSem === 6) { 
+        inicioExpediente = 480; inicioEmergencia = 1080; fimExpedienteLimite = 1320; 
+    }
+
+    const slots = [];
+    for (let m = inicioExpediente; m <= fimExpedienteLimite; m += 30) {
+        const horaStr = fromMin(m);
+        let textoSlot = m >= inicioEmergencia ? `${horaStr} - (Corte Emergencial: R$ 45,00)` : horaStr;
+        slots.push({ valor: horaStr, texto: textoSlot });
+    }
+    return slots;
+}
+
+function mostrarMensagemNoSelect(timeSelect, texto) {
+    timeSelect.innerHTML = "";
+    const option = document.createElement("option");
+    option.value = ""; option.textContent = texto;
+    option.disabled = true; option.selected = true;
+    timeSelect.appendChild(option);
+}
+
+async function checkAvailableTimes() {
+    const dateEl = document.getElementById("date");
+    const timeSel = document.getElementById("time");
+
+    if (!dateEl || !timeSel || !dateEl.value) return;
+    const selDate = dateEl.value;
+    const previousSelection = timeSel.value;
+
+    const allSlots = getTimesForDate(selDate, selectedBarber);
+    if (allSlots.length === 0) return mostrarMensagemNoSelect(timeSel, "Barbeiro não atende neste dia");
+
+    const durationMin = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
+    const slotsNeeded = Math.ceil(durationMin / 30);
+    mostrarMensagemNoSelect(timeSel, "A carregar horários...");
+
+    try {
+        const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto")
+            .select("horario, servico, status, data")
+            .ilike("barbeiro", `%${selectedBarber.trim()}%`)
+            .gte("data", selDate)
+            .lte("data", selDate + " 23:59:59");
+
+        if (errAgs) console.error("Erro banco agendamentos:", errAgs);
+
+        const agendamentos = (agsDB || []).filter(a => a.status !== 'cancelado');
+
+        const { data: bloqueios, error: errBlq } = await _supabase.from("bloqueios_barreto")
+            .select("horario")
+            .ilike("barbeiro", `%${selectedBarber.trim()}%`)
+            .gte("data", selDate)
+            .lte("data", selDate + " 23:59:59");
+
+        if (errBlq) console.error("Erro banco bloqueios:", errBlq);
+
+        if ((bloqueios || []).some(b => b.horario === "TODOS")) return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
+
+        const ocupados = new Set();
+        agendamentos.forEach(a => {
+            if (!a.horario) return;
+            const horaFormatada = String(a.horario).substring(0, 5); 
+            const inicio = toMin(horaFormatada);
+            let dur = 0;
+            if (a.servico) a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
+            const numSlots = Math.max(1, Math.ceil(dur / 30));
+            for (let k = 0; k < numSlots; k++) ocupados.add(inicio + (30 * k));
+        });
+
+        const bloqueiosAlmocoAutomaticos = {
+            "Rafael": ["13:00", "13:30"],
+            "Yann": ["12:00", "12:30", "13:00"],
+            "Matheus": ["13:30", "14:00", "14:30"]
+        };
+        const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber] || [];
+
+        const bloqueados = new Set((bloqueios || []).map(b => toMin(String(b.horario).substring(0, 5))));
+        almocoPadrao.forEach(h => bloqueados.add(toMin(h)));
+
+        const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
+
+        const agora = new Date();
+        const hojeIso = isoLocal(agora);
+        const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
+
+        timeSel.innerHTML = "";
+        
+        const optDefault = document.createElement("option");
+        optDefault.value = ""; 
+        optDefault.textContent = "Selecione um horário";
+        optDefault.disabled = true;
+        timeSel.appendChild(optDefault);
+
+        allSlots.forEach(slot => {
+            const opt = document.createElement("option");
+            opt.value = slot.valor; opt.textContent = slot.texto;
+            const inicio = toMin(slot.valor);
+            
+            let conflito = false;
+            let expirado = false;
+
+            if (selDate === hojeIso && inicio < minutosAtuais) {
+                expirado = true;
+                opt.textContent = `${slot.valor} - (Expirado)`;
+            }
+
+            for (let i = 0; i < slotsNeeded; i++) {
+                const s = inicio + (30 * i);
+                if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { conflito = true; break; }
+            }
+
+            if (conflito || expirado) { 
+                if (conflito && !expirado) opt.textContent = `${slot.valor} - (Ocupado)`; 
+                opt.dataset.ocupado = "true"; 
+            } else {
+                opt.dataset.ocupado = "false";
+            }
+            timeSel.appendChild(opt);
+        });
+
+        const anteriorDisp = Array.from(timeSel.options).find(o => o.value === previousSelection && o.dataset.ocupado !== "true" && o.value !== "");
+        if (anteriorDisp) {
+            timeSel.value = previousSelection;
+        } else {
+            timeSel.value = ""; 
+        }
+
+    } catch (err) {
+        mostrarMensagemNoSelect(timeSel, "Erro ao carregar horários");
+        console.error("Catch error:", err);
+    }
+}
+
+function abrirModalConfirmacao() {
+    const name = document.getElementById("client-name")?.value.trim();
+    const phone = document.getElementById("client-phone")?.value.trim();
+    const date = document.getElementById("date")?.value;
+    const timeSelect = document.getElementById("time");
+    const time = timeSelect?.value;
+
+    if (!name || !phone || phone.replace(/\D/g,"").length < 10) {
+        mostrarAlertaCliente("Preencha o seu nome e um WhatsApp válido.", false);
+        return;
+    }
+    if (selectedServices.length === 0) {
+        mostrarAlertaCliente("Selecione um serviço.", false);
+        return;
+    }
+    
+    const selectedOpt = timeSelect.options[timeSelect.selectedIndex];
+    if (!time || !selectedOpt || selectedOpt.dataset.ocupado === "true") {
+        mostrarAlertaCliente("Por favor, selecione um horário válido e livre.", false);
+        return;
+    }
+
+    const diaSem = diaDaSemana(date);
+    const minTime = toMin(time);
+    let ehEmergencia = ((diaSem >= 1 && diaSem <= 3 && minTime >= 1200) || (diaSem >= 4 && diaSem <= 5 && minTime >= 1260) || (diaSem === 6 && minTime >= 1080));
+    
+    const preco = ehEmergencia ? 45.0 : calcularTotal();
+    const servNomes = ehEmergencia ? ["Corte Emergencial"] : selectedServices.map(s => s.name);
+
+    document.getElementById("resumo-agendamento").innerHTML = `
+        <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
+        <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
+        <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servNomes.join(", ")}</div>
+        <div style="margin-top: 12px; border-top: 1px solid #333333; padding-top: 8px; font-size: 1.1rem;">
+            <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">R$ ${preco.toFixed(2).replace(".", ",")}</span>
+        </div>
+    `;
+    document.getElementById("modal-confirmacao").style.display = "flex";
+}
+
+function fecharModalConfirmacao() { document.getElementById("modal-confirmacao").style.display = "none"; }
+
+async function confirmarEEnviar() {
+    if (enviandoAgendamento) return;
+    const btn = document.getElementById("btn-continuar");
+    enviandoAgendamento = true; btn.disabled = true; btn.innerHTML = 'A agendar...';
+
+    const name = document.getElementById("client-name").value;
+    const phone = document.getElementById("client-phone").value.replace(/\D/g, "");
+    const date = document.getElementById("date").value;
+    const time = document.getElementById("time").value;
+
+    try {
+        const diaSem = diaDaSemana(date);
+        const minTime = toMin(time);
+        let ehEmergencia = ((diaSem >= 1 && diaSem <= 3 && minTime >= 1200) || (diaSem >= 4 && diaSem <= 5 && minTime >= 1260) || (diaSem === 6 && minTime >= 1080));
+        
+        const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
+        const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
+
+        const { error: insertError } = await _supabase.from("agendamentos_barreto").insert([{
+            cliente: name,
+            telefone: phone,
+            barbeiro: selectedBarber,
+            servico: servicosNome,
+            preco_total: precoTotal,
+            data: date,
+            horario: time,
+            status: 'ativo'
+        }]);
+
+        if (insertError) {
+            if (insertError.code === '23505') {
+                throw new Error("Este horário acabou de ser reservado por outra pessoa. Atualize a página e escolha outro horário.");
+            }
+            throw new Error(insertError.message);
+        }
+
+        fecharModalConfirmacao();
+        const num = telefonesBarbeiros[selectedBarber] || "5531997193193";
+        const msg = `✅ *AGENDAMENTO CONFIRMADO* ✅\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${servicosNome}\n📅 *Data:* ${date.split("-").reverse().join("/")}\n⏰ *Horário:* ${time}`;
+        
+        window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+
+    } catch (err) {
+        mostrarAlertaCliente("Aviso: " + err.message, false);
+        enviandoAgendamento = false; btn.disabled = false; btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
+    }
+}
+
+async function buscarClientePorTelefone() {
+    const tel = document.getElementById("client-phone").value.replace(/\D/g, "");
+    if (tel.length < 10) return;
+    const { data } = await _supabase.from("agendamentos_barreto").select("cliente").eq("telefone", tel).limit(1).maybeSingle();
+    if (data && !document.getElementById("client-name").value) document.getElementById("client-name").value = data.cliente;
+}
