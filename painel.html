@@ -1083,6 +1083,29 @@
                         buttonsBox.appendChild(btnCancelar);
                     }
 
+                    // Botão de Enviar Lembrete por WhatsApp
+                    const btnLembrete = document.createElement("button");
+                    btnLembrete.type = "button";
+                    btnLembrete.className = "custom-modal-btn";
+                    btnLembrete.style.background = "#25D366";
+                    btnLembrete.style.color = "#FFFFFF";
+                    btnLembrete.innerHTML = `<i class="fa-brands fa-whatsapp"></i> Enviar Lembrete WhatsApp`;
+                    btnLembrete.onclick = () => {
+                        const telLimpo = (data.telefone || "").replace(/\D/g, "");
+                        if (!telLimpo || telLimpo === "Balcão" || telLimpo.length < 10) {
+                            mostrarAlerta("Este agendamento não possui um número de WhatsApp válido cadastrado.", false);
+                            return;
+                        }
+                        
+                        const dataFormatada = String(data.data).split("-").reverse().join("/");
+                        const horarioFormatado = String(data.horario).substring(0, 5);
+                        
+                        const mensagemLembrete = `Olá, *${data.cliente}*! Passando para lembrar do seu horário agendado na *Barreto Barbearia* com o profissional *${data.barbeiro}* para o dia *${dataFormatada}* às *${horarioFormatado}* (Serviço: ${data.servico}). Tudo certo para comparecer?`;
+                        
+                        window.open(`https://wa.me/55${telLimpo}?text=${encodeURIComponent(mensagemLembrete)}`, '_blank');
+                    };
+                    buttonsBox.appendChild(btnLembrete);
+
                     const btnFechar = document.createElement("button");
                     btnFechar.type = "button";
                     btnFechar.className = "custom-modal-btn btn-modal-cancelar";
