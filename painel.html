@@ -16,7 +16,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* (MANTÉM O TEU CSS EXATAMENTE IGUAL AQUI) */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; }
         .app-container { width: 100%; max-width: 100%; background-color: #121212; padding: 8px; padding-bottom: 90px; }
@@ -378,7 +377,7 @@
                     } else {
                         const horariosDia = obterHorariosParaData(dia.iso);
                         
-                        // O FILTRO DE VERDADE: Agendamentos deste dia que NÃO estão cancelados.
+                        // O FILTRO DEFINITIVO: Agendamentos deste dia que NÃO estão cancelados.
                         const agendamentosDia = (agendamentos || []).filter(a => {
                             const dataIso = String(a.data).substring(0, 10);
                             return dataIso === dia.iso && a.status !== 'cancelado';
@@ -489,6 +488,7 @@
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
                 if (estaBloqueado) {
+                    // USO DO .like PARA APAGAR HORÁRIO CORRETAMENTE DO SUPABASE (TIME VS STRING)
                     await _supabase.from("bloqueios_barreto")
                         .delete()
                         .eq("barbeiro", usuarioLogado)
@@ -553,13 +553,18 @@
                     status: 'ativo'
                 }]);
 
-                if (error) throw error;
+                if (error) {
+                    if (error.code === '23505') {
+                        throw new Error("Este horário já foi ocupado. Atualize a página e tente outro.");
+                    }
+                    throw error;
+                }
 
                 fecharModalAgendamentoManual();
                 mostrarAlerta("Agendamento avulso efetuado com sucesso!", true);
                 carregarAgendaSemanal();
             } catch (err) {
-                mostrarAlerta("Falha de conexão: " + err.message, false);
+                mostrarAlerta("Falha ao salvar: " + err.message, false);
             } finally {
                 if (btn) {
                     btn.disabled = false;
@@ -568,7 +573,7 @@
             }
         }
 
-        // --- AQUI ACONTECE A MÁGICA DE SINCRONIZAÇÃO (UPDATE EM VEZ DE INSERT BLOCK) ---
+        // --- ATUALIZAÇÃO DIRETA NO BANCO DE DADOS (STATUS) ---
         async function abrirGerenciadorAgendamento(id) {
             try {
                 const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
@@ -612,7 +617,6 @@
                                     btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
                                     
-                                    // UPDATE NO SUPABASE
                                     await _supabase.from("agendamentos_barreto").update({ status: 'concluido' }).eq('id', data.id);
                                     
                                     modal.classList.remove("active");
@@ -654,7 +658,6 @@
                                     btnConfirmarCancelamento.textContent = "A cancelar...";
                                     btnConfirmarCancelamento.disabled = true;
                                     
-                                    // UPDATE NO SUPABASE (Apaga da agenda para todos os usuários imediatamente)
                                     await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq('id', data.id);
                                     
                                     modal.classList.remove("active");
@@ -702,10 +705,13 @@
             container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
 
             try {
-                const { data } = await _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
+                // COMUNICAÇÃO EXATA DE DATA PARA ADMIN (.eq)
+                const { data } = await _supabase.from("agendamentos_barreto")
+                    .select("*")
+                    .eq("data", dataFiltro)
+                    .order("horario", { ascending: true });
                 
                 container.innerHTML = "";
-                // Filtro limpo lendo direto do Supabase
                 const filtrados = (data || []).filter(a => a.status !== 'cancelado');
 
                 if (filtrados.length === 0) {
