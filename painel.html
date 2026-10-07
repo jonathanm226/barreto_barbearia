@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; }
+        body { background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; color-scheme: dark; }
         .app-container { width: 100%; max-width: 100%; background-color: #121212; padding: 8px; padding-bottom: 90px; }
         
         .barber-header { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 10px; text-align: center; background: #181818; border-radius: 6px; padding-top: 8px; }
@@ -33,7 +33,9 @@
         .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
         .custom-modal h3 { color: #FFFFFF; font-size: 1rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .custom-modal p { color: #CCCCCC; font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4; text-align: left; }
-        .custom-modal input, .custom-modal select { width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; margin-bottom: 12px; outline: none; }
+        .custom-modal input, .custom-modal select { width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; margin-bottom: 12px; outline: none; color-scheme: dark; }
+        .custom-modal input::-webkit-calendar-picker-indicator, .custom-modal input::-webkit-datetime-edit-fields-wrapper { filter: invert(1); cursor: pointer; }
+        
         .custom-modal-buttons { display: flex; gap: 8px; flex-direction: column; }
         .custom-modal-btn { width: 100%; padding: 10px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; }
         .btn-modal-cancelar { background: #2A2A2A; color: #FFFFFF; border: 1px solid #444; }
@@ -42,7 +44,6 @@
         .btn-modal-excluir { background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; }
         .btn-modal-reagendar { background: #3498db; color: #FFFFFF; }
 
-        /* Dashboard Financeiro Card */
         .dashboard-card { background: #181818; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 0.75rem; }
         .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
         .metric-box { background: #222; border: 1px solid #333; border-radius: 4px; padding: 6px; text-align: center; }
@@ -64,7 +65,7 @@
         .datetime-inputs { display: flex; flex-direction: column; gap: 10px; }
         .input-group { display: flex; flex-direction: column; gap: 4px; }
         .input-group label { font-size: 0.8rem; color: #AAAAAA; }
-        input, select { width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid #333; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; outline: none; }
+        input, select { width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid #333; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; outline: none; color-scheme: dark; }
         input:focus, select:focus { border-color: #FF6600; background: #242424; }
         
         .btn-acao { width: 100%; padding: 10px; background-color: #FF6600; color: #FFFFFF; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
@@ -219,17 +220,21 @@
                 <label style="font-size: 0.75rem; color: #aaa;">Telefone / WhatsApp:</label>
                 <input type="text" id="manual-telefone" placeholder="00000000000">
 
-                <label style="font-size: 0.75rem; color: #aaa;">Serviço:</label>
-                <input type="text" id="manual-servico" value="Corte" placeholder="Serviço prestado">
+                <label style="font-size: 0.75rem; color: #aaa;">Serviços (Selecione um ou mais):</label>
+                <div id="manual-servicos-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; max-height: 120px; overflow-y: auto; background: #242424; padding: 6px; border-radius: 6px; border: 1px solid #444;"></div>
 
-                <label style="font-size: 0.75rem; color: #aaa;">Preço (R$):</label>
-                <input type="number" id="manual-preco" value="35.00" placeholder="35.00" step="0.01">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #222; padding: 8px; border-radius: 6px; border: 1px solid #444;">
+                    <span style="font-size: 0.8rem; color: #aaa;">Total Estimado:</span>
+                    <strong id="manual-preco-total" style="color: #FF6600; font-size: 0.95rem;">R$ 0,00</strong>
+                </div>
 
                 <label style="font-size: 0.75rem; color: #aaa;">Data:</label>
-                <input type="date" id="manual-data">
+                <input type="date" id="manual-data" onchange="atualizarHorariosManuaisDisponiveis()">
 
-                <label style="font-size: 0.75rem; color: #aaa;">Horário:</label>
-                <input type="time" id="manual-horario" value="10:00">
+                <label style="font-size: 0.75rem; color: #aaa;">Horário Disponível:</label>
+                <select id="manual-horario">
+                    <option value="">Selecione a data primeiro</option>
+                </select>
             </div>
 
             <div class="custom-modal-buttons" style="margin-top: 10px;">
@@ -260,6 +265,13 @@
             "Coloração": 100.00, "Pigmentação": 30.00, "Pezinho simples": 10.00, "Pezinho Gourmet": 15.00
         };
 
+        const duracoesServicosTabela = {
+            "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
+            "Sobrancelha": 25, "Hidratação profunda": 25, "Relaxamento": 25,
+            "Escova": 30, "Luzes": 60, "Platinado": 60, "Botox (selagem)": 60,
+            "Coloração": 60, "Pigmentação": 40, "Pezinho simples": 10, "Pezinho Gourmet": 20
+        };
+
         let usuarioLogado = "";
         let offsetSemana = 0; 
 
@@ -275,8 +287,18 @@
             document.getElementById("modal-alerta").classList.remove("active");
         }
 
+        function diaDaSemana(dateString) {
+            const [y, m, d] = dateString.split("-").map(Number);
+            return new Date(y, m - 1, d).getDay();
+        }
+
         function obterHorariosParaData(dataString) {
             if (!dataString) return [];
+            const diaSem = diaDaSemana(dataString);
+            if (diaSem === 0) return [];
+            if (usuarioLogado === "Matheus" && diaSem === 3) return [];
+            if ((usuarioLogado === "Yann" || usuarioLogado === "Rafael") && diaSem === 1) return [];
+
             let horarios = [];
             let horaInicio = 8;
             let horaFim = 22;
@@ -563,10 +585,111 @@
 
         function abrirModalAgendamentoManual() {
             const hoje = new Date();
-            document.getElementById("manual-data").value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+            const yyyy = hoje.getFullYear();
+            const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dd = String(hoje.getDate()).padStart(2, '0');
+            const hojeIso = `${yyyy}-${mm}-${dd}`;
+
+            document.getElementById("manual-data").value = hojeIso;
             document.getElementById("manual-cliente").value = "";
             document.getElementById("manual-telefone").value = "";
+            
+            // Popular serviços manuais
+            const servContainer = document.getElementById("manual-servicos-container");
+            servContainer.innerHTML = "";
+            Object.keys(precosServicosTabela).forEach(serv => {
+                const lbl = document.createElement("label");
+                lbl.style.cssText = "font-size: 0.7rem; display: flex; align-items: center; gap: 4px; color: #ddd; cursor: pointer;";
+                lbl.innerHTML = `<input type="checkbox" class="manual-servico-chk" value="${serv}" data-preco="${precosServicosTabela[serv]}" onchange="calcularTotalManual()"> ${serv} (R$ ${precosServicosTabela[serv].toFixed(2).replace(".", ",")})`;
+                servContainer.appendChild(lbl);
+            });
+
+            calcularTotalManual();
+            atualizarHorariosManuaisDisponiveis();
             document.getElementById("modal-agendamento-manual").classList.add("active");
+        }
+
+        function calcularTotalManual() {
+            let total = 0;
+            document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
+                total += Number(chk.dataset.preco);
+            });
+            document.getElementById("manual-preco-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+        }
+
+        async function atualizarHorariosManuaisDisponiveis() {
+            const dataSel = document.getElementById("manual-data").value;
+            const horarioSelect = document.getElementById("manual-horario");
+            if (!dataSel) return;
+
+            horarioSelect.innerHTML = "<option value=''>A carregar horários...</option>";
+
+            const allSlots = obterHorariosParaData(dataSel);
+            if (allSlots.length === 0) {
+                horarioSelect.innerHTML = "<option value=''>Barbeiro fechado neste dia</option>";
+                return;
+            }
+
+            try {
+                const { data: ags } = await _supabase.from("agendamentos_barreto_v2")
+                    .select("horario, servico, status, data, barbeiro")
+                    .eq("data", dataSel)
+                    .ilike("barbeiro", `%${usuarioLogado}%`);
+
+                const { data: blqs } = await _supabase.from("bloqueios_barreto_v2")
+                    .select("horario, data, barbeiro")
+                    .eq("data", dataSel)
+                    .ilike("barbeiro", `%${usuarioLogado}%`);
+
+                if (blqs && blqs.some(b => b.horario === 'TODOS')) {
+                    horarioSelect.innerHTML = "<option value=''>Agenda fechada neste dia</option>";
+                    return;
+                }
+
+                const ocupados = new Set();
+                (ags || []).filter(a => a.status !== 'cancelado').forEach(a => {
+                    const horaF = String(a.horario).substring(0, 5);
+                    const [h, m] = horaF.split(":").map(Number);
+                    const min = h * 60 + m;
+                    let dur = 30;
+                    if (a.servico) {
+                        dur = 0;
+                        a.servico.split(",").forEach(s => dur += duracoesServicosTabela[s.trim()] || 30);
+                    }
+                    const slotsN = Math.max(1, Math.ceil(dur / 30));
+                    for (let k = 0; k < slotsN; k++) {
+                        ocupados.add(min + (30 * k));
+                    }
+                });
+
+                const bloqueiosAlmocoAutomaticos = {
+                    "Rafael": ["13:00", "13:30"],
+                    "Yann": ["12:00", "12:30", "13:00"],
+                    "Matheus": ["13:30", "14:00", "14:30"]
+                };
+                const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
+                const bloqueadosSet = new Set((blqs || []).map(b => String(b.horario).substring(0, 5)));
+                almocoPadrao.forEach(h => bloqueadosSet.add(h));
+
+                horarioSelect.innerHTML = "<option value='' disabled selected>Selecione um horário livre</option>";
+
+                allSlots.forEach(slotStr => {
+                    const [h, m] = slotStr.split(":").map(Number);
+                    const minSlot = h * 60 + m;
+                    
+                    let ocupado = ocupados.has(minSlot) || bloqueadosSet.has(slotStr);
+
+                    const opt = document.createElement("option");
+                    opt.value = slotStr;
+                    opt.textContent = ocupado ? `${slotStr} (Ocupado)` : slotStr;
+                    if (ocupado) opt.disabled = true;
+                    horarioSelect.appendChild(opt);
+                });
+
+            } catch (err) {
+                console.error(err);
+                horarioSelect.innerHTML = "<option value=''>Erro ao carregar horários</option>";
+            }
         }
 
         function fecharModalAgendamentoManual() {
@@ -582,14 +705,18 @@
             const btn = document.getElementById("btn-salvar-manual");
             const cliente = document.getElementById("manual-cliente").value.trim();
             const telefone = document.getElementById("manual-telefone").value.trim();
-            const servico = document.getElementById("manual-servico").value.trim();
-            const precoBruto = document.getElementById("manual-preco").value.replace(",", ".");
-            const preco = parseFloat(precoBruto) || 35.00;
             const data = document.getElementById("manual-data").value;
             const horario = document.getElementById("manual-horario").value;
 
-            if (!cliente || !data || !horario) {
-                mostrarAlerta("Preencha pelo menos o Nome, a Data e o Horário.", false);
+            let servicosSelecionados = [];
+            let precoTotal = 0;
+            document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
+                servicosSelecionados.push(chk.value);
+                precoTotal += Number(chk.dataset.preco);
+            });
+
+            if (!cliente || !data || !horario || servicosSelecionados.length === 0) {
+                mostrarAlerta("Preencha o Nome, Data, Horário e selecione ao menos um serviço.", false);
                 return;
             }
 
@@ -603,8 +730,8 @@
                     barbeiro: usuarioLogado,
                     cliente: cliente,
                     telefone: telefone || "Balcão",
-                    servico: servico,
-                    preco_total: preco,
+                    servico: servicosSelecionados.join(", "),
+                    preco_total: precoTotal,
                     data: data,
                     horario: horario,
                     status: 'ativo'
@@ -649,7 +776,6 @@
                 paymentBox.style.display = "none";
                 rescheduleBox.style.display = "none";
 
-                // Preencher checkboxes de serviços extras
                 extrasContainer.innerHTML = "";
                 Object.keys(precosServicosTabela).forEach(serv => {
                     const lbl = document.createElement("label");
@@ -662,7 +788,6 @@
                     buttonsBox.innerHTML = "";
 
                     if (data.status !== 'concluido') {
-                        // Botão Concluir com Extras e Pagamento
                         const btnAtendido = document.createElement("button");
                         btnAtendido.type = "button";
                         btnAtendido.className = "custom-modal-btn btn-modal-atendido";
@@ -683,7 +808,6 @@
                                     
                                     const formaPgto = document.getElementById("select-forma-pagamento").value;
                                     
-                                    // Coletar extras selecionados
                                     let servicosSelecionadosList = data.servico ? data.servico.split(",").map(s => s.trim()) : [];
                                     let acréscimoPreco = 0;
 
@@ -732,7 +856,6 @@
                             buttonsBox.appendChild(btnVoltar);
                         };
 
-                        // Botão Reagendar
                         const btnReagendar = document.createElement("button");
                         btnReagendar.type = "button";
                         btnReagendar.className = "custom-modal-btn btn-modal-reagendar";
@@ -790,7 +913,6 @@
                             buttonsBox.appendChild(btnVoltarReag);
                         };
 
-                        // Botão Cancelar Agendamento
                         const btnCancelar = document.createElement("button");
                         btnCancelar.type = "button";
                         btnCancelar.className = "custom-modal-btn btn-modal-excluir";
