@@ -342,8 +342,8 @@
                 const primeiraData = diasSemana[0].iso;
                 const ultimaData = diasSemana[5].iso;
 
-                const { data: agendamentos } = await _supabase.from("agendamentos_barreto").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
-                const { data: bloqueios } = await _supabase.from("bloqueios_barreto").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
+                const { data: agendamentos } = await _supabase.from("agendamentos_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
+                const { data: bloqueios } = await _supabase.from("bloqueios_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
 
                 container.innerHTML = "";
 
@@ -469,13 +469,13 @@
         async function alternarBloqueioDia(dataIso, estaBloqueado) {
             try {
                 if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto")
+                    await _supabase.from("bloqueios_barreto_v2")
                         .delete()
                         .eq("barbeiro", usuarioLogado)
                         .eq("data", dataIso)
                         .eq("horario", "TODOS");
                 } else {
-                    await _supabase.from("bloqueios_barreto")
+                    await _supabase.from("bloqueios_barreto_v2")
                         .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
                 }
                 carregarAgendaSemanal();
@@ -487,13 +487,13 @@
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
                 if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto")
+                    await _supabase.from("bloqueios_barreto_v2")
                         .delete()
                         .eq("barbeiro", usuarioLogado)
                         .eq("data", dataIso)
                         .like("horario", `${horario}%`);
                 } else {
-                    await _supabase.from("bloqueios_barreto")
+                    await _supabase.from("bloqueios_barreto_v2")
                         .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
                 }
                 carregarAgendaSemanal();
@@ -540,7 +540,7 @@
             }
 
             try {
-                const { error } = await _supabase.from("agendamentos_barreto").insert([{
+                const { error } = await _supabase.from("agendamentos_barreto_v2").insert([{
                     barbeiro: usuarioLogado,
                     cliente: cliente,
                     telefone: telefone || "Balcão",
@@ -573,7 +573,7 @@
 
         async function abrirGerenciadorAgendamento(id) {
             try {
-                const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
+                const { data } = await _supabase.from("agendamentos_barreto_v2").select("*").eq("id", id).single();
                 if (!data) return;
 
                 const modal = document.getElementById("custom-action-modal");
@@ -614,7 +614,7 @@
                                     btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
                                     
-                                    const { error } = await _supabase.from("agendamentos_barreto").update({ status: 'concluido' }).eq('id', data.id);
+                                    const { error } = await _supabase.from("agendamentos_barreto_v2").update({ status: 'concluido' }).eq('id', data.id);
                                     if (error) throw error;
                                     
                                     modal.classList.remove("active");
@@ -658,7 +658,7 @@
                                     btnConfirmarCancelamento.disabled = true;
                                     
                                     const { error } = await _supabase
-                                        .from("agendamentos_barreto")
+                                        .from("agendamentos_barreto_v2")
                                         .update({ status: 'cancelado' })
                                         .eq('id', data.id);
 
@@ -712,7 +712,7 @@
             container.innerHTML = "<p style='color: #888; text-align: center;'>A carregar...</p>";
 
             try {
-                const { data } = await _supabase.from("agendamentos_barreto")
+                const { data } = await _supabase.from("agendamentos_barreto_v2")
                     .select("*")
                     .eq("data", dataFiltro)
                     .order("horario", { ascending: true });
