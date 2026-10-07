@@ -16,6 +16,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* (MANTÉM O TEU CSS EXATAMENTE IGUAL AQUI) */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #121212; color: #FFFFFF; display: flex; justify-content: center; min-height: 100vh; }
         .app-container { width: 100%; max-width: 100%; background-color: #121212; padding: 8px; padding-bottom: 90px; }
@@ -193,7 +194,6 @@
             </div>
 
             <div class="custom-modal-buttons" style="margin-top: 10px;">
-                <!-- Type="button" + event explícito para não forçar Refresh e gerar Load Failed -->
                 <button type="button" id="btn-salvar-manual" class="custom-modal-btn btn-modal-confirmar" onclick="salvarAgendamentoManual(event)">Salvar Agendamento</button>
                 <button type="button" class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalAgendamentoManual()">Cancelar</button>
             </div>
@@ -216,9 +216,6 @@
 
         let usuarioLogado = "";
         let offsetSemana = 0; 
-        
-        // Memória baseada na chave "DATA_HORARIO" 
-        let chavesCanceladasLocais = JSON.parse(localStorage.getItem('barreto_chaves_canceladas') || '[]');
 
         function mostrarAlerta(mensagem, sucesso = true) {
             const tituloEl = document.getElementById("alerta-titulo");
@@ -364,7 +361,6 @@
 
                     const blqDia = (bloqueios || []).find(b => String(b.data).substring(0, 10) === dia.iso && b.horario === 'TODOS');
                     
-                    // Ajuste na propagação do bloqueio Dia (evitar clicks fantasma)
                     coluna.innerHTML = `
                         <div class="day-header">
                             <span>${dia.label}</span>
@@ -382,17 +378,10 @@
                     } else {
                         const horariosDia = obterHorariosParaData(dia.iso);
                         
-                        const horariosBloqueadosPorCancelamento = (bloqueios || [])
-                            .filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS')
-                            .map(b => String(b.horario).substring(0, 5));
-
+                        // O FILTRO DE VERDADE: Agendamentos deste dia que NÃO estão cancelados.
                         const agendamentosDia = (agendamentos || []).filter(a => {
                             const dataIso = String(a.data).substring(0, 10);
-                            const hAg = String(a.horario).substring(0, 5);
-                            const chaveUnica = `${dataIso}_${hAg}`;
-
-                            if (chavesCanceladasLocais.includes(chaveUnica)) return false;
-                            return dataIso === dia.iso && !horariosBloqueadosPorCancelamento.includes(hAg);
+                            return dataIso === dia.iso && a.status !== 'cancelado';
                         });
 
                         const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
@@ -429,7 +418,6 @@
 
                             if (item.tipo === 'bloqueio') {
                                 itemSlot.className = "slot-item blocked";
-                                // Adicionado stopPropagation()
                                 itemSlot.innerHTML = `
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <span style="font-weight:bold;">${item.horario}</span>
@@ -462,7 +450,6 @@
                                 `;
                             } else {
                                 itemSlot.className = "slot-item available";
-                                // Adicionado stopPropagation()
                                 itemSlot.innerHTML = `
                                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                                         <span style="color:#AAA;">${item.horario}</span>
@@ -502,7 +489,6 @@
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
                 if (estaBloqueado) {
-                    // Proteção de query: utilizar LIKE resolve o problema do banco esperar Time (10:00:00) vs Texto (10:00)
                     await _supabase.from("bloqueios_barreto")
                         .delete()
                         .eq("barbeiro", usuarioLogado)
@@ -530,7 +516,6 @@
             document.getElementById("modal-agendamento-manual").classList.remove("active");
         }
 
-        // Blindagem no envio do formulário manual
         async function salvarAgendamentoManual(event) {
             if (event) {
                 event.preventDefault();
@@ -583,6 +568,7 @@
             }
         }
 
+        // --- AQUI ACONTECE A MÁGICA DE SINCRONIZAÇÃO (UPDATE EM VEZ DE INSERT BLOCK) ---
         async function abrirGerenciadorAgendamento(id) {
             try {
                 const { data } = await _supabase.from("agendamentos_barreto").select("*").eq("id", id).single();
@@ -625,10 +611,9 @@
                                 try {
                                     btnSalvarPg.textContent = "A gravar...";
                                     btnSalvarPg.disabled = true;
-                                    const dataIso = String(data.data).substring(0, 10);
-                                    const horarioStr = String(data.horario).substring(0, 5);
                                     
-                                    await _supabase.from("bloqueios_barreto").insert([{ barbeiro: data.barbeiro, data: dataIso, horario: horarioStr, tipo: "concluido" }]);
+                                    // UPDATE NO SUPABASE
+                                    await _supabase.from("agendamentos_barreto").update({ status: 'concluido' }).eq('id', data.id);
                                     
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
@@ -669,21 +654,8 @@
                                     btnConfirmarCancelamento.textContent = "A cancelar...";
                                     btnConfirmarCancelamento.disabled = true;
                                     
-                                    const dataIso = String(data.data).substring(0, 10);
-                                    const horarioStr = String(data.horario).substring(0, 5);
-                                    const chaveUnica = `${dataIso}_${horarioStr}`;
-
-                                    if (!chavesCanceladasLocais.includes(chaveUnica)) {
-                                        chavesCanceladasLocais.push(chaveUnica);
-                                        localStorage.setItem('barreto_chaves_canceladas', JSON.stringify(chavesCanceladasLocais));
-                                    }
-
-                                    await _supabase.from("bloqueios_barreto").insert([{ 
-                                        barbeiro: data.barbeiro, 
-                                        data: dataIso, 
-                                        horario: horarioStr, 
-                                        tipo: "cancelamento" 
-                                    }]);
+                                    // UPDATE NO SUPABASE (Apaga da agenda para todos os usuários imediatamente)
+                                    await _supabase.from("agendamentos_barreto").update({ status: 'cancelado' }).eq('id', data.id);
                                     
                                     modal.classList.remove("active");
                                     carregarAgendaSemanal();
@@ -733,12 +705,8 @@
                 const { data } = await _supabase.from("agendamentos_barreto").select("*").like("data", `${dataFiltro}%`).order("horario", { ascending: true });
                 
                 container.innerHTML = "";
-                const filtrados = (data || []).filter(a => {
-                    const dataIso = String(a.data).substring(0, 10);
-                    const hAg = String(a.horario).substring(0, 5);
-                    const chaveUnica = `${dataIso}_${hAg}`;
-                    return !chavesCanceladasLocais.includes(chaveUnica) && a.status !== 'cancelado';
-                });
+                // Filtro limpo lendo direto do Supabase
+                const filtrados = (data || []).filter(a => a.status !== 'cancelado');
 
                 if (filtrados.length === 0) {
                     container.innerHTML = "<p style='color: #aaa; text-align: center; padding: 10px; background: #1A1A1A; border-radius: 6px;'>Sem agendamentos ativos.</p>";
