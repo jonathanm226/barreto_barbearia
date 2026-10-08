@@ -240,7 +240,7 @@
         </div>
     </div>
 
-    <!-- Modal de Agendamento Avulso (Com Encaixe Integrado) -->
+    <!-- Modal de Agendamento Avulso (Com Label para clique em qualquer lugar do Encaixe) -->
     <div id="modal-agendamento-manual" class="custom-modal-overlay">
         <div class="custom-modal">
             <h3>Agendamento Avulso (Barbeiro)</h3>
@@ -259,14 +259,14 @@
                     <strong id="manual-preco-total" style="color: #FF6600; font-size: 0.95rem;">R$ 0,00</strong>
                 </div>
 
-                <!-- Checkbox de Encaixe -->
-                <div style="margin-bottom: 12px; background: #222; padding: 10px; border-radius: 6px; border: 1px solid #FF6600; display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="alternarModoEncaixe()">
-                    <input type="checkbox" id="manual-encaixe" style="width: 18px; height: 18px; accent-color: #FF6600; cursor: pointer;" onchange="alternarModoEncaixe(event)">
+                <!-- Checkbox de Encaixe com Tag Label para acionamento em qualquer área -->
+                <label for="manual-encaixe" style="margin-bottom: 12px; background: #222; padding: 10px; border-radius: 6px; border: 1px solid #FF6600; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="manual-encaixe" style="width: 18px; height: 18px; accent-color: #FF6600; cursor: pointer;" onchange="alternarModoEncaixe()">
                     <div>
-                        <label for="manual-encaixe" style="font-size: 0.8rem; color: #FFF; font-weight: bold; cursor: pointer; display: block;">Modo Encaixe</label>
+                        <span style="font-size: 0.8rem; color: #FFF; font-weight: bold; display: block;">Modo Encaixe</span>
                         <span style="font-size: 0.68rem; color: #AAA; display: block;">Permite inserir em qualquer horário sem validar conflitos na agenda.</span>
                     </div>
-                </div>
+                </label>
 
                 <label style="font-size: 0.75rem; color: #aaa;">Data:</label>
                 <input type="date" id="manual-data" onchange="atualizarHorariosManuaisDisponiveis()">
@@ -550,12 +550,16 @@
                         let itensRenderizacao = [];
 
                         horariosDia.forEach(h => {
-                            let ag = agendamentosDia.find(a => String(a.horario).substring(0, 5) === h);
+                            // Suporte a múltiplos agendamentos/encaixes no mesmo horário (filtra todos que batem com o horário `h`)
+                            let agsNoHorario = agendamentosDia.filter(a => String(a.horario).substring(0, 5) === h);
                             let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
                             let ehAlmocoAutomatico = almocoPadrao.includes(h) && !blq;
 
-                            if (ag) {
-                                itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
+                            if (agsNoHorario.length > 0) {
+                                // Adiciona cada agendamento/encaixe separadamente na sequência para aparecerem todos visíveis
+                                agsNoHorario.forEach(ag => {
+                                    itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
+                                });
                             } else if (blq || ehAlmocoAutomatico) {
                                 itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: ehAlmocoAutomatico });
                             } else {
@@ -693,11 +697,8 @@
             document.getElementById("modal-agendamento-manual").classList.add("active");
         }
 
-        function alternarModoEncaixe(e) {
-            if (e) e.stopPropagation();
+        function alternarModoEncaixe() {
             const chk = document.getElementById("manual-encaixe");
-            if (!e) chk.checked = !chk.checked;
-
             const containerHorario = document.getElementById("container-input-horario");
             const labelHorario = document.getElementById("label-horario-manual");
 
