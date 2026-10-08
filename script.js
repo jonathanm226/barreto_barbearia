@@ -315,7 +315,7 @@ async function checkAvailableTimes() {
 }
 
 // ==========================================
-// SUBMISSÃO E WHATSAPP
+// SUBMISSÃO E WHATSAPP (ATUALIZADO)
 // ==========================================
 function abrirModalConfirmacao() {
     const name = document.getElementById("client-name")?.value.trim();
@@ -386,6 +386,7 @@ async function confirmarEEnviar() {
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
         const barbeiroLimpo = selectedBarber.trim();
 
+        // 1. GRAVA PRIMEIRO NO SUPABASE E AGUARDA A CONFIRMAÇÃO
         const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
             cliente: name,
             telefone: phone,
@@ -404,6 +405,7 @@ async function confirmarEEnviar() {
             throw new Error(insertError.message);
         }
 
+        // 2. SÓ ABRE O WHATSAPP DEPOIS QUE O REGISTRO FOI SALVO COM SUCESSO
         fecharModalConfirmacao();
         const num = telefonesBarbeiros[barbeiroLimpo] || "5531997193193";
         const msg = `✅ *AGENDAMENTO CONFIRMADO* ✅\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${barbeiroLimpo}\n✂️ *Serviços:* ${servicosNome}\n📅 *Data:* ${date.split("-").reverse().join("/")}\n⏰ *Horário:* ${time}`;
