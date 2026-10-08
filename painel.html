@@ -71,7 +71,6 @@
         .btn-acao { width: 100%; padding: 10px; background-color: #FF6600; color: #FFFFFF; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-acao:hover { background-color: #e05b00; }
 
-        /* Estilo moderno para a seleção de serviços em cards (Pills) */
         .servicos-selector-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -97,28 +96,14 @@
             gap: 2px;
             text-align: left;
         }
-        .servico-pill:hover {
-            border-color: #FF6600;
-        }
+        .servico-pill:hover { border-color: #FF6600; }
         .servico-pill.selected {
             background: #2D221B;
             border-color: #FF6600;
             box-shadow: 0 0 8px rgba(255, 102, 0, 0.3);
         }
-        .servico-pill span.nome {
-            font-size: 0.75rem;
-            color: #FFF;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .servico-pill span.valor {
-            font-size: 0.7rem;
-            color: #FF6600;
-            font-weight: bold;
-            padding-left: 18px;
-        }
+        .servico-pill span.nome { font-size: 0.75rem; color: #FFF; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .servico-pill span.valor { font-size: 0.7rem; color: #FF6600; font-weight: bold; padding-left: 18px; }
     </style>
 </head>
 <body>
@@ -168,7 +153,6 @@
                 </div>
             </div>
 
-            <!-- Dashboard de Fechamento da Semana (Barbeiro) -->
             <div class="dashboard-card">
                 <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 4px; text-align: center;">Resumo da Semana (Fechamento)</div>
                 <div class="dashboard-grid">
@@ -183,7 +167,6 @@
                 </div>
             </div>
 
-            <!-- Navegação da Semana -->
             <div style="background: #1A1A1A; border: 1px solid #333; padding: 6px; border-radius: 6px; margin-bottom: 8px; text-align: center;">
                 <div style="font-size: 0.58rem; color: #AAAAAA; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Período da Agenda</div>
                 <span id="label-periodo-semana" style="font-weight: bold; color: #FFFFFF; font-size: 0.7rem; display: block; margin-bottom: 5px;"></span>
@@ -211,9 +194,8 @@
                 </div>
             </div>
 
-            <!-- Resumo Financeiro Geral por Barbeiro (Admin) -->
             <div class="dashboard-card" style="margin-bottom: 12px;">
-                <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 6px; text-align: center;">Resumo Financeiro por Barbeiro (Data Selecionada / Geral)</div>
+                <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 6px; text-align: center;">Resumo Financeiro por Barbeiro</div>
                 <div id="admin-resumo-barbeiros" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
 
@@ -258,7 +240,7 @@
         </div>
     </div>
 
-    <!-- Modal de Agendamento Avulso pelo Barbeiro -->
+    <!-- Modal de Agendamento Avulso (Com Encaixe Integrado) -->
     <div id="modal-agendamento-manual" class="custom-modal-overlay">
         <div class="custom-modal">
             <h3>Agendamento Avulso (Barbeiro)</h3>
@@ -277,13 +259,24 @@
                     <strong id="manual-preco-total" style="color: #FF6600; font-size: 0.95rem;">R$ 0,00</strong>
                 </div>
 
+                <!-- Checkbox de Encaixe -->
+                <div style="margin-bottom: 12px; background: #222; padding: 10px; border-radius: 6px; border: 1px solid #FF6600; display: flex; align-items: center; gap: 8px; cursor: pointer;" onclick="alternarModoEncaixe()">
+                    <input type="checkbox" id="manual-encaixe" style="width: 18px; height: 18px; accent-color: #FF6600; cursor: pointer;" onchange="alternarModoEncaixe(event)">
+                    <div>
+                        <label for="manual-encaixe" style="font-size: 0.8rem; color: #FFF; font-weight: bold; cursor: pointer; display: block;">Modo Encaixe</label>
+                        <span style="font-size: 0.68rem; color: #AAA; display: block;">Permite inserir em qualquer horário sem validar conflitos na agenda.</span>
+                    </div>
+                </div>
+
                 <label style="font-size: 0.75rem; color: #aaa;">Data:</label>
                 <input type="date" id="manual-data" onchange="atualizarHorariosManuaisDisponiveis()">
 
-                <label style="font-size: 0.75rem; color: #aaa;">Horário Disponível:</label>
-                <select id="manual-horario">
-                    <option value="">Selecione a data primeiro</option>
-                </select>
+                <label style="font-size: 0.75rem; color: #aaa;" id="label-horario-manual">Horário Disponível:</label>
+                <div id="container-input-horario">
+                    <select id="manual-horario">
+                        <option value="">Selecione a data primeiro</option>
+                    </select>
+                </div>
             </div>
 
             <div class="custom-modal-buttons" style="margin-top: 10px;">
@@ -324,7 +317,6 @@
         let usuarioLogado = "";
         let offsetSemana = 0; 
 
-        // Função de renderização moderna de serviços (Pills)
         function renderizarSeletorServicos(containerId, classeCheckbox, callbackMudanca) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -683,15 +675,40 @@
             document.getElementById("manual-data").value = hojeIso;
             document.getElementById("manual-cliente").value = "";
             document.getElementById("manual-telefone").value = "";
+            document.getElementById("manual-encaixe").checked = false;
             
+            const containerHorario = document.getElementById("container-input-horario");
+            containerHorario.innerHTML = `<select id="manual-horario"><option value="">Selecione a data primeiro</option></select>`;
+            document.getElementById("label-horario-manual").textContent = "Horário Disponível:";
+
             renderizarSeletorServicos("manual-servicos-container", "manual-servico-chk", () => {
                 calcularTotalManual();
-                atualizarHorariosManuaisDisponiveis();
+                if (!document.getElementById("manual-encaixe").checked) {
+                    atualizarHorariosManuaisDisponiveis();
+                }
             });
 
             calcularTotalManual();
             atualizarHorariosManuaisDisponiveis();
             document.getElementById("modal-agendamento-manual").classList.add("active");
+        }
+
+        function alternarModoEncaixe(e) {
+            if (e) e.stopPropagation();
+            const chk = document.getElementById("manual-encaixe");
+            if (!e) chk.checked = !chk.checked;
+
+            const containerHorario = document.getElementById("container-input-horario");
+            const labelHorario = document.getElementById("label-horario-manual");
+
+            if (chk.checked) {
+                labelHorario.textContent = "Horário do Encaixe (Livre):";
+                containerHorario.innerHTML = `<input type="time" id="manual-horario" value="10:00" style="width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid #FF6600; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; outline: none;">`;
+            } else {
+                labelHorario.textContent = "Horário Disponível:";
+                containerHorario.innerHTML = `<select id="manual-horario"><option value="">A carregar horários...</option></select>`;
+                atualizarHorariosManuaisDisponiveis();
+            }
         }
 
         function calcularTotalManual() {
@@ -702,11 +719,12 @@
             document.getElementById("manual-preco-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
         }
 
-        // FUNÇÃO ATUALIZADA: Valida horários expirados, ocupados e duração dos serviços
         async function atualizarHorariosManuaisDisponiveis() {
+            if (document.getElementById("manual-encaixe").checked) return;
+
             const dataSel = document.getElementById("manual-data").value;
             const horarioSelect = document.getElementById("manual-horario");
-            if (!dataSel) return;
+            if (!dataSel || !horarioSelect) return;
 
             horarioSelect.innerHTML = "<option value=''>A carregar horários...</option>";
 
@@ -832,7 +850,9 @@
             const cliente = document.getElementById("manual-cliente").value.trim();
             const telefone = document.getElementById("manual-telefone").value.trim();
             const data = document.getElementById("manual-data").value;
-            const horario = document.getElementById("manual-horario").value;
+            const horarioEl = document.getElementById("manual-horario");
+            const horario = horarioEl ? horarioEl.value : "";
+            const ehEncaixe = document.getElementById("manual-encaixe").checked;
 
             let servicosSelecionados = [];
             let precoTotal = 0;
@@ -852,11 +872,13 @@
             }
 
             try {
+                const servicoFinal = ehEncaixe ? `[ENCAIXE] ${servicosSelecionados.join(", ")}` : servicosSelecionados.join(", ");
+
                 const { error } = await _supabase.from("agendamentos_barreto_v2").insert([{
                     barbeiro: usuarioLogado,
                     cliente: cliente,
                     telefone: telefone || "Balcão",
-                    servico: servicosSelecionados.join(", "),
+                    servico: servicoFinal,
                     preco_total: precoTotal,
                     data: data,
                     horario: horario,
@@ -866,7 +888,7 @@
                 if (error) throw error;
 
                 fecharModalAgendamentoManual();
-                mostrarAlerta("Agendamento avulso efetuado com sucesso!", true);
+                mostrarAlerta("Agendamento adicionado à agenda com sucesso!", true);
                 carregarAgendaSemanal();
             } catch (err) {
                 mostrarAlerta("Falha ao salvar: " + err.message, false);
@@ -1061,7 +1083,6 @@
                                     mostrarAlerta("Reserva cancelada com sucesso!", true);
                                     carregarAgendaSemanal();
                                 } catch (err) {
-                                    console.error("Erro ao cancelar:", err);
                                     mostrarAlerta("Erro ao cancelar no banco: " + err.message, false);
                                     btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
                                     btnConfirmarCancelamento.disabled = false;
@@ -1083,7 +1104,6 @@
                         buttonsBox.appendChild(btnCancelar);
                     }
 
-                    // Botão de Enviar Lembrete por WhatsApp
                     const btnLembrete = document.createElement("button");
                     btnLembrete.type = "button";
                     btnLembrete.className = "custom-modal-btn";
