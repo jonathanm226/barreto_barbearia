@@ -231,6 +231,9 @@ async function checkAvailableTimes() {
 
         const ocupados = new Set();
         agendamentos.forEach(a => {
+            // IGNOra O ENCAIXE PARA NÃO BLOQUEAR A AGENDA
+            if (a.servico && a.servico.includes("[ENCAIXE]")) return;
+
             const horaFormatada = String(a.horario).substring(0, 5); 
             const inicio = toMin(horaFormatada);
             let dur = 30;
