@@ -90,7 +90,7 @@ function selectBarber(element, barberName) {
     if (!element) return;
     document.querySelectorAll(".barber-card").forEach(card => card.classList.remove("active"));
     element.classList.add("active");
-    selectedBarber = barberName;
+    selectedBarber = barberName.trim();
     checkAvailableTimes();
 }
 
@@ -160,10 +160,11 @@ function mostrarMensagemNoSelect(timeSelect, texto) {
 function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
     const diaSem = diaDaSemana(dateString); 
+    const barbTrim = barbeiro.trim();
     
     if (diaSem === 0) return []; 
-    if (barbeiro === "Matheus" && diaSem === 3) return []; 
-    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; 
+    if (barbTrim === "Matheus" && diaSem === 3) return []; 
+    if ((barbTrim === "Yann" || barbTrim === "Rafael") && diaSem === 1) return []; 
 
     let horarios = [];
     let horaInicio = 8;
@@ -231,7 +232,6 @@ async function checkAvailableTimes() {
 
         const ocupados = new Set();
         agendamentos.forEach(a => {
-            // IGNOra O ENCAIXE PARA NÃO BLOQUEAR A AGENDA
             if (a.servico && a.servico.includes("[ENCAIXE]")) return;
 
             const horaFormatada = String(a.horario).substring(0, 5); 
@@ -252,7 +252,7 @@ async function checkAvailableTimes() {
             "Yann": ["12:00", "12:30", "13:00"],
             "Matheus": ["13:30", "14:00", "14:30"]
         };
-        const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber] || [];
+        const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber.trim()] || [];
 
         const bloqueados = new Set(bloqueios.map(b => toMin(String(b.horario).substring(0, 5))));
         almocoPadrao.forEach(h => bloqueados.add(toMin(h)));
@@ -384,11 +384,12 @@ async function confirmarEEnviar() {
         
         const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
         const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
+        const barbeiroLimpo = selectedBarber.trim();
 
         const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
             cliente: name,
             telefone: phone,
-            barbeiro: selectedBarber,
+            barbeiro: barbeiroLimpo,
             servico: servicosNome,
             preco_total: precoTotal,
             data: date,
@@ -404,8 +405,8 @@ async function confirmarEEnviar() {
         }
 
         fecharModalConfirmacao();
-        const num = telefonesBarbeiros[selectedBarber] || "5531997193193";
-        const msg = `✅ *AGENDAMENTO CONFIRMADO* ✅\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${selectedBarber}\n✂️ *Serviços:* ${servicosNome}\n📅 *Data:* ${date.split("-").reverse().join("/")}\n⏰ *Horário:* ${time}`;
+        const num = telefonesBarbeiros[barbeiroLimpo] || "5531997193193";
+        const msg = `✅ *AGENDAMENTO CONFIRMADO* ✅\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${barbeiroLimpo}\n✂️ *Serviços:* ${servicosNome}\n📅 *Data:* ${date.split("-").reverse().join("/")}\n⏰ *Horário:* ${time}`;
         
         window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
 
