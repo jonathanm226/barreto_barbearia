@@ -490,28 +490,21 @@
             const horaAtualMinutos = agora.getHours() * 60 + agora.getMinutes();
 
             try {
-                const primeiraData = diasSemana[0].iso;
-                const ultimaData = diasSemana[5].iso;
-
-                // BUSCA FLEXÍVEL EM MEMÓRIA PARA EVITAR FALHAS DE FILTRO NO SUPABASE
-                const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2")
-                    .select("*")
-                    .gte("data", primeiraData)
-                    .lte("data", ultimaData);
+                // BUSCA GERAL SEM FILTRO DE DATA PARA DIAGNÓSTICO
+                const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2").select("*");
 
                 if (errAgs) console.error("Erro ao buscar agendamentos:", errAgs);
 
+                console.log("Todos os agendamentos no banco:", agsDB);
+
                 const agendamentos = (agsDB || []).filter(a => {
                     if (!a.data || !a.barbeiro || !a.horario) return false;
-                    return a.barbeiro.trim().toLowerCase() === usuarioLogado.trim().toLowerCase();
+                    const mesmoBarbeiro = a.barbeiro.trim().toLowerCase() === usuarioLogado.trim().toLowerCase();
+                    const ativo = a.status !== 'cancelado';
+                    return mesmoBarbeiro && ativo;
                 });
 
-                const { data: blqDB, error: errBlq } = await _supabase.from("bloqueios_barreto_v2")
-                    .select("*")
-                    .gte("data", primeiraData)
-                    .lte("data", ultimaData);
-
-                if (errBlq) console.error("Erro ao buscar bloqueios:", errBlq);
+                const { data: blqDB } = await _supabase.from("bloqueios_barreto_v2").select("*");
 
                 const bloqueios = (blqDB || []).filter(b => {
                     if (!b.data || !b.barbeiro) return false;
@@ -564,7 +557,7 @@
                         
                         const agendamentosDia = (agendamentos || []).filter(a => {
                             const dataIso = String(a.data).substring(0, 10);
-                            return dataIso === dia.iso && a.status !== 'cancelado';
+                            return dataIso === dia.iso;
                         });
 
                         agendamentosDia.forEach(ag => {
