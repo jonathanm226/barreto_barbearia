@@ -538,25 +538,33 @@
                     if (blqDia) {
                         slotsDiv.innerHTML = `<div style="color: #e74c3c; text-align: center; font-size: 0.55rem; padding: 10px 0; font-weight: bold;"><i class="fa-solid fa-lock"></i></div>`;
                     } else {
-                        const horariosDia = obterHorariosParaData(dia.iso);
+                        let horariosDia = obterHorariosParaData(dia.iso);
                         
                         const agendamentosDia = (agendamentos || []).filter(a => {
                             const dataIso = String(a.data).substring(0, 10);
                             return dataIso === dia.iso && a.status !== 'cancelado';
                         });
 
+                        // INJETA OS HORÁRIOS EXATOS DOS ENCAIXES NA TELA (ex: 11:40)
+                        agendamentosDia.forEach(ag => {
+                            const horaExata = String(ag.horario).substring(0, 5);
+                            if (!horariosDia.includes(horaExata)) {
+                                horariosDia.push(horaExata);
+                            }
+                        });
+                        // Ordena para o encaixe aparecer na ordem cronológica do dia
+                        horariosDia.sort();
+
                         const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
                         
                         let itensRenderizacao = [];
 
                         horariosDia.forEach(h => {
-                            // Suporte a múltiplos agendamentos/encaixes no mesmo horário (filtra todos que batem com o horário `h`)
                             let agsNoHorario = agendamentosDia.filter(a => String(a.horario).substring(0, 5) === h);
                             let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
                             let ehAlmocoAutomatico = almocoPadrao.includes(h) && !blq;
 
                             if (agsNoHorario.length > 0) {
-                                // Adiciona cada agendamento/encaixe separadamente na sequência para aparecerem todos visíveis
                                 agsNoHorario.forEach(ag => {
                                     itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
                                 });
@@ -761,6 +769,9 @@
 
                 const ocupados = new Set();
                 (ags || []).filter(a => a.status !== 'cancelado').forEach(a => {
+                    // IGNOra O ENCAIXE PARA NÃO BLOQUEAR A AGENDA PARA NOVOS MARCAÇÕES
+                    if (a.servico && a.servico.includes("[ENCAIXE]")) return;
+
                     const horaF = String(a.horario).substring(0, 5);
                     const [h, m] = horaF.split(":").map(Number);
                     const min = h * 60 + m;
