@@ -493,8 +493,30 @@
                 const primeiraData = diasSemana[0].iso;
                 const ultimaData = diasSemana[5].iso;
 
-                const { data: agendamentos } = await _supabase.from("agendamentos_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
-                const { data: bloqueios } = await _supabase.from("bloqueios_barreto_v2").select("*").ilike("barbeiro", `%${usuarioLogado}%`).gte("data", primeiraData).lte("data", ultimaData);
+                // BUSCA FLEXÍVEL EM MEMÓRIA PARA EVITAR FALHAS DE FILTRO NO SUPABASE
+                const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2")
+                    .select("*")
+                    .gte("data", primeiraData)
+                    .lte("data", ultimaData);
+
+                if (errAgs) console.error("Erro ao buscar agendamentos:", errAgs);
+
+                const agendamentos = (agsDB || []).filter(a => {
+                    if (!a.data || !a.barbeiro || !a.horario) return false;
+                    return a.barbeiro.trim().toLowerCase() === usuarioLogado.trim().toLowerCase();
+                });
+
+                const { data: blqDB, error: errBlq } = await _supabase.from("bloqueios_barreto_v2")
+                    .select("*")
+                    .gte("data", primeiraData)
+                    .lte("data", ultimaData);
+
+                if (errBlq) console.error("Erro ao buscar bloqueios:", errBlq);
+
+                const bloqueios = (blqDB || []).filter(b => {
+                    if (!b.data || !b.barbeiro) return false;
+                    return b.barbeiro.trim().toLowerCase() === usuarioLogado.trim().toLowerCase();
+                });
 
                 let qtdConcluidos = 0;
                 let faturamentoTotal = 0;
@@ -545,14 +567,12 @@
                             return dataIso === dia.iso && a.status !== 'cancelado';
                         });
 
-                        // INJETA OS HORÁRIOS EXATOS DOS ENCAIXES NA TELA (ex: 11:40)
                         agendamentosDia.forEach(ag => {
                             const horaExata = String(ag.horario).substring(0, 5);
                             if (!horariosDia.includes(horaExata)) {
                                 horariosDia.push(horaExata);
                             }
                         });
-                        // Ordena para o encaixe aparecer na ordem cronológica do dia
                         horariosDia.sort();
 
                         const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
@@ -769,7 +789,6 @@
 
                 const ocupados = new Set();
                 (ags || []).filter(a => a.status !== 'cancelado').forEach(a => {
-                    // IGNOra O ENCAIXE PARA NÃO BLOQUEAR A AGENDA PARA NOVOS MARCAÇÕES
                     if (a.servico && a.servico.includes("[ENCAIXE]")) return;
 
                     const horaF = String(a.horario).substring(0, 5);
