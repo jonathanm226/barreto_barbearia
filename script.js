@@ -13,7 +13,6 @@ const telefonesBarbeiros = {
     "Rafael": "5531975470879" 
 };
 
-// Tabela de durações em minutos (para cálculo de ocupação na agenda)
 const duracoesServicos = {
     "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
     "Sobrancelha": 25, "Hidratação profunda": 25, "Relaxamento": 25,
@@ -95,7 +94,6 @@ function selectBarber(element, barberName) {
     checkAvailableTimes();
 }
 
-// Seleção visual de serviços (Efeito Pills/Cards)
 function toggleService(element, serviceName, price) {
     if (!element) return;
     const icon = element.querySelector(".checkbox-icon");
@@ -103,7 +101,6 @@ function toggleService(element, serviceName, price) {
     const duration = duracoesServicos[serviceName] || 30;
 
     if (index > -1) {
-        // Remove serviço
         selectedServices.splice(index, 1);
         element.classList.remove("active");
         if (icon) { 
@@ -111,7 +108,6 @@ function toggleService(element, serviceName, price) {
             icon.classList.add("fa-regular", "fa-square"); 
         }
     } else {
-        // Adiciona serviço
         selectedServices.push({ name: serviceName, price: price, duration: duration });
         element.classList.add("active");
         if (icon) { 
@@ -165,10 +161,9 @@ function getTimesForDate(dateString, barbeiro) {
     if (!dateString) return [];
     const diaSem = diaDaSemana(dateString); 
     
-    // Regras de folga
-    if (diaSem === 0) return []; // Domingo
-    if (barbeiro === "Matheus" && diaSem === 3) return []; // Quarta
-    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; // Segunda
+    if (diaSem === 0) return []; 
+    if (barbeiro === "Matheus" && diaSem === 3) return []; 
+    if ((barbeiro === "Yann" || barbeiro === "Rafael") && diaSem === 1) return []; 
 
     let horarios = [];
     let horaInicio = 8;
@@ -176,10 +171,9 @@ function getTimesForDate(dateString, barbeiro) {
     let currentMin = horaInicio * 60;
     let endMin = horaFim * 60;
     
-    // Regra de Corte Emergencial Noturno
-    let inicioEmergencia = 1200; // 20:00 (Seg-Qua)
-    if (diaSem >= 4 && diaSem <= 5) inicioEmergencia = 1260; // 21:00 (Qui-Sex)
-    if (diaSem === 6) inicioEmergencia = 1080; // 18:00 (Sáb)
+    let inicioEmergencia = 1200; 
+    if (diaSem >= 4 && diaSem <= 5) inicioEmergencia = 1260; 
+    if (diaSem === 6) inicioEmergencia = 1080; 
 
     while (currentMin <= endMin) {
         const horaStr = fromMin(currentMin);
@@ -201,7 +195,6 @@ async function checkAvailableTimes() {
     const allSlots = getTimesForDate(selDate, selectedBarber);
     if (allSlots.length === 0) return mostrarMensagemNoSelect(timeSel, "Barbeiro não atende neste dia");
 
-    // Cálculo da quantidade de slots de 30min necessários para os serviços escolhidos
     const durationMin = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
     const slotsNeeded = Math.ceil(durationMin / 30);
     mostrarMensagemNoSelect(timeSel, "A carregar horários...");
@@ -236,7 +229,6 @@ async function checkAvailableTimes() {
             return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
         }
 
-        // Mapeamento de slots ocupados
         const ocupados = new Set();
         agendamentos.forEach(a => {
             const horaFormatada = String(a.horario).substring(0, 5); 
@@ -252,7 +244,6 @@ async function checkAvailableTimes() {
             }
         });
 
-        // Bloqueios automáticos (Ex: Almoço)
         const bloqueiosAlmocoAutomaticos = {
             "Rafael": ["13:00", "13:30"],
             "Yann": ["12:00", "12:30", "13:00"],
@@ -269,7 +260,6 @@ async function checkAvailableTimes() {
         const hojeIso = isoLocal(agora);
         const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
 
-        // Renderiza as opções no select
         timeSel.innerHTML = "";
         const optDefault = document.createElement("option");
         optDefault.value = ""; 
@@ -286,13 +276,11 @@ async function checkAvailableTimes() {
             let conflito = false;
             let expirado = false;
 
-            // Bloqueio de horários passados no dia de hoje
             if (selDate === hojeIso && inicio < minutosAtuais) {
                 expirado = true;
                 opt.textContent = `${slot.valor} - (Expirado)`;
             }
 
-            // Verifica se o tempo exigido para o serviço "cabe" na grade
             for (let i = 0; i < slotsNeeded; i++) {
                 const s = inicio + (30 * i);
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { 
@@ -310,7 +298,6 @@ async function checkAvailableTimes() {
             timeSel.appendChild(opt);
         });
 
-        // Tenta manter o horário previamente selecionado se ele ainda estiver livre
         const anteriorDisp = Array.from(timeSel.options).find(o => o.value === previousSelection && o.dataset.ocupado !== "true" && o.value !== "");
         if (anteriorDisp) {
             timeSel.value = previousSelection;
@@ -407,7 +394,6 @@ async function confirmarEEnviar() {
         }]);
 
         if (insertError) {
-            // Prevenção de concorrência: Erro 23505 indica restrição UNIQUE no banco
             if (insertError.code === '23505') {
                 throw new Error("Este horário acabou de ser reservado por outra pessoa. Atualize a página e escolha outro horário.");
             }
@@ -428,7 +414,6 @@ async function confirmarEEnviar() {
     }
 }
 
-// Histórico automático (Auto-preenchimento por telefone)
 async function buscarClientePorTelefone() {
     const tel = document.getElementById("client-phone").value.replace(/\D/g, "");
     if (tel.length < 10) return;
