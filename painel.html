@@ -286,6 +286,21 @@
         </div>
     </div>
 
+    <!-- Modal Edição Admin (Ajuste de Valor) -->
+    <div id="modal-edicao-admin" class="custom-modal-overlay">
+        <div class="custom-modal" style="max-width: 320px;">
+            <h3>Editar Valor - <span id="edicao-admin-cliente" style="color: #FF6600;"></span></h3>
+            <div style="text-align: left; margin-bottom: 15px;">
+                <label style="font-size: 0.8rem; color: #AAA; display: block; margin-bottom: 4px;">Novo Valor Final (R$):</label>
+                <input type="number" id="edicao-admin-valor" step="0.01" style="width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFF; font-size: 1rem; color-scheme: dark;">
+            </div>
+            <div class="custom-modal-buttons">
+                <button type="button" id="btn-salvar-edicao-admin" class="custom-modal-btn btn-modal-confirmar" onclick="salvarNovoValorAdmin()">Salvar Novo Valor</button>
+                <button type="button" class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalEdicaoAdmin()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Genérico para Alertas -->
     <div id="modal-alerta" class="custom-modal-overlay" style="z-index: 10000;">
         <div class="custom-modal" style="max-width: 320px;">
@@ -1222,15 +1237,82 @@
                 ativosOuConcluidos.forEach(item => {
                     const card = document.createElement("div");
                     const isConcluido = item.status === 'concluido';
-                    card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600');
+                    
+                    // Ajuste de estilos para indicar que é clicável (cursor pointer e hover)
+                    card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600') + "; cursor: pointer; transition: 0.2s ease;";
+                    
+                    card.onmouseover = () => card.style.backgroundColor = "#242424";
+                    card.onmouseout = () => card.style.backgroundColor = "#1A1A1A";
+                    
+                    // Atribuição do evento de clique para abrir a edição
+                    card.onclick = () => abrirModalEdicaoAdmin(item.id, item.cliente, item.preco_total);
+
                     card.innerHTML = `
-                        <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
-                        <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")} ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div>
+                                <strong style="font-size:0.85rem; color:#FFF;">${String(item.horario).substring(0,5)} - ${item.barbeiro}</strong><br>
+                                <span style="font-size:0.8rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | <strong style="color: #FF6600;">R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")}</strong> ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
+                            </div>
+                            <i class="fa-solid fa-pen-to-square" style="color: #666; font-size: 0.9rem;" title="Editar Valor"></i>
+                        </div>
                     `;
                     container.appendChild(card);
                 });
             } catch (err) {
                 container.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar.</p>";
+            }
+        }
+
+        // ==================================================
+        // FUNÇÕES DE EDIÇÃO DE VALOR PELO ADMIN
+        // ==================================================
+        let idAgendamentoEdicaoAdmin = null;
+
+        function abrirModalEdicaoAdmin(id, cliente, precoAtual) {
+            idAgendamentoEdicaoAdmin = id;
+            document.getElementById("edicao-admin-cliente").textContent = cliente;
+            document.getElementById("edicao-admin-valor").value = Number(precoAtual || 0).toFixed(2);
+            document.getElementById("modal-edicao-admin").classList.add("active");
+        }
+
+        function fecharModalEdicaoAdmin() {
+            document.getElementById("modal-edicao-admin").classList.remove("active");
+            idAgendamentoEdicaoAdmin = null;
+        }
+
+        async function salvarNovoValorAdmin() {
+            if (!idAgendamentoEdicaoAdmin) return;
+            
+            const novoValorStr = document.getElementById("edicao-admin-valor").value.replace(",", ".");
+            const novoValor = parseFloat(novoValorStr);
+            
+            if (isNaN(novoValor) || novoValor < 0) {
+                mostrarAlerta("Por favor, insira um valor numérico válido.", false);
+                return;
+            }
+
+            const btn = document.getElementById("btn-salvar-edicao-admin");
+            try {
+                btn.textContent = "A salvar...";
+                btn.disabled = true;
+
+                const { error } = await _supabase
+                    .from("agendamentos_barreto_v2")
+                    .update({ preco_total: novoValor })
+                    .eq('id', idAgendamentoEdicaoAdmin);
+
+                if (error) throw error;
+
+                fecharModalEdicaoAdmin();
+                mostrarAlerta("Valor ajustado com sucesso!", true);
+                
+                // Atualiza o painel para refletir o novo faturamento imediatamente
+                carregarResumoAdmin();
+            } catch (err) {
+                mostrarAlerta("Erro ao atualizar valor: " + err.message, false);
+            } finally {
+                btn.textContent = "Salvar Novo Valor";
+                btn.disabled = false;
             }
         }
     </script>
