@@ -15,9 +15,9 @@ const telefonesBarbeiros = {
 
 const duracoesServicos = {
     "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
-    "Sobrancelha": 25, "Hidratação profunda": 25, "Relaxamento": 25,
-    "Escova": 30, "Luzes": 60, "Platinado": 60, "Botox (selagem)": 60,
-    "Coloração": 60, "Pigmentação": 40, "Pezinho simples": 10, "Pezinho Gourmet": 20
+    "Sobrancelha": 10, "Hidratação profunda": 30, "Relaxamento": 40,
+    "Escova": 25, "Luzes": 120.00, "Platinado": 150.00, "Botox (selagem)": 90.00,
+    "Coloração": 100.00, "Pigmentação": 30.00, "Pezinho simples": 10.00, "Pezinho Gourmet": 15.00
 };
 
 let selectedBarber = "Matheus";
@@ -172,14 +172,9 @@ function getTimesForDate(dateString, barbeiro) {
     let currentMin = horaInicio * 60;
     let endMin = horaFim * 60;
     
-    let inicioEmergencia = 1200; 
-    if (diaSem >= 4 && diaSem <= 5) inicioEmergencia = 1260; 
-    if (diaSem === 6) inicioEmergencia = 1080; 
-
     while (currentMin <= endMin) {
         const horaStr = fromMin(currentMin);
-        let textoSlot = currentMin >= inicioEmergencia ? `${horaStr} - (Corte Emergencial: R$ 45,00)` : horaStr;
-        horarios.push({ valor: horaStr, texto: textoSlot });
+        horarios.push({ valor: horaStr, texto: horaStr });
         currentMin += 30;
     }
     return horarios;
@@ -254,7 +249,9 @@ async function checkAvailableTimes() {
         };
         const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber.trim()] || [];
 
-        const bloqueados = new Set(bloqueios.map(b => toMin(String(b.horario).substring(0, 5))));
+        const bloqueados = new Set(bloqueios.filter(b => !String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).substring(0, 5))));
+        const liberadosMinSet = new Set(bloqueios.filter(b => String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).replace("_LIBERADO", "").substring(0, 5))));
+        
         almocoPadrao.forEach(h => bloqueados.add(toMin(h)));
 
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
@@ -284,16 +281,25 @@ async function checkAvailableTimes() {
                 opt.textContent = `${slot.valor} - (Expirado)`;
             }
 
+            const [hSlot] = slot.valor.split(":").map(Number);
+            const ehApartirDas18 = hSlot >= 18;
+            // A partir das 18h, bloqueado por padrão a menos que esteja no conjunto de liberados
+            let bloqueadoPor18 = ehApartirDas18 && !liberadosMinSet.has(inicio);
+
             for (let i = 0; i < slotsNeeded; i++) {
                 const s = inicio + (30 * i);
-                if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s)) { 
+                const [hCheck] = fromMin(s).split(":").map(Number);
+                const eh18Check = hCheck >= 18;
+                const bloqueadoCheck18 = eh18Check && !liberadosMinSet.has(s);
+
+                if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s) || bloqueadoCheck18) { 
                     conflito = true; 
                     break; 
                 }
             }
 
             if (conflito || expirado) { 
-                if (conflito && !expirado) opt.textContent = `${slot.valor} - (Ocupado)`; 
+                if (conflito && !expirado) opt.textContent = `${slot.valor} - (Ocupado/Bloqueado)`; 
                 opt.dataset.ocupado = "true"; 
             } else {
                 opt.dataset.ocupado = "false";
@@ -315,7 +321,7 @@ async function checkAvailableTimes() {
 }
 
 // ==========================================
-// SUBMISSÃO E WHATSAPP (ATUALIZADO)
+// SUBMISSÃO E WHATSAPP
 // ==========================================
 function abrirModalConfirmacao() {
     const name = document.getElementById("client-name")?.value.trim();
@@ -339,14 +345,8 @@ function abrirModalConfirmacao() {
         return;
     }
 
-    const diaSem = diaDaSemana(date);
-    const minTime = toMin(time);
-    let ehEmergencia = ((diaSem >= 1 && diaSem <= 3 && minTime >= 1200) || 
-                        (diaSem >= 4 && diaSem <= 5 && minTime >= 1260) || 
-                        (diaSem === 6 && minTime >= 1080));
-    
-    const preco = ehEmergencia ? 45.0 : calcularTotal();
-    const servNomes = ehEmergencia ? ["Corte Emergencial"] : selectedServices.map(s => s.name);
+    const preco = calcularTotal();
+    const servNomes = selectedServices.map(s => s.name);
 
     document.getElementById("resumo-agendamento").innerHTML = `
         <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
@@ -376,17 +376,10 @@ async function confirmarEEnviar() {
     const time = document.getElementById("time").value;
 
     try {
-        const diaSem = diaDaSemana(date);
-        const minTime = toMin(time);
-        let ehEmergencia = ((diaSem >= 1 && diaSem <= 3 && minTime >= 1200) || 
-                            (diaSem >= 4 && diaSem <= 5 && minTime >= 1260) || 
-                            (diaSem === 6 && minTime >= 1080));
-        
-        const precoTotal = ehEmergencia ? 45.0 : calcularTotal();
-        const servicosNome = ehEmergencia ? "Corte Emergencial" : selectedServices.map(s => s.name).join(", ");
+        const precoTotal = calcularTotal();
+        const servicosNome = selectedServices.map(s => s.name).join(", ");
         const barbeiroLimpo = selectedBarber.trim();
 
-        // 1. GRAVA PRIMEIRO NO SUPABASE E AGUARDA A CONFIRMAÇÃO
         const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
             cliente: name,
             telefone: phone,
@@ -405,7 +398,6 @@ async function confirmarEEnviar() {
             throw new Error(insertError.message);
         }
 
-        // 2. SÓ ABRE O WHATSAPP DEPOIS QUE O REGISTRO FOI SALVO COM SUCESSO
         fecharModalConfirmacao();
         const num = telefonesBarbeiros[barbeiroLimpo] || "5531997193193";
         const msg = `✅ *AGENDAMENTO CONFIRMADO* ✅\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${barbeiroLimpo}\n✂️ *Serviços:* ${servicosNome}\n📅 *Data:* ${date.split("-").reverse().join("/")}\n⏰ *Horário:* ${time}`;
