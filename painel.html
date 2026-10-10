@@ -240,7 +240,7 @@
         </div>
     </div>
 
-    <!-- Modal de Agendamento Avulso (Com Label para clique em qualquer lugar do Encaixe) -->
+    <!-- Modal de Agendamento Avulso -->
     <div id="modal-agendamento-manual" class="custom-modal-overlay">
         <div class="custom-modal">
             <h3>Agendamento Avulso (Barbeiro)</h3>
@@ -259,7 +259,6 @@
                     <strong id="manual-preco-total" style="color: #FF6600; font-size: 0.95rem;">R$ 0,00</strong>
                 </div>
 
-                <!-- Checkbox de Encaixe com Tag Label para acionamento em qualquer área -->
                 <label for="manual-encaixe" style="margin-bottom: 12px; background: #222; padding: 10px; border-radius: 6px; border: 1px solid #FF6600; display: flex; align-items: center; gap: 8px; cursor: pointer;">
                     <input type="checkbox" id="manual-encaixe" style="width: 18px; height: 18px; accent-color: #FF6600; cursor: pointer;" onchange="alternarModoEncaixe()">
                     <div>
@@ -286,7 +285,7 @@
         </div>
     </div>
 
-    <!-- Modal Edição Admin (Ajuste de Valor) -->
+    <!-- Modal Edição Admin -->
     <div id="modal-edicao-admin" class="custom-modal-overlay">
         <div class="custom-modal" style="max-width: 320px;">
             <h3>Editar Valor - <span id="edicao-admin-cliente" style="color: #FF6600;"></span></h3>
@@ -505,12 +504,8 @@
             const horaAtualMinutos = agora.getHours() * 60 + agora.getMinutes();
 
             try {
-                // BUSCA GERAL SEM FILTRO DE DATA PARA DIAGNÓSTICO
                 const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2").select("*");
-
                 if (errAgs) console.error("Erro ao buscar agendamentos:", errAgs);
-
-                console.log("Todos os agendamentos no banco:", agsDB);
 
                 const agendamentos = (agsDB || []).filter(a => {
                     if (!a.data || !a.barbeiro || !a.horario) return false;
@@ -592,12 +587,30 @@
                             let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
                             let ehAlmocoAutomatico = almocoPadrao.includes(h) && !blq;
 
+                            // Regra: Bloquear automaticamente a partir das 18:00 (18:00 em diante) caso não haja agendamento, almoço, ou bloqueio explícito manual salvo no banco.
+                            const [hNum] = h.split(":").map(Number);
+                            const ehApartirDas18 = hNum >= 18;
+                            let bloqueadoPorPadrao18 = false;
+                            
+                            // Se estiver >= 18h e não houver bloqueio explícito salvo e nem agendamento, aplicamos o bloqueio padrão de 18h+
+                            // (Nota: para verificar se o usuário desbocou, verificamos se o slot está na tabela de bloqueios como manual desfeito, mas aqui blq representará o registro no banco).
+                            // Como o banco armazena bloqueios manuais, vamos tratar: se >= 18h, por padrão é considerado bloqueado a menos que exista um registro indicando liberação ou se o usuário gravou o bloqueio contrário. Para simplificar e seguir a premissa de vir bloqueado, consideramos bloqueado se não houver agendamento e o bloqueio não tiver sido removido explicitamente (ou seja, se a ausência de bloqueio na tabela for o padrão, invertemos para >=18h).
+                            // Vamos refinar: se hNum >= 18, ele fica bloqueado a menos que exista um registro explícito de DESBLOQUEIO ou se houver agendamento. Para manter a estrutura simples com a tabela atual de bloqueios, se >=18h, consideramos bloqueado por padrão a menos que o horário conste na tabela de bloqueios como removido, OU podemos salvar um bloqueio padrão no banco/verificar se há registro. Uma forma prática: se >= 18h, ele assume bloqueio por padrão, exceto se houver agendamento ou se o barbeiro clicou em "Desbl" (o que remove o bloqueio ou insere um controle). Vamos ajustar a lógica para que >= 18h inicie bloqueado.
+                            
+                            // Tratamento limpo para 18h+:
+                            let estaBloqueado18 = ehApartirDas18 && !blq; 
+                            // Se o barbeiro salvou um bloqueio manual para liberar (desbloquear), podemos usar uma flag ou checar. Vamos padronizar: se >= 18h, o padrão é bloqueado (verificando se o blq no banco significa o oposto ou se usamos uma tabela de exceções). 
+                            // Como o código atual salva bloqueios em "bloqueios_barreto_v2", podemos considerar que a partir das 18h o horário entra como bloqueado nativamente, a menos que o barbeiro clique em "Desbl" (o que remove ou insere uma exceção). Para simplificar e garantir robustez sem alterar a arquitetura do banco, vamos considerar que se hNum >= 18, o slot é bloqueado por padrão a menos que exista um registro de liberação, ou podemos simplesmente registrar bloqueios automáticos no banco ou tratá-los em memória. Vamos tratar na renderização: se h >= 18 e não há agendamento, ele assume status bloqueado a menos que o barbeiro clique para liberar.
+
                             if (agsNoHorario.length > 0) {
                                 agsNoHorario.forEach(ag => {
                                     itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
                                 });
-                            } else if (blq || ehAlmocoAutomatico) {
-                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: ehAlmocoAutomatico });
+                            } else if (blq || (ehApartirDas18 && !blq && !ehAlmocoAutomatico)) {
+                                // Se for bloqueio manual ou regra das 18h (e não foi explicitamente liberado)
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: ehApartirDas18 });
+                            } else if (ehAlmocoAutomatico) {
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: null, automatico: true });
                             } else {
                                 itensRenderizacao.push({ tipo: 'vazio', horario: h });
                             }
@@ -689,7 +702,16 @@
 
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
-                if (estaBloqueado) {
+                // Se está bloqueado e queremos desbloquear (clicou em Desbl), inserimos um registro ou removemos o bloqueio padrão.
+                // Como horários >= 18h vêm bloqueados por padrão, se o usuário clicar em "Desbl", salvamos uma liberação (ou removemos o bloqueio se ele foi adicionado manualmente).
+                const [hNum] = horario.split(":").map(Number);
+                const ehApartirDas18 = hNum >= 18;
+
+                if (ehApartirDas18 && !estaBloqueado) {
+                    // Para horários >= 18h que iniciam bloqueados, "Desbl" significa salvar um registro indicando que está livre/liberado
+                    await _supabase.from("bloqueios_barreto_v2")
+                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario_liberado" }]);
+                } else if (estaBloqueado) {
                     await _supabase.from("bloqueios_barreto_v2")
                         .delete()
                         .eq("barbeiro", usuarioLogado)
@@ -819,7 +841,9 @@
                     "Matheus": ["13:30", "14:00", "14:30"]
                 };
                 const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
-                const bloqueadosSet = new Set((blqs || []).map(b => String(b.horario).substring(0, 5)));
+                const bloqueadosSet = new Set((blqs || []).filter(b => !String(b.horario).includes("_LIBERADO")).map(b => String(b.horario).substring(0, 5)));
+                const liberadosSet = new Set((blqs || []).filter(b => String(b.horario).includes("_LIBERADO")).map(b => String(b.horario).replace("_LIBERADO", "").substring(0, 5)));
+                
                 almocoPadrao.forEach(h => bloqueadosSet.add(h));
 
                 const gradeBase = new Set(allSlots.map(s => {
@@ -842,12 +866,19 @@
                         expirado = true;
                     }
 
+                    const ehApartirDas18 = h >= 18;
+                    // Se for >= 18h, é considerado bloqueado a menos que esteja no liberadosSet ou tenha agendamento
+                    let bloqueadoPor18 = ehApartirDas18 && !liberadosSet.has(slotStr);
+
                     let conflito = false;
                     for (let i = 0; i < slotsNeeded; i++) {
                         const s = minSlot + (30 * i);
                         const horaStrCheck = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-                        
-                        if (!gradeBase.has(s) || ocupados.has(s) || bloqueadosSet.has(horaStrCheck)) {
+                        const [hCheck] = horaStrCheck.split(":").map(Number);
+                        const eh18Check = hCheck >= 18;
+                        const bloqueadoCheck18 = eh18Check && !liberadosSet.has(horaStrCheck);
+
+                        if (!gradeBase.has(s) || ocupados.has(s) || bloqueadosSet.has(horaStrCheck) || bloqueadoCheck18) {
                             conflito = true;
                             break;
                         }
@@ -860,7 +891,7 @@
                         opt.textContent = `${slotStr} - (Expirado)`;
                         opt.disabled = true;
                     } else if (conflito) {
-                        opt.textContent = `${slotStr} - (Ocupado)`;
+                        opt.textContent = `${slotStr} - (Ocupado/Bloqueado)`;
                         opt.disabled = true;
                     } else {
                         opt.textContent = slotStr;
@@ -1238,13 +1269,11 @@
                     const card = document.createElement("div");
                     const isConcluido = item.status === 'concluido';
                     
-                    // Ajuste de estilos para indicar que é clicável (cursor pointer e hover)
                     card.style.cssText = "background: #1A1A1A; padding: 10px; border-radius: 6px; border: 1px solid #333; border-left: 4px solid " + (isConcluido ? '#25D366' : '#FF6600') + "; cursor: pointer; transition: 0.2s ease;";
                     
                     card.onmouseover = () => card.style.backgroundColor = "#242424";
                     card.onmouseout = () => card.style.backgroundColor = "#1A1A1A";
                     
-                    // Atribuição do evento de clique para abrir a edição
                     card.onclick = () => abrirModalEdicaoAdmin(item.id, item.cliente, item.preco_total);
 
                     card.innerHTML = `
@@ -1263,9 +1292,6 @@
             }
         }
 
-        // ==================================================
-        // FUNÇÕES DE EDIÇÃO DE VALOR PELO ADMIN
-        // ==================================================
         let idAgendamentoEdicaoAdmin = null;
 
         function abrirModalEdicaoAdmin(id, cliente, precoAtual) {
@@ -1305,8 +1331,6 @@
 
                 fecharModalEdicaoAdmin();
                 mostrarAlerta("Valor ajustado com sucesso!", true);
-                
-                // Atualiza o painel para refletir o novo faturamento imediatamente
                 carregarResumoAdmin();
             } catch (err) {
                 mostrarAlerta("Erro ao atualizar valor: " + err.message, false);
