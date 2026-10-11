@@ -139,9 +139,14 @@ function calcularTotal() {
     return selectedServices.reduce((acc, s) => acc + s.price, 0);
 }
 
+// Melhoria: Usando UTC para evitar bugs de fuso horário onde Sábado vira Sexta-feira
 function diaDaSemana(dateString) {
-    const [y, m, d] = dateString.split("-").map(Number);
-    return new Date(y, m - 1, d).getDay();
+    if (!dateString) return -1;
+    const partes = dateString.split("-");
+    if (partes.length !== 3) return -1;
+    const [y, m, d] = partes.map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return date.getUTCDay();
 }
 
 function mostrarMensagemNoSelect(timeSelect, texto) {
@@ -293,6 +298,7 @@ async function checkAvailableTimes() {
                 const s = inicio + (30 * i);
                 const [hCheck] = fromMin(s).split(":").map(Number);
                 const eh18Check = hCheck >= 18;
+                // Considera bloqueado se é sábado após 18h E não está explícitamente liberado pelo barbeiro
                 const bloqueadoCheck18 = eh18Check && isSabado && !liberadosMinSet.has(s);
 
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s) || bloqueadoCheck18) { 
