@@ -165,6 +165,13 @@
                         <strong id="barber-total-faturamento" style="color: #FF6600;">R$ 0,00</strong>
                     </div>
                 </div>
+                <!-- Nova seção de tipos de pagamento -->
+                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #AAA; margin-top: 8px; padding-top: 8px; border-top: 1px solid #333;">
+                    <div>Pix: <strong id="faturamento-pix" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>Dinheiro: <strong id="faturamento-dinheiro" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>Débito: <strong id="faturamento-debito" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>Crédito: <strong id="faturamento-credito" style="color:#FFF;">R$ 0,00</strong></div>
+                </div>
             </div>
 
             <div style="background: #1A1A1A; border: 1px solid #333; padding: 6px; border-radius: 6px; margin-bottom: 8px; text-align: center;">
@@ -523,15 +530,30 @@
 
                 let qtdConcluidos = 0;
                 let faturamentoTotal = 0;
+                let faturamentoPix = 0;
+                let faturamentoDinheiro = 0;
+                let faturamentoDebito = 0;
+                let faturamentoCredito = 0;
+
                 (agendamentos || []).forEach(a => {
                     if (a.status === 'concluido') {
                         qtdConcluidos++;
-                        faturamentoTotal += Number(a.preco_total || 35);
+                        const valor = Number(a.preco_total || 35);
+                        faturamentoTotal += valor;
+                        
+                        if (a.pagamentos === 'Pix') faturamentoPix += valor;
+                        else if (a.pagamentos === 'Dinheiro') faturamentoDinheiro += valor;
+                        else if (a.pagamentos === 'Débito') faturamentoDebito += valor;
+                        else if (a.pagamentos === 'Crédito') faturamentoCredito += valor;
                     }
                 });
 
                 document.getElementById("barber-total-atendidos").textContent = qtdConcluidos;
                 document.getElementById("barber-total-faturamento").textContent = `R$ ${faturamentoTotal.toFixed(2).replace(".", ",")}`;
+                document.getElementById("faturamento-pix").textContent = `R$ ${faturamentoPix.toFixed(2).replace(".", ",")}`;
+                document.getElementById("faturamento-dinheiro").textContent = `R$ ${faturamentoDinheiro.toFixed(2).replace(".", ",")}`;
+                document.getElementById("faturamento-debito").textContent = `R$ ${faturamentoDebito.toFixed(2).replace(".", ",")}`;
+                document.getElementById("faturamento-credito").textContent = `R$ ${faturamentoCredito.toFixed(2).replace(".", ",")}`;
 
                 container.innerHTML = "";
 
@@ -581,34 +603,24 @@
                         const bloqueiosDia = (bloqueios || []).filter(b => String(b.data).substring(0, 10) === dia.iso && b.horario !== 'TODOS');
                         
                         let itensRenderizacao = [];
+                        const isSabado = diaDaSemana(dia.iso) === 6;
 
                         horariosDia.forEach(h => {
                             let agsNoHorario = agendamentosDia.filter(a => String(a.horario).substring(0, 5) === h);
                             let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
                             let ehAlmocoAutomatico = almocoPadrao.includes(h) && !blq;
 
-                            // Regra: Bloquear automaticamente a partir das 18:00 (18:00 em diante) caso não haja agendamento, almoço, ou bloqueio explícito manual salvo no banco.
                             const [hNum] = h.split(":").map(Number);
                             const ehApartirDas18 = hNum >= 18;
-                            let bloqueadoPorPadrao18 = false;
                             
-                            // Se estiver >= 18h e não houver bloqueio explícito salvo e nem agendamento, aplicamos o bloqueio padrão de 18h+
-                            // (Nota: para verificar se o usuário desbocou, verificamos se o slot está na tabela de bloqueios como manual desfeito, mas aqui blq representará o registro no banco).
-                            // Como o banco armazena bloqueios manuais, vamos tratar: se >= 18h, por padrão é considerado bloqueado a menos que exista um registro indicando liberação ou se o usuário gravou o bloqueio contrário. Para simplificar e seguir a premissa de vir bloqueado, consideramos bloqueado se não houver agendamento e o bloqueio não tiver sido removido explicitamente (ou seja, se a ausência de bloqueio na tabela for o padrão, invertemos para >=18h).
-                            // Vamos refinar: se hNum >= 18, ele fica bloqueado a menos que exista um registro explícito de DESBLOQUEIO ou se houver agendamento. Para manter a estrutura simples com a tabela atual de bloqueios, se >=18h, consideramos bloqueado por padrão a menos que o horário conste na tabela de bloqueios como removido, OU podemos salvar um bloqueio padrão no banco/verificar se há registro. Uma forma prática: se >= 18h, ele assume bloqueio por padrão, exceto se houver agendamento ou se o barbeiro clicou em "Desbl" (o que remove o bloqueio ou insere um controle). Vamos ajustar a lógica para que >= 18h inicie bloqueado.
-                            
-                            // Tratamento limpo para 18h+:
-                            let estaBloqueado18 = ehApartirDas18 && !blq; 
-                            // Se o barbeiro salvou um bloqueio manual para liberar (desbloquear), podemos usar uma flag ou checar. Vamos padronizar: se >= 18h, o padrão é bloqueado (verificando se o blq no banco significa o oposto ou se usamos uma tabela de exceções). 
-                            // Como o código atual salva bloqueios em "bloqueios_barreto_v2", podemos considerar que a partir das 18h o horário entra como bloqueado nativamente, a menos que o barbeiro clique em "Desbl" (o que remove ou insere uma exceção). Para simplificar e garantir robustez sem alterar a arquitetura do banco, vamos considerar que se hNum >= 18, o slot é bloqueado por padrão a menos que exista um registro de liberação, ou podemos simplesmente registrar bloqueios automáticos no banco ou tratá-los em memória. Vamos tratar na renderização: se h >= 18 e não há agendamento, ele assume status bloqueado a menos que o barbeiro clique para liberar.
+                            let estaBloqueado18 = ehApartirDas18 && isSabado && !blq; 
 
                             if (agsNoHorario.length > 0) {
                                 agsNoHorario.forEach(ag => {
                                     itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
                                 });
-                            } else if (blq || (ehApartirDas18 && !blq && !ehAlmocoAutomatico)) {
-                                // Se for bloqueio manual ou regra das 18h (e não foi explicitamente liberado)
-                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: ehApartirDas18 });
+                            } else if (blq || estaBloqueado18) {
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: estaBloqueado18 });
                             } else if (ehAlmocoAutomatico) {
                                 itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: null, automatico: true });
                             } else {
@@ -702,24 +714,31 @@
 
         async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
             try {
-                // Se está bloqueado e queremos desbloquear (clicou em Desbl), inserimos um registro ou removemos o bloqueio padrão.
-                // Como horários >= 18h vêm bloqueados por padrão, se o usuário clicar em "Desbl", salvamos uma liberação (ou removemos o bloqueio se ele foi adicionado manualmente).
                 const [hNum] = horario.split(":").map(Number);
-                const ehApartirDas18 = hNum >= 18;
+                const isSabado = diaDaSemana(dataIso) === 6;
+                const ehApartirDas18 = hNum >= 18 && isSabado;
 
-                if (ehApartirDas18 && !estaBloqueado) {
-                    // Para horários >= 18h que iniciam bloqueados, "Desbl" significa salvar um registro indicando que está livre/liberado
-                    await _supabase.from("bloqueios_barreto_v2")
-                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario_liberado" }]);
-                } else if (estaBloqueado) {
-                    await _supabase.from("bloqueios_barreto_v2")
-                        .delete()
-                        .eq("barbeiro", usuarioLogado)
-                        .eq("data", dataIso)
-                        .like("horario", `${horario}%`);
+                if (estaBloqueado) {
+                    if (ehApartirDas18) {
+                        const { data: b } = await _supabase.from("bloqueios_barreto_v2")
+                            .select("*").eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario).maybeSingle();
+                        if (b) {
+                             await _supabase.from("bloqueios_barreto_v2").delete().eq("id", b.id);
+                        } else {
+                             await _supabase.from("bloqueios_barreto_v2")
+                            .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario_liberado" }]);
+                        }
+                    } else {
+                        await _supabase.from("bloqueios_barreto_v2").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario);
+                        await _supabase.from("bloqueios_barreto_v2").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario + "_LIBERADO");
+                    }
                 } else {
-                    await _supabase.from("bloqueios_barreto_v2")
-                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
+                    if (ehApartirDas18) {
+                        await _supabase.from("bloqueios_barreto_v2").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario + "_LIBERADO");
+                    } else {
+                        await _supabase.from("bloqueios_barreto_v2")
+                            .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
+                    }
                 }
                 carregarAgendaSemanal();
             } catch (err) {
@@ -857,6 +876,8 @@
 
                 horarioSelect.innerHTML = "<option value='' disabled selected>Selecione um horário livre</option>";
 
+                const isSabado = diaDaSemana(dataSel) === 6;
+
                 allSlots.forEach(slotStr => {
                     const [h, m] = slotStr.split(":").map(Number);
                     const minSlot = h * 60 + m;
@@ -867,8 +888,7 @@
                     }
 
                     const ehApartirDas18 = h >= 18;
-                    // Se for >= 18h, é considerado bloqueado a menos que esteja no liberadosSet ou tenha agendamento
-                    let bloqueadoPor18 = ehApartirDas18 && !liberadosSet.has(slotStr);
+                    let bloqueadoPor18 = ehApartirDas18 && isSabado && !liberadosSet.has(slotStr);
 
                     let conflito = false;
                     for (let i = 0; i < slotsNeeded; i++) {
@@ -876,7 +896,7 @@
                         const horaStrCheck = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
                         const [hCheck] = horaStrCheck.split(":").map(Number);
                         const eh18Check = hCheck >= 18;
-                        const bloqueadoCheck18 = eh18Check && !liberadosSet.has(horaStrCheck);
+                        const bloqueadoCheck18 = eh18Check && isSabado && !liberadosSet.has(horaStrCheck);
 
                         if (!gradeBase.has(s) || ocupados.has(s) || bloqueadosSet.has(horaStrCheck) || bloqueadoCheck18) {
                             conflito = true;
