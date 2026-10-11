@@ -267,6 +267,9 @@ async function checkAvailableTimes() {
         optDefault.disabled = true;
         timeSel.appendChild(optDefault);
 
+        // Limitador de bloqueio automático 18h só aos sábados
+        const isSabado = diaDaSemana(selDate) === 6;
+
         allSlots.forEach(slot => {
             const opt = document.createElement("option");
             opt.value = slot.valor; 
@@ -283,14 +286,13 @@ async function checkAvailableTimes() {
 
             const [hSlot] = slot.valor.split(":").map(Number);
             const ehApartirDas18 = hSlot >= 18;
-            // A partir das 18h, bloqueado por padrão a menos que esteja no conjunto de liberados
-            let bloqueadoPor18 = ehApartirDas18 && !liberadosMinSet.has(inicio);
+            let bloqueadoPor18 = ehApartirDas18 && isSabado && !liberadosMinSet.has(inicio);
 
             for (let i = 0; i < slotsNeeded; i++) {
                 const s = inicio + (30 * i);
                 const [hCheck] = fromMin(s).split(":").map(Number);
                 const eh18Check = hCheck >= 18;
-                const bloqueadoCheck18 = eh18Check && !liberadosMinSet.has(s);
+                const bloqueadoCheck18 = eh18Check && isSabado && !liberadosMinSet.has(s);
 
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s) || bloqueadoCheck18) { 
                     conflito = true; 
