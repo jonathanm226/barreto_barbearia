@@ -390,9 +390,14 @@
             document.getElementById("modal-alerta").classList.remove("active");
         }
 
+        // Melhoria: Usando UTC para evitar bugs de fuso horário onde Sábado vira Sexta-feira
         function diaDaSemana(dateString) {
-            const [y, m, d] = dateString.split("-").map(Number);
-            return new Date(y, m - 1, d).getDay();
+            if (!dateString) return -1;
+            const partes = dateString.split("-");
+            if (partes.length !== 3) return -1;
+            const [y, m, d] = partes.map(Number);
+            const date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+            return date.getUTCDay();
         }
 
         function obterHorariosParaData(dataString) {
@@ -728,30 +733,33 @@
                 
                 const ehBloqueioAutomatico = ehApartirDas18 || ehAlmoco;
 
-                // 1. Limpar sempre qualquer conflito no banco para esse horário
+                // 1. Limpar sempre qualquer registo conflituante de forma estrita para evitar falhas do banco
                 await _supabase.from("bloqueios_barreto_v2")
                     .delete()
                     .eq("barbeiro", usuarioLogado)
                     .eq("data", dataIso)
-                    .in("horario", [horario, horario + "_LIBERADO"]);
+                    .eq("horario", horario);
+                    
+                await _supabase.from("bloqueios_barreto_v2")
+                    .delete()
+                    .eq("barbeiro", usuarioLogado)
+                    .eq("data", dataIso)
+                    .eq("horario", horario + "_LIBERADO");
 
                 // 2. Aplicar a intenção do barbeiro
                 if (estaBloqueado) {
-                    // INTENÇÃO: DESBLOQUEAR (Tornar Livre)
+                    // INTENÇÃO: DESBLOQUEAR
                     if (ehBloqueioAutomatico) {
-                        // Se é bloqueado por padrão, precisamos adicionar uma exceção (_LIBERADO)
+                        // Inserimos a tag de liberado, mas com o "tipo: horario" para não quebrar restrições da base de dados
                         await _supabase.from("bloqueios_barreto_v2")
-                            .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario_liberado" }]);
+                            .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario" }]);
                     }
-                    // Se não é automático, só o delete acima já basta para ficar livre.
                 } else {
                     // INTENÇÃO: BLOQUEAR
                     if (!ehBloqueioAutomatico) {
-                        // Se não é automático, precisamos inserir o bloqueio normal
                         await _supabase.from("bloqueios_barreto_v2")
                             .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
                     }
-                    // Se já era automático, só o delete do _LIBERADO (acima) já o faz voltar a ser bloqueado.
                 }
                 
                 carregarAgendaSemanal();
