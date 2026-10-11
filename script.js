@@ -252,7 +252,13 @@ async function checkAvailableTimes() {
         const bloqueados = new Set(bloqueios.filter(b => !String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).substring(0, 5))));
         const liberadosMinSet = new Set(bloqueios.filter(b => String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).replace("_LIBERADO", "").substring(0, 5))));
         
-        almocoPadrao.forEach(h => bloqueados.add(toMin(h)));
+        // Bloqueia almoço APENAS se o barbeiro não tiver clicado para liberar
+        almocoPadrao.forEach(h => {
+            const minH = toMin(h);
+            if (!liberadosMinSet.has(minH)) {
+                bloqueados.add(minH);
+            }
+        });
 
         const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
 
@@ -267,7 +273,6 @@ async function checkAvailableTimes() {
         optDefault.disabled = true;
         timeSel.appendChild(optDefault);
 
-        // Limitador de bloqueio automático 18h só aos sábados
         const isSabado = diaDaSemana(selDate) === 6;
 
         allSlots.forEach(slot => {
@@ -283,10 +288,6 @@ async function checkAvailableTimes() {
                 expirado = true;
                 opt.textContent = `${slot.valor} - (Expirado)`;
             }
-
-            const [hSlot] = slot.valor.split(":").map(Number);
-            const ehApartirDas18 = hSlot >= 18;
-            let bloqueadoPor18 = ehApartirDas18 && isSabado && !liberadosMinSet.has(inicio);
 
             for (let i = 0; i < slotsNeeded; i++) {
                 const s = inicio + (30 * i);
