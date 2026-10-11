@@ -165,12 +165,12 @@
                         <strong id="barber-total-faturamento" style="color: #FF6600;">R$ 0,00</strong>
                     </div>
                 </div>
-                <!-- Nova seção de tipos de pagamento -->
+                <!-- Nova seção de tipos de pagamento com emojis -->
                 <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #AAA; margin-top: 8px; padding-top: 8px; border-top: 1px solid #333;">
-                    <div>Pix: <strong id="faturamento-pix" style="color:#FFF;">R$ 0,00</strong></div>
-                    <div>Dinheiro: <strong id="faturamento-dinheiro" style="color:#FFF;">R$ 0,00</strong></div>
-                    <div>Débito: <strong id="faturamento-debito" style="color:#FFF;">R$ 0,00</strong></div>
-                    <div>Crédito: <strong id="faturamento-credito" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>💠 Pix: <strong id="faturamento-pix" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>💵 Dinheiro: <strong id="faturamento-dinheiro" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>💳 Débito: <strong id="faturamento-debito" style="color:#FFF;">R$ 0,00</strong></div>
+                    <div>💳 Crédito: <strong id="faturamento-credito" style="color:#FFF;">R$ 0,00</strong></div>
                 </div>
             </div>
 
@@ -607,22 +607,22 @@
 
                         horariosDia.forEach(h => {
                             let agsNoHorario = agendamentosDia.filter(a => String(a.horario).substring(0, 5) === h);
-                            let blq = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h);
-                            let ehAlmocoAutomatico = almocoPadrao.includes(h) && !blq;
-
-                            const [hNum] = h.split(":").map(Number);
-                            const ehApartirDas18 = hNum >= 18;
+                            let blqNormal = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h && !String(b.horario).includes("_LIBERADO"));
+                            let isLiberado = bloqueiosDia.some(b => String(b.horario).substring(0, 5) === h && String(b.horario).includes("_LIBERADO"));
                             
-                            let estaBloqueado18 = ehApartirDas18 && isSabado && !blq; 
+                            const [hNum] = h.split(":").map(Number);
+                            const ehApartirDas18 = hNum >= 18 && isSabado;
+                            const ehAlmocoAutomatico = almocoPadrao.includes(h);
+
+                            // O horário estará bloqueado SE tiver bloqueio normal OU for bloqueio automático, e NÃO estiver explicitamente liberado
+                            let estaEfetivamenteBloqueado = (blqNormal || ehApartirDas18 || ehAlmocoAutomatico) && !isLiberado; 
 
                             if (agsNoHorario.length > 0) {
                                 agsNoHorario.forEach(ag => {
                                     itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
                                 });
-                            } else if (blq || estaBloqueado18) {
-                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blq, automatico: estaBloqueado18 });
-                            } else if (ehAlmocoAutomatico) {
-                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: null, automatico: true });
+                            } else if (estaEfetivamenteBloqueado) {
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blqNormal, automatico: ehApartirDas18 || ehAlmocoAutomatico });
                             } else {
                                 itensRenderizacao.push({ tipo: 'vazio', horario: h });
                             }
@@ -717,31 +717,46 @@
                 const [hNum] = horario.split(":").map(Number);
                 const isSabado = diaDaSemana(dataIso) === 6;
                 const ehApartirDas18 = hNum >= 18 && isSabado;
+                
+                const bloqueiosAlmocoAutomaticos = {
+                    "Rafael": ["13:00", "13:30"],
+                    "Yann": ["12:00", "12:30", "13:00"],
+                    "Matheus": ["13:30", "14:00", "14:30"]
+                };
+                const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
+                const ehAlmoco = almocoPadrao.includes(horario);
+                
+                const ehBloqueioAutomatico = ehApartirDas18 || ehAlmoco;
 
+                // 1. Limpar sempre qualquer conflito no banco para esse horário
+                await _supabase.from("bloqueios_barreto_v2")
+                    .delete()
+                    .eq("barbeiro", usuarioLogado)
+                    .eq("data", dataIso)
+                    .in("horario", [horario, horario + "_LIBERADO"]);
+
+                // 2. Aplicar a intenção do barbeiro
                 if (estaBloqueado) {
-                    if (ehApartirDas18) {
-                        const { data: b } = await _supabase.from("bloqueios_barreto_v2")
-                            .select("*").eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario).maybeSingle();
-                        if (b) {
-                             await _supabase.from("bloqueios_barreto_v2").delete().eq("id", b.id);
-                        } else {
-                             await _supabase.from("bloqueios_barreto_v2")
+                    // INTENÇÃO: DESBLOQUEAR (Tornar Livre)
+                    if (ehBloqueioAutomatico) {
+                        // Se é bloqueado por padrão, precisamos adicionar uma exceção (_LIBERADO)
+                        await _supabase.from("bloqueios_barreto_v2")
                             .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario_liberado" }]);
-                        }
-                    } else {
-                        await _supabase.from("bloqueios_barreto_v2").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario);
-                        await _supabase.from("bloqueios_barreto_v2").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario + "_LIBERADO");
                     }
+                    // Se não é automático, só o delete acima já basta para ficar livre.
                 } else {
-                    if (ehApartirDas18) {
-                        await _supabase.from("bloqueios_barreto_v2").delete().eq("barbeiro", usuarioLogado).eq("data", dataIso).eq("horario", horario + "_LIBERADO");
-                    } else {
+                    // INTENÇÃO: BLOQUEAR
+                    if (!ehBloqueioAutomatico) {
+                        // Se não é automático, precisamos inserir o bloqueio normal
                         await _supabase.from("bloqueios_barreto_v2")
                             .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
                     }
+                    // Se já era automático, só o delete do _LIBERADO (acima) já o faz voltar a ser bloqueado.
                 }
+                
                 carregarAgendaSemanal();
             } catch (err) {
+                console.error("Erro ao alterar bloqueio:", err);
                 mostrarAlerta("Erro ao alterar bloqueio no banco de dados.", false);
             }
         }
