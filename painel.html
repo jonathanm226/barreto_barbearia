@@ -71,44 +71,17 @@
         .btn-acao { width: 100%; padding: 10px; background-color: #FF6600; color: #FFFFFF; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; transition: 0.2s; text-transform: uppercase; }
         .btn-acao:hover { background-color: #e05b00; }
 
-        .servicos-selector-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-bottom: 10px;
-            max-height: 160px;
-            overflow-y: auto;
-            background: #242424;
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #444;
-        }
-        .servico-pill {
-            background: #1A1A1A;
-            border: 1px solid #333;
-            border-radius: 6px;
-            padding: 8px 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 2px;
-            text-align: left;
-        }
+        .servicos-selector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; max-height: 160px; overflow-y: auto; background: #242424; padding: 8px; border-radius: 6px; border: 1px solid #444; }
+        .servico-pill { background: #1A1A1A; border: 1px solid #333; border-radius: 6px; padding: 8px 6px; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; text-align: left; }
         .servico-pill:hover { border-color: #FF6600; }
-        .servico-pill.selected {
-            background: #2D221B;
-            border-color: #FF6600;
-            box-shadow: 0 0 8px rgba(255, 102, 0, 0.3);
-        }
+        .servico-pill.selected { background: #2D221B; border-color: #FF6600; box-shadow: 0 0 8px rgba(255, 102, 0, 0.3); }
         .servico-pill span.nome { font-size: 0.75rem; color: #FFF; font-weight: 600; display: flex; align-items: center; gap: 4px; }
         .servico-pill span.valor { font-size: 0.7rem; color: #FF6600; font-weight: bold; padding-left: 18px; }
 
         /* Estilos adicionais para o Painel Admin (Acordeão e Cards) */
-        .admin-barber-card { cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .admin-barber-card { cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; padding: 4px 0; }
         .admin-barber-card:hover { background: #2A2A2A; border-radius: 4px; padding: 4px; margin: 0 -4px; }
-        .admin-barber-details { display: none; padding-top: 10px; border-top: 1px dashed #444; margin-top: 6px; }
+        .admin-barber-details { display: none; padding-top: 10px; margin-top: 6px; border-top: 1px solid #444; }
         .admin-barber-details.active { display: block; }
         .admin-appt-card { background: #1A1A1A; padding: 8px 10px; border-radius: 6px; border: 1px solid #333; cursor: pointer; margin-bottom: 6px; transition: 0.2s ease; display: flex; justify-content: space-between; align-items: flex-start; }
         .admin-appt-card:hover { background: #242424; }
@@ -1282,21 +1255,27 @@
                 const ativosOuConcluidos = (data || []).filter(a => a.status !== 'cancelado');
 
                 const statsBarbeiros = {
-                    "Matheus": { qtd: 0, faturamento: 0, atendimentos: [] },
-                    "Yann": { qtd: 0, faturamento: 0, atendimentos: [] },
-                    "Rafael": { qtd: 0, faturamento: 0, atendimentos: [] }
+                    "Matheus": { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] },
+                    "Yann": { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] },
+                    "Rafael": { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] }
                 };
 
                 ativosOuConcluidos.forEach(item => {
                     const nomeBarbeiro = Object.keys(statsBarbeiros).find(b => item.barbeiro && item.barbeiro.toLowerCase().includes(b.toLowerCase())) || item.barbeiro;
                     if (!statsBarbeiros[nomeBarbeiro]) {
-                        statsBarbeiros[nomeBarbeiro] = { qtd: 0, faturamento: 0, atendimentos: [] };
+                        statsBarbeiros[nomeBarbeiro] = { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] };
                     }
                     statsBarbeiros[nomeBarbeiro].qtd++;
                     statsBarbeiros[nomeBarbeiro].atendimentos.push(item);
                     
                     if (item.status === 'concluido') {
-                        statsBarbeiros[nomeBarbeiro].faturamento += Number(item.preco_total || 35);
+                        const valor = Number(item.preco_total || 35);
+                        statsBarbeiros[nomeBarbeiro].faturamento += valor;
+                        
+                        if (item.pagamentos === 'Pix') statsBarbeiros[nomeBarbeiro].pix += valor;
+                        else if (item.pagamentos === 'Dinheiro') statsBarbeiros[nomeBarbeiro].dinheiro += valor;
+                        else if (item.pagamentos === 'Débito') statsBarbeiros[nomeBarbeiro].debito += valor;
+                        else if (item.pagamentos === 'Crédito') statsBarbeiros[nomeBarbeiro].credito += valor;
                     }
                 });
 
@@ -1310,10 +1289,18 @@
                     const header = document.createElement("div");
                     header.className = "admin-barber-card";
                     header.innerHTML = `
-                        <strong style="color: #FFF; font-size: 0.85rem; width: 80px;">${barb}</strong>
-                        <span style="color: #AAA;">Qtd: <strong>${info.qtd}</strong></span>
-                        <span style="color: #25D366; font-weight: bold; font-size: 0.85rem;">R$ ${info.faturamento.toFixed(2).replace(".", ",")}</span>
-                        <i class="fa-solid fa-chevron-down" style="color: #666; font-size: 0.8rem; margin-left: 10px;"></i>
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <strong style="color: #FFF; font-size: 0.85rem; width: 80px;">${barb}</strong>
+                            <span style="color: #AAA;">Qtd: <strong>${info.qtd}</strong></span>
+                            <span style="color: #25D366; font-weight: bold; font-size: 0.85rem;">R$ ${info.faturamento.toFixed(2).replace(".", ",")}</span>
+                            <i class="fa-solid fa-chevron-down" style="color: #666; font-size: 0.8rem; margin-left: 10px;"></i>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.65rem; color: #AAA; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #333;">
+                            <div>💠 Pix: <span style="color:#FFF;">R$ ${info.pix.toFixed(2).replace(".", ",")}</span></div>
+                            <div>💵 Din: <span style="color:#FFF;">R$ ${info.dinheiro.toFixed(2).replace(".", ",")}</span></div>
+                            <div>💳 Déb: <span style="color:#FFF;">R$ ${info.debito.toFixed(2).replace(".", ",")}</span></div>
+                            <div>💳 Cré: <span style="color:#FFF;">R$ ${info.credito.toFixed(2).replace(".", ",")}</span></div>
+                        </div>
                     `;
                     
                     const detailsContainer = document.createElement("div");
