@@ -51,88 +51,11 @@
             </div>
         </section>
 
-        <!-- Seleção de Serviços -->
+        <!-- Seleção de Serviços (AGORA DINÂMICA) -->
         <section class="section">
             <h2>2. Escolha os Serviços</h2>
-            <div class="services-grid">
-                
-                <div class="service-card" onclick="toggleService(this, 'Corte', 35)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Corte</h3><span>45 min</span></div>
-                    <span class="price">R$ 35,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Barba', 30)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Barba</h3><span>10 min</span></div>
-                    <span class="price">R$ 30,00</span>
-                </div>
-
-                <!-- Novos Serviços Opcionais Inseridos -->
-                <div class="service-card" onclick="toggleService(this, 'Barba simples', 20)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Cavanhaque</h3><span>10 min</span></div>
-                    <span class="price">R$ 20,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Bigode simples', 10)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Bigode </h3><span>5 min</span></div>
-                    <span class="price">R$ 10,00</span>
-                </div>
-                <!-- Fim dos Novos Serviços -->
-
-                <div class="service-card" onclick="toggleService(this, 'Sobrancelha', 10)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Sobrancelha</h3><span>25 min</span></div>
-                    <span class="price">R$ 10,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Hidratação profunda', 30)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Hidratação profunda</h3><span>25 min</span></div>
-                    <span class="price">A partir R$ 30,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Relaxamento', 40)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Relaxamento</h3><span>25 min</span></div>
-                    <span class="price">A partir R$ 40,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Escova', 25)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Escova</h3><span>30 min</span></div>
-                    <span class="price">R$ 25,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Luzes', 120)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Luzes</h3><span>01h</span></div>
-                    <span class="price">A partir R$ 120,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Platinado', 150)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Platinado</h3><span>01h</span></div>
-                    <span class="price">A partir R$ 150,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Botox (selagem)', 90)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Botox (selagem)</h3><span>01h</span></div>
-                    <span class="price">A partir R$ 90,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Coloração', 100)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Coloração</h3><span>01h</span></div>
-                    <span class="price">R$ 100,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Pigmentação', 30)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pigmentação</h3><span>40 min</span></div>
-                    <span class="price">R$ 30,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Pezinho simples', 10)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pezinho simples</h3><span>10 min</span></div>
-                    <span class="price">R$ 10,00</span>
-                </div>
-
-                <div class="service-card" onclick="toggleService(this, 'Pezinho Gourmet', 15)">
-                    <div class="service-info"><h3><i class="fa-regular fa-square checkbox-icon"></i> Pezinho Gourmet</h3><span>20 min</span></div>
-                    <span class="price">R$ 15,00</span>
-                </div>
-
+            <div class="services-grid" id="dynamic-services-grid">
+                <p style="color: #888; font-size: 0.85rem; grid-column: span 2; text-align: center; padding: 20px;">A carregar serviços...</p>
             </div>
         </section>
 
