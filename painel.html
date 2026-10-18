@@ -30,7 +30,7 @@
         
         .custom-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; transition: 0.2s ease-in-out; }
         .custom-modal-overlay.active { opacity: 1; visibility: visible; }
-        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 8px; padding: 20px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+        .custom-modal { background: #1A1A1A; border: 1px solid #333; border-radius: 12px; padding: 20px; width: 90%; max-width: 450px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
         .custom-modal h3 { color: #FFFFFF; font-size: 1rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .custom-modal p { color: #CCCCCC; font-size: 0.85rem; margin-bottom: 15px; line-height: 1.4; text-align: left; }
         .custom-modal input, .custom-modal select { width: 100%; padding: 10px; background: #242424; border: 1px solid #444; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; margin-bottom: 12px; outline: none; color-scheme: dark; }
@@ -78,13 +78,20 @@
         .servico-pill span.nome { font-size: 0.75rem; color: #FFF; font-weight: 600; display: flex; align-items: center; gap: 4px; }
         .servico-pill span.valor { font-size: 0.7rem; color: #FF6600; font-weight: bold; padding-left: 18px; }
 
-        /* Estilos adicionais para o Painel Admin (Acordeão e Cards) */
+        /* Estilos do Painel Admin */
         .admin-barber-card { cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; padding: 4px 0; }
         .admin-barber-card:hover { background: #2A2A2A; border-radius: 4px; padding: 4px; margin: 0 -4px; }
         .admin-barber-details { display: none; padding-top: 10px; margin-top: 6px; border-top: 1px solid #444; }
         .admin-barber-details.active { display: block; }
         .admin-appt-card { background: #1A1A1A; padding: 8px 10px; border-radius: 6px; border: 1px solid #333; cursor: pointer; margin-bottom: 6px; transition: 0.2s ease; display: flex; justify-content: space-between; align-items: flex-start; }
         .admin-appt-card:hover { background: #242424; }
+
+        /* Estilos do Modal de Configurações (Ajustado para o design solicitado) */
+        .tab-btn { flex: 1; padding: 10px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+        .tab-active { background: #FF6600; color: #FFF; }
+        .tab-inactive { background: #242424; color: #AAA; }
+        .tab-inactive:hover { background: #2A2A2A; color: #FFF; }
+        .list-item-config { display: flex; justify-content: space-between; align-items: center; background: #1A1A1A; padding: 12px; border-radius: 6px; border: 1px solid #333; margin-bottom: 8px; }
     </style>
 </head>
 <body>
@@ -171,13 +178,15 @@
             <div id="grade-semanal-container" class="week-horizontal-container"></div>
         </section>
 
-        <!-- Dashboard Admin Geral (Atualizado) -->
+        <!-- Dashboard Admin Geral -->
         <section id="dashboard-admin" class="section" style="display: none; padding: 0 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h2 style="font-size: 0.95rem;">Resumo Administrativo</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 10px;">
+                <h2 style="font-size: 0.95rem; margin: 0; border: none; padding: 0;">Resumo Administrativo</h2>
+                <!-- Botões organizados conforme o Print 1 -->
                 <div style="display: flex; gap: 6px;">
-                    <button type="button" onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;"><i class="fa-solid fa-rotate"></i></button>
-                    <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;"><i class="fa-solid fa-right-from-bracket"></i></button>
+                    <button type="button" onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;" title="Atualizar"><i class="fa-solid fa-rotate"></i></button>
+                    <button type="button" onclick="abrirModalConfiguracoes()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #FF6600; color: #FFF;" title="Configurações"><i class="fa-solid fa-gear"></i></button>
+                    <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;" title="Sair"><i class="fa-solid fa-right-from-bracket"></i></button>
                 </div>
             </div>
 
@@ -210,7 +219,10 @@
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Adicionar Serviços Extras:</label>
                 <div id="extras-servicos-container"></div>
 
-                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">Forma de Pagamento:</label>
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px; margin-top: 10px;">Venda de Produtos:</label>
+                <div id="extras-produtos-container" class="servicos-selector-grid"></div>
+
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px; margin-top: 10px;">Forma de Pagamento:</label>
                 <select id="select-forma-pagamento">
                     <option value="Pix">Pix</option>
                     <option value="Dinheiro">Dinheiro</option>
@@ -291,6 +303,60 @@
         </div>
     </div>
 
+    <!-- Novo Modal de Configurações do Print 2 (Admin) -->
+    <div id="modal-configuracoes" class="custom-modal-overlay">
+        <div class="custom-modal" style="max-width: 500px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: #FF6600; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-gear"></i> Configurações
+                </h3>
+                <button onclick="fecharModalConfiguracoes()" style="background: #242424; border: 1px solid #444; color: #FFF; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- Abas (Tabs) -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; background: #181818; padding: 8px; border-radius: 8px;">
+                <button id="tab-servicos-btn" class="tab-btn tab-active" onclick="alternarAbaConfig('servicos')">4. Serviços</button>
+                <button id="tab-produtos-btn" class="tab-btn tab-inactive" onclick="alternarAbaConfig('produtos')">5. Produtos</button>
+            </div>
+
+            <!-- CONTEÚDO: SERVIÇOS -->
+            <div id="conteudo-tab-servicos">
+                <div style="text-align: left; margin-bottom: 10px;">
+                    <label style="color: #AAA; font-size: 0.85rem; display: block; margin-bottom: 8px;">Serviços Oferecidos:</label>
+                    <div id="lista-servicos-config" style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                        <!-- JS vai injetar a lista aqui -->
+                    </div>
+                </div>
+
+                <div style="background: #1A1A1A; padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: left; margin-top: 15px;">
+                    <input type="text" id="novo-servico-nome" placeholder="Nome do Serviço" style="margin-bottom: 10px; background: #242424;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="number" id="novo-servico-preco" placeholder="Preço (R$)" step="0.01" style="background: #242424;">
+                        <input type="number" id="novo-servico-tempo" placeholder="Duração (Min)" style="background: #242424;">
+                    </div>
+                    <button onclick="salvarNovoServico(event)" class="btn-acao" style="background: #25D366; color: #FFF; width: 100%;">ADICIONAR SERVIÇO</button>
+                </div>
+            </div>
+
+            <!-- CONTEÚDO: PRODUTOS -->
+            <div id="conteudo-tab-produtos" style="display: none;">
+                <div style="text-align: left; margin-bottom: 10px;">
+                    <label style="color: #AAA; font-size: 0.85rem; display: block; margin-bottom: 8px;">Produtos Oferecidos (Venda):</label>
+                    <div id="lista-produtos-config" style="max-height: 200px; overflow-y: auto; padding-right: 5px;">
+                        <!-- JS vai injetar a lista aqui -->
+                    </div>
+                </div>
+
+                <div style="background: #1A1A1A; padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: left; margin-top: 15px;">
+                    <input type="text" id="novo-produto-nome" placeholder="Nome do Produto" style="margin-bottom: 10px; background: #242424;">
+                    <input type="number" id="novo-produto-preco" placeholder="Preço (R$)" step="0.01" style="margin-bottom: 15px; background: #242424;">
+                    <button onclick="salvarNovoProduto(event)" class="btn-acao" style="background: #25D366; color: #FFF; width: 100%;">ADICIONAR PRODUTO</button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
     <!-- Modal Genérico para Alertas -->
     <div id="modal-alerta" class="custom-modal-overlay" style="z-index: 10000;">
         <div class="custom-modal" style="max-width: 320px;">
@@ -305,39 +371,182 @@
         const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const precosServicosTabela = {
-            "Corte": 35.00, "Barba": 30.00, "Barba simples": 20.00, "Bigode simples": 10.00,
-            "Sobrancelha": 10.00, "Hidratação profunda": 30.00, "Relaxamento": 40.00,
-            "Escova": 25.00, "Luzes": 120.00, "Platinado": 150.00, "Botox (selagem)": 90.00,
-            "Coloração": 100.00, "Pigmentação": 30.00, "Pezinho simples": 10.00, "Pezinho Gourmet": 15.00
-        };
-
-        const duracoesServicosTabela = {
-            "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
-            "Sobrancelha": 25, "Hidratação profunda": 25, "Relaxamento": 25,
-            "Escova": 30, "Luzes": 60, "Platinado": 60, "Botox (selagem)": 60,
-            "Coloração": 60, "Pigmentação": 40, "Pezinho simples": 10, "Pezinho Gourmet": 20
-        };
-
+        let precosServicosTabela = {};
+        let duracoesServicosTabela = {};
+        let produtosTabela = {};
         let usuarioLogado = "";
         let offsetSemana = 0; 
 
-        function renderizarSeletorServicos(containerId, classeCheckbox, callbackMudanca) {
+        // ==========================================
+        // DADOS E CONFIGURAÇÕES DA BARBEARIA
+        // ==========================================
+        async function carregarConfiguracoesGerais() {
+            const { data: servicos } = await _supabase.from('servicos_config').select('*').order('nome');
+            if (servicos) {
+                precosServicosTabela = {};
+                duracoesServicosTabela = {};
+                servicos.forEach(s => {
+                    precosServicosTabela[s.nome] = s.preco;
+                    duracoesServicosTabela[s.nome] = s.duracao;
+                });
+            }
+            
+            const { data: produtos } = await _supabase.from('produtos_config').select('*').order('nome');
+            if (produtos) {
+                produtosTabela = {};
+                produtos.forEach(p => {
+                    produtosTabela[p.nome] = p.preco;
+                });
+            }
+
+            // Atualiza as listas visuais dentro do Modal Admin
+            renderizarListasConfiguracoesVisuais(servicos, produtos);
+        }
+        carregarConfiguracoesGerais();
+
+        function renderizarListasConfiguracoesVisuais(servicos, produtos) {
+            // Aba de Serviços
+            const contServ = document.getElementById('lista-servicos-config');
+            if(contServ) {
+                contServ.innerHTML = "";
+                if(servicos && servicos.length > 0) {
+                    servicos.forEach(s => {
+                        contServ.innerHTML += `
+                            <div class="list-item-config">
+                                <span style="font-size: 0.85rem; color: #FFF; font-weight: 600;">
+                                    ${s.nome} - <span style="color: #AAA; font-weight: normal;">R$ ${s.preco.toFixed(2).replace('.',',')} (${s.duracao}m)</span>
+                                </span>
+                                <i class="fa-solid fa-trash" style="color: #e74c3c; cursor: pointer; padding: 5px; font-size: 1.1rem;" onclick="excluirServico(${s.id})"></i>
+                            </div>
+                        `;
+                    });
+                } else {
+                    contServ.innerHTML = "<p style='color:#888; font-size:0.8rem;'>Nenhum serviço cadastrado.</p>";
+                }
+            }
+
+            // Aba de Produtos
+            const contProd = document.getElementById('lista-produtos-config');
+            if(contProd) {
+                contProd.innerHTML = "";
+                if(produtos && produtos.length > 0) {
+                    produtos.forEach(p => {
+                        contProd.innerHTML += `
+                            <div class="list-item-config">
+                                <span style="font-size: 0.85rem; color: #FFF; font-weight: 600;">
+                                    ${p.nome} - <span style="color: #AAA; font-weight: normal;">R$ ${p.preco.toFixed(2).replace('.',',')}</span>
+                                </span>
+                                <i class="fa-solid fa-trash" style="color: #e74c3c; cursor: pointer; padding: 5px; font-size: 1.1rem;" onclick="excluirProduto(${p.id})"></i>
+                            </div>
+                        `;
+                    });
+                } else {
+                    contProd.innerHTML = "<p style='color:#888; font-size:0.8rem;'>Nenhum produto cadastrado.</p>";
+                }
+            }
+        }
+
+        function alternarAbaConfig(aba) {
+            const btnS = document.getElementById('tab-servicos-btn');
+            const btnP = document.getElementById('tab-produtos-btn');
+            const contS = document.getElementById('conteudo-tab-servicos');
+            const contP = document.getElementById('conteudo-tab-produtos');
+            
+            if(aba === 'servicos') {
+                btnS.className = "tab-btn tab-active";
+                btnP.className = "tab-btn tab-inactive";
+                contS.style.display = "block";
+                contP.style.display = "none";
+            } else {
+                btnP.className = "tab-btn tab-active";
+                btnS.className = "tab-btn tab-inactive";
+                contP.style.display = "block";
+                contS.style.display = "none";
+            }
+        }
+
+        function abrirModalConfiguracoes() {
+            document.getElementById("modal-configuracoes").classList.add("active");
+            carregarConfiguracoesGerais(); // Atualiza a lista ao abrir
+        }
+
+        function fecharModalConfiguracoes() {
+            document.getElementById("modal-configuracoes").classList.remove("active");
+        }
+
+        async function salvarNovoServico(event) {
+            const btn = event.target;
+            const nome = document.getElementById("novo-servico-nome").value;
+            const preco = parseFloat(document.getElementById("novo-servico-preco").value);
+            const tempo = parseInt(document.getElementById("novo-servico-tempo").value);
+
+            if (!nome || isNaN(preco) || isNaN(tempo)) return mostrarAlerta("Preencha todos os campos do serviço.", false);
+
+            btn.disabled = true; btn.textContent = "Salvando...";
+
+            const { error } = await _supabase.from('servicos_config').insert([{ nome, preco, duracao: tempo }]);
+            if (!error) {
+                document.getElementById("novo-servico-nome").value = "";
+                document.getElementById("novo-servico-preco").value = "";
+                document.getElementById("novo-servico-tempo").value = "";
+                await carregarConfiguracoesGerais();
+            } else {
+                mostrarAlerta("Erro: " + error.message, false);
+            }
+            btn.disabled = false; btn.textContent = "ADICIONAR SERVIÇO";
+        }
+
+        async function excluirServico(id) {
+            if(!confirm("Deseja mesmo remover este serviço? Isso irá removê-lo da tela do cliente.")) return;
+            const { error } = await _supabase.from('servicos_config').delete().eq('id', id);
+            if(error) return mostrarAlerta("Erro ao excluir: " + error.message, false);
+            await carregarConfiguracoesGerais();
+        }
+
+        async function salvarNovoProduto(event) {
+            const btn = event.target;
+            const nome = document.getElementById("novo-produto-nome").value;
+            const preco = parseFloat(document.getElementById("novo-produto-preco").value);
+
+            if (!nome || isNaN(preco)) return mostrarAlerta("Preencha nome e valor do produto.", false);
+
+            btn.disabled = true; btn.textContent = "Salvando...";
+
+            const { error } = await _supabase.from('produtos_config').insert([{ nome, preco }]);
+            if (!error) {
+                document.getElementById("novo-produto-nome").value = "";
+                document.getElementById("novo-produto-preco").value = "";
+                await carregarConfiguracoesGerais();
+            } else {
+                mostrarAlerta("Erro: " + error.message, false);
+            }
+            btn.disabled = false; btn.textContent = "ADICIONAR PRODUTO";
+        }
+
+        async function excluirProduto(id) {
+            if(!confirm("Deseja mesmo remover este produto?")) return;
+            const { error } = await _supabase.from('produtos_config').delete().eq('id', id);
+            if(error) return mostrarAlerta("Erro ao excluir: " + error.message, false);
+            await carregarConfiguracoesGerais();
+        }
+
+        // ==========================================
+        // LÓGICA EXISTENTE DO PAINEL
+        // ==========================================
+        function renderizarSeletorDinamico(containerId, classeCheckbox, dicionarioDados, callbackMudanca) {
             const container = document.getElementById(containerId);
             if (!container) return;
-            
             container.innerHTML = "";
             container.className = "servicos-selector-grid";
 
-            Object.keys(precosServicosTabela).forEach(serv => {
-                const preco = precosServicosTabela[serv];
-                
+            Object.keys(dicionarioDados).forEach(item => {
+                const preco = dicionarioDados[item];
                 const pill = document.createElement("div");
                 pill.className = "servico-pill";
                 pill.innerHTML = `
-                    <span class="nome"><i class="fa-regular fa-square uncheck-icon"></i> ${serv}</span>
+                    <span class="nome"><i class="fa-regular fa-square uncheck-icon"></i> ${item}</span>
                     <span class="valor">R$ ${preco.toFixed(2).replace(".", ",")}</span>
-                    <input type="checkbox" class="${classeCheckbox}" value="${serv}" data-preco="${preco}" style="display: none;">
+                    <input type="checkbox" class="${classeCheckbox}" value="${item}" data-preco="${preco}" style="display: none;">
                 `;
 
                 pill.onclick = () => {
@@ -357,7 +566,6 @@
 
                     if (callbackMudanca) callbackMudanca();
                 };
-
                 container.appendChild(pill);
             });
         }
@@ -766,7 +974,7 @@
             containerHorario.innerHTML = `<select id="manual-horario"><option value="">Selecione a data primeiro</option></select>`;
             document.getElementById("label-horario-manual").textContent = "Horário Disponível:";
 
-            renderizarSeletorServicos("manual-servicos-container", "manual-servico-chk", () => {
+            renderizarSeletorDinamico("manual-servicos-container", "manual-servico-chk", precosServicosTabela, () => {
                 calcularTotalManual();
                 if (!document.getElementById("manual-encaixe").checked) {
                     atualizarHorariosManuaisDisponiveis();
@@ -1017,7 +1225,8 @@
                 paymentBox.style.display = "none";
                 rescheduleBox.style.display = "none";
 
-                renderizarSeletorServicos("extras-servicos-container", "extra-servico-chk", null);
+                renderizarSeletorDinamico("extras-servicos-container", "extra-servico-chk", precosServicosTabela, null);
+                renderizarSeletorDinamico("extras-produtos-container", "extra-produto-chk", produtosTabela, null);
                 
                 function renderizarBotoesPrincipais() {
                     buttonsBox.innerHTML = "";
@@ -1053,6 +1262,13 @@
                                             servicosSelecionadosList.push(nomeServ);
                                             acréscimoPreco += pServ;
                                         }
+                                    });
+
+                                    document.querySelectorAll(".extra-produto-chk:checked").forEach(chk => {
+                                        const nomeProd = chk.value;
+                                        const pProd = Number(chk.dataset.preco);
+                                        servicosSelecionadosList.push(`[Produto] ${nomeProd}`);
+                                        acréscimoPreco += pProd;
                                     });
 
                                     const novoPrecoTotal = precoOriginal + acréscimoPreco;
