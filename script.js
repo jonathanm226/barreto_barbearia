@@ -13,12 +13,8 @@ const telefonesBarbeiros = {
     "Rafael": "5531975470879" 
 };
 
-const duracoesServicos = {
-    "Corte": 45, "Barba": 10, "Barba simples": 10, "Bigode simples": 5,
-    "Sobrancelha": 10, "Hidratação profunda": 30, "Relaxamento": 40,
-    "Escova": 25, "Luzes": 120.00, "Platinado": 150.00, "Botox (selagem)": 90.00,
-    "Coloração": 100.00, "Pigmentação": 30.00, "Pezinho simples": 10.00, "Pezinho Gourmet": 15.00
-};
+// As durações agora começam vazias e são preenchidas pelo Supabase
+let duracoesServicos = {}; 
 
 let selectedBarber = "Matheus";
 let selectedServices = [];
@@ -27,7 +23,7 @@ let enviandoAgendamento = false;
 // ==========================================
 // INICIALIZAÇÃO DA PÁGINA (DOM)
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     const dateInput = document.getElementById("date");
     if (dateInput) {
         const hoje = new Date();
@@ -39,6 +35,9 @@ document.addEventListener("DOMContentLoaded", () => {
         dateInput.value = isoLocal(hoje);
     }
     
+    // 1º Puxa os serviços dinâmicos do banco
+    await carregarServicosDoBanco();
+    // 2º Atualiza os horários disponíveis
     checkAvailableTimes();
 
     const timeSelect = document.getElementById("time");
@@ -52,6 +51,54 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+// Função que constrói os serviços lendo diretamente do Supabase
+async function carregarServicosDoBanco() {
+    const grid = document.getElementById("dynamic-services-grid");
+    if (!grid) return;
+
+    try {
+        const { data, error } = await _supabase.from('servicos_config').select('*').order('nome');
+        if (error) throw error;
+
+        grid.innerHTML = ""; // Remove a mensagem "A carregar serviços..."
+
+        if (!data || data.length === 0) {
+            grid.innerHTML = "<p style='color: #888; font-size: 0.85rem; grid-column: span 2; text-align: center;'>Nenhum serviço disponível no momento.</p>";
+            return;
+        }
+
+        data.forEach(servico => {
+            // Guarda a duração para os cálculos matemáticos da agenda
+            duracoesServicos[servico.nome] = servico.duracao;
+
+            // Formata o texto do tempo visualmente
+            let horas = Math.floor(servico.duracao / 60);
+            let minutos = servico.duracao % 60;
+            let tempoFormatado = horas > 0 
+                ? `${horas > 9 ? horas : '0'+horas}h${minutos > 0 ? minutos : ''}` 
+                : `${minutos} min`;
+
+            // Cria a caixa do serviço em HTML
+            const card = document.createElement("div");
+            card.className = "service-card";
+            card.onclick = () => toggleService(card, servico.nome, servico.preco);
+            
+            card.innerHTML = `
+                <div class="service-info">
+                    <h3><i class="fa-regular fa-square checkbox-icon"></i> ${servico.nome}</h3>
+                    <span>${tempoFormatado}</span>
+                </div>
+                <span class="price">R$ ${servico.preco.toFixed(2).replace(".", ",")}</span>
+            `;
+            
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error("Erro ao carregar serviços:", err);
+        grid.innerHTML = "<p style='color: #e74c3c; font-size: 0.85rem; grid-column: span 2; text-align: center;'>Erro ao carregar serviços.</p>";
+    }
+}
 
 // ==========================================
 // INTERAÇÕES DE UI E MODAIS
@@ -139,7 +186,6 @@ function calcularTotal() {
     return selectedServices.reduce((acc, s) => acc + s.price, 0);
 }
 
-// Melhoria: Usando UTC para evitar bugs de fuso horário onde Sábado vira Sexta-feira
 function diaDaSemana(dateString) {
     if (!dateString) return -1;
     const partes = dateString.split("-");
@@ -257,7 +303,6 @@ async function checkAvailableTimes() {
         const bloqueados = new Set(bloqueios.filter(b => !String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).substring(0, 5))));
         const liberadosMinSet = new Set(bloqueios.filter(b => String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).replace("_LIBERADO", "").substring(0, 5))));
         
-        // Bloqueia almoço APENAS se o barbeiro não tiver clicado para liberar
         almocoPadrao.forEach(h => {
             const minH = toMin(h);
             if (!liberadosMinSet.has(minH)) {
@@ -298,7 +343,6 @@ async function checkAvailableTimes() {
                 const s = inicio + (30 * i);
                 const [hCheck] = fromMin(s).split(":").map(Number);
                 const eh18Check = hCheck >= 18;
-                // Considera bloqueado se é sábado após 18h E não está explícitamente liberado pelo barbeiro
                 const bloqueadoCheck18 = eh18Check && isSabado && !liberadosMinSet.has(s);
 
                 if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s) || bloqueadoCheck18) { 
