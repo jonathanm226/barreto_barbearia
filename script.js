@@ -13,6 +13,24 @@ const telefonesBarbeiros = {
     "Rafael": "5531975470879" 
 };
 
+// ==========================================
+// MÉTRICAS INDIVIDUAIS DOS BARBEIROS
+// ==========================================
+// Define a jornada de trabalho padrão de cada barbeiro (Hora de Início e Hora Final)
+// Ex: { inicio: 10, fim: 19 } significa que os slots vão de 10:00 até 19:30 (encerrando às 20h)
+const jornadaBarbeiros = {
+    "Matheus": { inicio: 10, fim: 19 },
+    "Yann": { inicio: 10, fim: 19 },
+    "Rafael": { inicio: 10, fim: 19 }
+};
+
+// Horários de almoço fixos que são bloqueados automaticamente
+const bloqueiosAlmocoAutomaticos = {
+    "Rafael": ["13:00", "13:30"],
+    "Yann": ["12:00", "12:30", "13:00"],
+    "Matheus": ["13:30", "14:00", "14:30"]
+};
+
 let duracoesServicos = {}; 
 let selectedBarber = "Matheus";
 let selectedServices = [];
@@ -198,7 +216,6 @@ function diaDaSemana(dateString) {
 }
 
 function mostrarMensagemNoGrid(timesGrid, texto, erro = false) {
-    // A propriedade grid-column: 1 / -1 garante que a mensagem ocupe todo o espaço e não fique "espremida"
     timesGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 15px; color: ${erro ? '#e74c3c' : '#aaa'}; font-size: 0.95rem; font-weight: 500;">${texto}</div>`;
 }
 
@@ -210,15 +227,19 @@ function getTimesForDate(dateString, barbeiro) {
     const diaSem = diaDaSemana(dateString); 
     const barbTrim = barbeiro.trim();
     
+    // Folgas: Domingo fechado
     if (diaSem === 0) return []; 
+    // Folga Matheus: Quarta-feira
     if (barbTrim === "Matheus" && diaSem === 3) return []; 
+    // Folga Yann e Rafael: Segunda-feira
     if ((barbTrim === "Yann" || barbTrim === "Rafael") && diaSem === 1) return []; 
 
+    // Recupera a métrica do barbeiro selecionado (padrão 10h às 19:30)
+    const config = jornadaBarbeiros[barbTrim] || { inicio: 10, fim: 19 };
+    
     let horarios = [];
-    let horaInicio = 8;
-    let horaFim = 22;
-    let currentMin = horaInicio * 60;
-    let endMin = horaFim * 60;
+    let currentMin = config.inicio * 60;
+    let endMin = (config.fim * 60) + 30; // Último horário renderizado será as 19:30
     
     while (currentMin <= endMin) {
         const horaStr = fromMin(currentMin);
@@ -296,11 +317,6 @@ async function checkAvailableTimes() {
             }
         });
 
-        const bloqueiosAlmocoAutomaticos = {
-            "Rafael": ["13:00", "13:30"],
-            "Yann": ["12:00", "12:30", "13:00"],
-            "Matheus": ["13:30", "14:00", "14:30"]
-        };
         const almocoPadrao = bloqueiosAlmocoAutomaticos[selectedBarber.trim()] || [];
 
         const bloqueados = new Set(bloqueios.filter(b => !String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).substring(0, 5))));
@@ -359,7 +375,7 @@ async function checkAvailableTimes() {
         });
 
         if (!temAlgumLivre && timesGrid.innerHTML !== "") {
-            // Se todos os botões ficaram desativados
+            // Se todos os botões ficaram desativados (Ex: escolheu um serviço de 1h num buraco de 30min)
             const aviso = document.createElement("div");
             aviso.style.cssText = "grid-column: 1 / -1; text-align: center; color: #e74c3c; font-size: 0.85rem; margin-top: 10px;";
             aviso.textContent = "Não há horários suficientes para os serviços selecionados.";
