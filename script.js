@@ -24,6 +24,7 @@ let enviandoAgendamento = false;
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
     const dateInput = document.getElementById("date");
+    
     if (dateInput) {
         const hoje = new Date();
         const maximo = new Date();
@@ -32,16 +33,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         dateInput.min = isoLocal(hoje);
         dateInput.max = isoLocal(maximo);
         dateInput.value = isoLocal(hoje);
+        
+        // Garante que a atualização ocorra independentemente do navegador/celular
+        dateInput.addEventListener('change', checkAvailableTimes);
+        dateInput.addEventListener('input', checkAvailableTimes);
     }
     
     // 1º Puxa os serviços dinâmicos do banco
     await carregarServicosDoBanco();
     
-    // 2º Garante que os horários carregam imediatamente
-    checkAvailableTimes();
+    // 2º Garante que os horários carregam imediatamente ao abrir a tela
+    await checkAvailableTimes();
 });
 
-// Função que constrói os serviços lendo diretamente do Supabase
 async function carregarServicosDoBanco() {
     const grid = document.getElementById("dynamic-services-grid");
     if (!grid) return;
@@ -81,7 +85,6 @@ async function carregarServicosDoBanco() {
             grid.appendChild(card);
         });
     } catch (err) {
-        console.error("Erro ao carregar serviços:", err);
         grid.innerHTML = "<p style='color: #e74c3c; font-size: 0.85rem; grid-column: span 2; text-align: center;'>Erro ao carregar serviços.</p>";
     }
 }
@@ -158,9 +161,10 @@ function isoLocal(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Normaliza qualquer formato de data do input para YYYY-MM-DD com segurança
+// Normaliza qualquer formato de data do input para YYYY-MM-DD
 function padronizarData(valorInput) {
     if (!valorInput) return "";
+    if (valorInput.includes("-")) return valorInput; 
     if (valorInput.includes("/")) {
         const partes = valorInput.split("/");
         if (partes.length === 3) {
@@ -194,14 +198,15 @@ function diaDaSemana(dateString) {
 }
 
 function mostrarMensagemNoGrid(timesGrid, texto, erro = false) {
-    timesGrid.innerHTML = `<span style="color: ${erro ? '#e74c3c' : '#888'}; font-size: 0.85rem; grid-column: span 4; text-align: center; padding: 10px;">${texto}</span>`;
+    // A propriedade grid-column: 1 / -1 garante que a mensagem ocupe todo o espaço e não fique "espremida"
+    timesGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 15px; color: ${erro ? '#e74c3c' : '#aaa'}; font-size: 0.95rem; font-weight: 500;">${texto}</div>`;
 }
 
 // ==========================================
 // LÓGICA CORE: VERIFICAÇÃO DE HORÁRIOS
 // ==========================================
 function getTimesForDate(dateString, barbeiro) {
-    if (!dateString) return [];
+    if (!dateString || !barbeiro) return [];
     const diaSem = diaDaSemana(dateString); 
     const barbTrim = barbeiro.trim();
     
@@ -229,26 +234,27 @@ async function checkAvailableTimes() {
 
     if (!dateEl || !timesGrid) return;
     
-    // Normaliza a data para garantir o formato YYYY-MM-DD
     const selDate = padronizarData(dateEl.value); 
     if (!selDate) {
-        mostrarMensagemNoGrid(timesGrid, "Selecione uma data acima primeiro");
+        mostrarMensagemNoGrid(timesGrid, "Por favor, selecione uma data válida.");
         return;
     }
 
     const allSlots = getTimesForDate(selDate, selectedBarber);
-    if (allSlots.length === 0) return mostrarMensagemNoGrid(timesGrid, "Barbeiro não atende neste dia", true);
+    if (allSlots.length === 0) {
+        mostrarMensagemNoGrid(timesGrid, "O profissional não atende neste dia da semana.", true);
+        return;
+    }
 
     const durationMin = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
     const slotsNeeded = Math.ceil(durationMin / 30);
-    mostrarMensagemNoGrid(timesGrid, "A carregar horários...");
+    
+    mostrarMensagemNoGrid(timesGrid, '<i class="fa-solid fa-spinner fa-spin"></i> A buscar horários...');
     horarioSelecionado = null;
 
     try {
         const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2")
             .select("horario, servico, status, data, barbeiro");
-
-        if (errAgs) console.error("Erro ao buscar agendamentos:", errAgs);
 
         const agendamentos = (agsDB || []).filter(a => {
             if (!a.data || !a.barbeiro || !a.horario) return false;
@@ -261,8 +267,6 @@ async function checkAvailableTimes() {
         const { data: bloqueiosDB, error: errBlq } = await _supabase.from("bloqueios_barreto_v2")
             .select("horario, data, barbeiro");
 
-        if (errBlq) console.error("Erro ao buscar bloqueios:", errBlq);
-
         const bloqueios = (bloqueiosDB || []).filter(b => {
             if (!b.data || !b.barbeiro) return false;
             const dataBanco = String(b.data).substring(0, 10);
@@ -271,7 +275,8 @@ async function checkAvailableTimes() {
         });
 
         if (bloqueios.some(b => b.horario === "TODOS")) {
-            return mostrarMensagemNoGrid(timesGrid, "Agenda fechada neste dia", true);
+            mostrarMensagemNoGrid(timesGrid, "Agenda fechada neste dia.", true);
+            return;
         }
 
         const ocupados = new Set();
@@ -316,6 +321,7 @@ async function checkAvailableTimes() {
 
         timesGrid.innerHTML = "";
         const isSabado = diaDaSemana(selDate) === 6;
+        let temAlgumLivre = false;
 
         allSlots.forEach(slot => {
             const inicio = toMin(slot.valor);
@@ -346,14 +352,23 @@ async function checkAvailableTimes() {
                 card.classList.add("disabled");
             } else {
                 card.onclick = () => selecionarHorarioCard(card, slot.valor);
+                temAlgumLivre = true;
             }
 
             timesGrid.appendChild(card);
         });
 
+        if (!temAlgumLivre && timesGrid.innerHTML !== "") {
+            // Se todos os botões ficaram desativados
+            const aviso = document.createElement("div");
+            aviso.style.cssText = "grid-column: 1 / -1; text-align: center; color: #e74c3c; font-size: 0.85rem; margin-top: 10px;";
+            aviso.textContent = "Não há horários suficientes para os serviços selecionados.";
+            timesGrid.appendChild(aviso);
+        }
+
     } catch (err) {
-        mostrarMensagemNoGrid(timesGrid, "Erro ao carregar horários", true);
-        console.error("Erro crítico em checkAvailableTimes:", err);
+        mostrarMensagemNoGrid(timesGrid, "Erro ao carregar horários. Tente novamente.", true);
+        console.error(err);
     }
 }
 
