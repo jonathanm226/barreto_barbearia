@@ -15,6 +15,37 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Estilos modernos para o Grid de Horários em Botões */
+        .times-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .time-card {
+            background: #1A1A1A;
+            border: 1px solid #333333;
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+            color: #FFF;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .time-card:hover {
+            border-color: #FF6600;
+            background: rgba(255, 102, 0, 0.05);
+        }
+        .time-card.active {
+            background: rgba(255, 102, 0, 0.15);
+            border-color: #FF6600;
+            color: #FF6600;
+            box-shadow: 0 0 8px rgba(255, 102, 0, 0.3);
+        }
+    </style>
 </head>
 <body>
 
@@ -51,7 +82,7 @@
             </div>
         </section>
 
-        <!-- Seleção de Serviços (AGORA DINÂMICA) -->
+        <!-- Seleção de Serviços -->
         <section class="section">
             <h2>2. Escolha os Serviços</h2>
             <div class="services-grid" id="dynamic-services-grid">
@@ -59,7 +90,7 @@
             </div>
         </section>
 
-        <!-- Seleção de Data e Horário -->
+        <!-- Seleção de Data e Horário em Cards (Novo Padrão) -->
         <section class="section">
             <h2>3. Data e Horário</h2>
             <div style="display: flex; flex-direction: column; gap: 15px;">
@@ -68,8 +99,11 @@
                     <input type="date" id="date" onchange="checkAvailableTimes()" style="width: 100%; box-sizing: border-box;">
                 </div>
                 <div class="input-group" style="width: 100%;">
-                    <label for="time">Horário:</label>
-                    <select id="time" style="width: 100%; box-sizing: border-box;"></select>
+                    <label>Selecione o Horário:</label>
+                    <!-- Substituído o <select> antigo por um grid moderno de botões -->
+                    <div id="times-grid" class="times-grid">
+                        <span style="color: #888; font-size: 0.85rem;">Selecione uma data acima primeiro</span>
+                    </div>
                 </div>
             </div>
         </section>
