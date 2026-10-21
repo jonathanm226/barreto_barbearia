@@ -13,11 +13,12 @@ const telefonesBarbeiros = {
     "Rafael": "5531975470879" 
 };
 
-// As durações agora começam vazias e são preenchidas pelo Supabase
+// As durações começam vazias e são preenchidas pelo Supabase
 let duracoesServicos = {}; 
 
 let selectedBarber = "Matheus";
 let selectedServices = [];
+let horarioSelecionado = null; // Armazena o horário escolhido nos botões
 let enviandoAgendamento = false;
 
 // ==========================================
@@ -39,17 +40,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     await carregarServicosDoBanco();
     // 2º Atualiza os horários disponíveis
     checkAvailableTimes();
-
-    const timeSelect = document.getElementById("time");
-    if (timeSelect) {
-        timeSelect.addEventListener("change", function(e) {
-            const selOpt = this.options[this.selectedIndex];
-            if (selOpt && selOpt.dataset.ocupado === "true") {
-                mostrarAlertaCliente("Este horário já está ocupado ou indisponível. Por favor, escolha um horário livre.", false);
-                this.value = ""; 
-            }
-        });
-    }
 });
 
 // Função que constrói os serviços lendo diretamente do Supabase
@@ -61,7 +51,7 @@ async function carregarServicosDoBanco() {
         const { data, error } = await _supabase.from('servicos_config').select('*').order('nome');
         if (error) throw error;
 
-        grid.innerHTML = ""; // Remove a mensagem "A carregar serviços..."
+        grid.innerHTML = ""; 
 
         if (!data || data.length === 0) {
             grid.innerHTML = "<p style='color: #888; font-size: 0.85rem; grid-column: span 2; text-align: center;'>Nenhum serviço disponível no momento.</p>";
@@ -69,17 +59,14 @@ async function carregarServicosDoBanco() {
         }
 
         data.forEach(servico => {
-            // Guarda a duração para os cálculos matemáticos da agenda
             duracoesServicos[servico.nome] = servico.duracao;
 
-            // Formata o texto do tempo visualmente
             let horas = Math.floor(servico.duracao / 60);
             let minutos = servico.duracao % 60;
             let tempoFormatado = horas > 0 
                 ? `${horas > 9 ? horas : '0'+horas}h${minutos > 0 ? minutos : ''}` 
                 : `${minutos} min`;
 
-            // Cria a caixa do serviço em HTML
             const card = document.createElement("div");
             card.className = "service-card";
             card.onclick = () => toggleService(card, servico.nome, servico.preco);
@@ -195,14 +182,8 @@ function diaDaSemana(dateString) {
     return date.getUTCDay();
 }
 
-function mostrarMensagemNoSelect(timeSelect, texto) {
-    timeSelect.innerHTML = "";
-    const option = document.createElement("option");
-    option.value = ""; 
-    option.textContent = texto;
-    option.disabled = true; 
-    option.selected = true;
-    timeSelect.appendChild(option);
+function mostrarMensagemNoGrid(timesGrid, texto, erro = false) {
+    timesGrid.innerHTML = `<span style="color: ${erro ? '#e74c3c' : '#888'}; font-size: 0.85rem; grid-column: span 4; text-align: center; padding: 10px;">${texto}</span>`;
 }
 
 // ==========================================
@@ -233,18 +214,18 @@ function getTimesForDate(dateString, barbeiro) {
 
 async function checkAvailableTimes() {
     const dateEl = document.getElementById("date");
-    const timeSel = document.getElementById("time");
+    const timesGrid = document.getElementById("times-grid");
 
-    if (!dateEl || !timeSel || !dateEl.value) return;
+    if (!dateEl || !timesGrid || !dateEl.value) return;
     const selDate = dateEl.value; 
-    const previousSelection = timeSel.value;
 
     const allSlots = getTimesForDate(selDate, selectedBarber);
-    if (allSlots.length === 0) return mostrarMensagemNoSelect(timeSel, "Barbeiro não atende neste dia");
+    if (allSlots.length === 0) return mostrarMensagemNoGrid(timesGrid, "Barbeiro não atende neste dia", true);
 
     const durationMin = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
     const slotsNeeded = Math.ceil(durationMin / 30);
-    mostrarMensagemNoSelect(timeSel, "A carregar horários...");
+    mostrarMensagemNoGrid(timesGrid, "A carregar horários...");
+    horarioSelecionado = null;
 
     try {
         const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2")
@@ -273,7 +254,7 @@ async function checkAvailableTimes() {
         });
 
         if (bloqueios.some(b => b.horario === "TODOS")) {
-            return mostrarMensagemNoSelect(timeSel, "Agenda fechada neste dia");
+            return mostrarMensagemNoGrid(timesGrid, "Agenda fechada neste dia", true);
         }
 
         const ocupados = new Set();
@@ -316,27 +297,16 @@ async function checkAvailableTimes() {
         const hojeIso = isoLocal(agora);
         const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
 
-        timeSel.innerHTML = "";
-        const optDefault = document.createElement("option");
-        optDefault.value = ""; 
-        optDefault.textContent = "Selecione um horário";
-        optDefault.disabled = true;
-        timeSel.appendChild(optDefault);
-
+        timesGrid.innerHTML = "";
         const isSabado = diaDaSemana(selDate) === 6;
 
         allSlots.forEach(slot => {
-            const opt = document.createElement("option");
-            opt.value = slot.valor; 
-            opt.textContent = slot.texto;
             const inicio = toMin(slot.valor);
-            
             let conflito = false;
             let expirado = false;
 
             if (selDate === hojeIso && inicio < minutosAtuais) {
                 expirado = true;
-                opt.textContent = `${slot.valor} - (Expirado)`;
             }
 
             for (let i = 0; i < slotsNeeded; i++) {
@@ -351,26 +321,29 @@ async function checkAvailableTimes() {
                 }
             }
 
-            if (conflito || expirado) { 
-                if (conflito && !expirado) opt.textContent = `${slot.valor} - (Ocupado/Bloqueado)`; 
-                opt.dataset.ocupado = "true"; 
+            const card = document.createElement("div");
+            card.className = "time-card";
+            card.textContent = slot.valor;
+
+            if (conflito || expirado) {
+                card.classList.add("disabled");
             } else {
-                opt.dataset.ocupado = "false";
+                card.onclick = () => selecionarHorarioCard(card, slot.valor);
             }
-            timeSel.appendChild(opt);
+
+            timesGrid.appendChild(card);
         });
 
-        const anteriorDisp = Array.from(timeSel.options).find(o => o.value === previousSelection && o.dataset.ocupado !== "true" && o.value !== "");
-        if (anteriorDisp) {
-            timeSel.value = previousSelection;
-        } else {
-            timeSel.value = ""; 
-        }
-
     } catch (err) {
-        mostrarMensagemNoSelect(timeSel, "Erro ao carregar horários");
+        mostrarMensagemNoGrid(timesGrid, "Erro ao carregar horários", true);
         console.error("Erro crítico em checkAvailableTimes:", err);
     }
+}
+
+function selecionarHorarioCard(element, horario) {
+    document.querySelectorAll('.time-card').forEach(c => c.classList.remove('active'));
+    element.classList.add('active');
+    horarioSelecionado = horario;
 }
 
 // ==========================================
@@ -380,8 +353,6 @@ function abrirModalConfirmacao() {
     const name = document.getElementById("client-name")?.value.trim();
     const phone = document.getElementById("client-phone")?.value.trim();
     const date = document.getElementById("date")?.value;
-    const timeSelect = document.getElementById("time");
-    const time = timeSelect?.value;
 
     if (!name || !phone || phone.replace(/\D/g,"").length < 10) {
         mostrarAlertaCliente("Preencha o seu nome e um WhatsApp válido.", false);
@@ -391,9 +362,7 @@ function abrirModalConfirmacao() {
         mostrarAlertaCliente("Selecione um serviço.", false);
         return;
     }
-    
-    const selectedOpt = timeSelect.options[timeSelect.selectedIndex];
-    if (!time || !selectedOpt || selectedOpt.dataset.ocupado === "true") {
+    if (!horarioSelecionado) {
         mostrarAlertaCliente("Por favor, selecione um horário válido e livre.", false);
         return;
     }
@@ -403,7 +372,7 @@ function abrirModalConfirmacao() {
 
     document.getElementById("resumo-agendamento").innerHTML = `
         <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
-        <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
+        <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${horarioSelecionado}</div>
         <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servNomes.join(", ")}</div>
         <div style="margin-top: 12px; border-top: 1px solid #333333; padding-top: 8px; font-size: 1.1rem;">
             <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">R$ ${preco.toFixed(2).replace(".", ",")}</span>
@@ -426,7 +395,7 @@ async function confirmarEEnviar() {
     const name = document.getElementById("client-name").value;
     const phone = document.getElementById("client-phone").value.replace(/\D/g, "");
     const date = document.getElementById("date").value;
-    const time = document.getElementById("time").value;
+    const time = horarioSelecionado;
 
     try {
         const precoTotal = calcularTotal();
