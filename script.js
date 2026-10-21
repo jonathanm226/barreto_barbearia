@@ -13,12 +13,10 @@ const telefonesBarbeiros = {
     "Rafael": "5531975470879" 
 };
 
-// As durações começam vazias e são preenchidas pelo Supabase
 let duracoesServicos = {}; 
-
 let selectedBarber = "Matheus";
 let selectedServices = [];
-let horarioSelecionado = null; // Armazena o horário escolhido nos botões
+let horarioSelecionado = null;
 let enviandoAgendamento = false;
 
 // ==========================================
@@ -38,7 +36,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // 1º Puxa os serviços dinâmicos do banco
     await carregarServicosDoBanco();
-    // 2º Atualiza os horários disponíveis
+    
+    // 2º Garante que os horários carregam imediatamente
     checkAvailableTimes();
 });
 
@@ -159,6 +158,18 @@ function isoLocal(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Normaliza qualquer formato de data do input para YYYY-MM-DD com segurança
+function padronizarData(valorInput) {
+    if (!valorInput) return "";
+    if (valorInput.includes("/")) {
+        const partes = valorInput.split("/");
+        if (partes.length === 3) {
+            return `${partes[2]}-${partes[1]}-${partes[0]}`;
+        }
+    }
+    return valorInput;
+}
+
 function toMin(hhmm) {
     if(!hhmm) return 0;
     const [h, m] = String(hhmm).split(":").map(Number);
@@ -216,8 +227,14 @@ async function checkAvailableTimes() {
     const dateEl = document.getElementById("date");
     const timesGrid = document.getElementById("times-grid");
 
-    if (!dateEl || !timesGrid || !dateEl.value) return;
-    const selDate = dateEl.value; 
+    if (!dateEl || !timesGrid) return;
+    
+    // Normaliza a data para garantir o formato YYYY-MM-DD
+    const selDate = padronizarData(dateEl.value); 
+    if (!selDate) {
+        mostrarMensagemNoGrid(timesGrid, "Selecione uma data acima primeiro");
+        return;
+    }
 
     const allSlots = getTimesForDate(selDate, selectedBarber);
     if (allSlots.length === 0) return mostrarMensagemNoGrid(timesGrid, "Barbeiro não atende neste dia", true);
@@ -352,7 +369,7 @@ function selecionarHorarioCard(element, horario) {
 function abrirModalConfirmacao() {
     const name = document.getElementById("client-name")?.value.trim();
     const phone = document.getElementById("client-phone")?.value.trim();
-    const date = document.getElementById("date")?.value;
+    const date = padronizarData(document.getElementById("date")?.value);
 
     if (!name || !phone || phone.replace(/\D/g,"").length < 10) {
         mostrarAlertaCliente("Preencha o seu nome e um WhatsApp válido.", false);
@@ -394,7 +411,7 @@ async function confirmarEEnviar() {
 
     const name = document.getElementById("client-name").value;
     const phone = document.getElementById("client-phone").value.replace(/\D/g, "");
-    const date = document.getElementById("date").value;
+    const date = padronizarData(document.getElementById("date").value);
     const time = horarioSelecionado;
 
     try {
