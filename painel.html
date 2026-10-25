@@ -773,7 +773,6 @@
                 document.getElementById("faturamento-debito").textContent = `R$ ${faturamentoDebito.toFixed(2).replace(".", ",")}`;
                 document.getElementById("faturamento-credito").textContent = `R$ ${faturamentoCredito.toFixed(2).replace(".", ",")}`;
 
-                // Se o modo oculto estiver ativo, esconde os valores recém-carregados
                 if (valoresOcultos) {
                     const elementosValores = document.querySelectorAll('.valor-sensivel, #barber-total-faturamento, #faturamento-pix, #faturamento-dinheiro, #faturamento-debito, #faturamento-credito');
                     elementosValores.forEach((el, index) => {
@@ -834,4 +833,812 @@
 
                         horariosDia.forEach(h => {
                             let agsNoHorario = agendamentosDia.filter(a => String(a.horario).substring(0, 5) === h);
-                            let blqNormal = bloqueiosDia.find(b => String
+                            let blqNormal = bloqueiosDia.find(b => String(b.horario).substring(0, 5) === h && !String(b.horario).includes("_LIBERADO"));
+                            let isLiberado = bloqueiosDia.some(b => String(b.horario).substring(0, 5) === h && String(b.horario).includes("_LIBERADO"));
+                            
+                            const [hNum] = h.split(":").map(Number);
+                            const ehApartirDas18 = hNum >= 18 && isSabado;
+                            const ehAlmocoAutomatico = almocoPadrao.includes(h);
+
+                            let estaEfetivamenteBloqueado = (blqNormal || ehApartirDas18 || ehAlmocoAutomatico) && !isLiberado; 
+
+                            if (agsNoHorario.length > 0) {
+                                agsNoHorario.forEach(ag => {
+                                    itensRenderizacao.push({ tipo: 'agendamento', horario: h, dado: ag });
+                                });
+                            } else if (estaEfetivamenteBloqueado) {
+                                itensRenderizacao.push({ tipo: 'bloqueio', horario: h, dado: blqNormal, automatico: ehApartirDas18 || ehAlmocoAutomatico });
+                            } else {
+                                itensRenderizacao.push({ tipo: 'vazio', horario: h });
+                            }
+                        });
+
+                        itensRenderizacao.forEach(item => {
+                            const itemSlot = document.createElement("div");
+
+                            let isRetroativo = false;
+                            if (dia.iso < dataHojeIso) {
+                                isRetroativo = true;
+                            } else if (dia.iso === dataHojeIso) {
+                                const [hSlot, mSlot] = item.horario.split(':').map(Number);
+                                const minSlotTotal = hSlot * 60 + mSlot;
+                                if (minSlotTotal < horaAtualMinutos) {
+                                    isRetroativo = true;
+                                }
+                            }
+
+                            if (item.tipo === 'bloqueio') {
+                                itemSlot.className = "slot-item blocked";
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-weight:bold;">${item.horario}</span>
+                                        <button type="button" onclick="event.stopPropagation(); alternarBloqueioHorario('${dia.iso}', '${item.horario}', true)" style="background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c; padding: 1px 2px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Desbl</button>
+                                    </div>
+                                `;
+                            } else if (item.tipo === 'agendamento') {
+                                const ag = item.dado;
+                                const isConcluido = ag.status === 'concluido';
+                                itemSlot.className = isConcluido ? "slot-item concluded" : "slot-item booked";
+                                itemSlot.onclick = () => abrirGerenciadorAgendamento(ag.id);
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-weight:bold;">${item.horario}</span>
+                                        <span style="font-size: 0.48rem; color: ${isConcluido ? '#25D366' : '#3498db'}; font-weight: bold;">
+                                            ${isConcluido ? 'OK' : 'AG'}
+                                        </span>
+                                    </div>
+                                    <div style="font-weight: 600; color: #FFD0B0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${ag.cliente}">
+                                        ${ag.cliente}
+                                    </div>
+                                `;
+                            } else if (isRetroativo) {
+                                itemSlot.className = "slot-item retroactive";
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <span style="color:#666;">${item.horario}</span>
+                                        <span style="font-size: 0.4rem; color: #666;">Expirado</span>
+                                    </div>
+                                `;
+                            } else {
+                                itemSlot.className = "slot-item available";
+                                itemSlot.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <span style="color:#AAA;">${item.horario}</span>
+                                        <button type="button" onclick="event.stopPropagation(); alternarBloqueioHorario('${dia.iso}', '${item.horario}', false)" style="background: #242424; color: #FFF; border: 1px solid #444; padding: 0px 3px; border-radius: 2px; font-size: 0.45rem; cursor: pointer;">Bloq</button>
+                                    </div>
+                                `;
+                            }
+                            slotsDiv.appendChild(itemSlot);
+                        });
+                    }
+                    coluna.appendChild(slotsDiv);
+                    container.appendChild(coluna);
+                });
+            } catch (err) {
+                console.error("Erro agenda:", err);
+            }
+        }
+
+        async function alternarBloqueioDia(dataIso, estaBloqueado) {
+            try {
+                if (estaBloqueado) {
+                    await _supabase.from("bloqueios_barreto_v2")
+                        .delete()
+                        .eq("barbeiro", usuarioLogado)
+                        .eq("data", dataIso)
+                        .eq("horario", "TODOS");
+                } else {
+                    await _supabase.from("bloqueios_barreto_v2")
+                        .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: "TODOS", tipo: "dia_todo" }]);
+                }
+                carregarAgendaSemanal();
+            } catch (err) {
+                mostrarAlerta("Erro ao alterar bloqueio no banco de dados.", false);
+            }
+        }
+
+        async function alternarBloqueioHorario(dataIso, horario, estaBloqueado) {
+            try {
+                const [hNum] = horario.split(":").map(Number);
+                const isSabado = diaDaSemana(dataIso) === 6;
+                const ehApartirDas18 = hNum >= 18 && isSabado;
+                
+                const bloqueiosAlmocoAutomaticos = {
+                    "Rafael": ["13:00", "13:30"],
+                    "Yann": ["12:00", "12:30", "13:00"],
+                    "Matheus": ["13:30", "14:00", "14:30"]
+                };
+                const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
+                const ehAlmoco = almocoPadrao.includes(horario);
+                
+                const ehBloqueioAutomatico = ehApartirDas18 || ehAlmoco;
+
+                await _supabase.from("bloqueios_barreto_v2")
+                    .delete()
+                    .eq("barbeiro", usuarioLogado)
+                    .eq("data", dataIso)
+                    .eq("horario", horario);
+                    
+                await _supabase.from("bloqueios_barreto_v2")
+                    .delete()
+                    .eq("barbeiro", usuarioLogado)
+                    .eq("data", dataIso)
+                    .eq("horario", horario + "_LIBERADO");
+
+                if (estaBloqueado) {
+                    if (ehBloqueioAutomatico) {
+                        await _supabase.from("bloqueios_barreto_v2")
+                            .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario + "_LIBERADO", tipo: "horario" }]);
+                    }
+                } else {
+                    if (!ehBloqueioAutomatico) {
+                        await _supabase.from("bloqueios_barreto_v2")
+                            .insert([{ barbeiro: usuarioLogado, data: dataIso, horario: horario, tipo: "horario" }]);
+                    }
+                }
+                
+                carregarAgendaSemanal();
+            } catch (err) {
+                console.error("Erro ao alterar bloqueio:", err);
+                mostrarAlerta("Erro ao alterar bloqueio no banco de dados.", false);
+            }
+        }
+
+        function abrirModalAgendamentoManual() {
+            const hoje = new Date();
+            const yyyy = hoje.getFullYear();
+            const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dd = String(hoje.getDate()).padStart(2, '0');
+            const hojeIso = `${yyyy}-${mm}-${dd}`;
+
+            document.getElementById("manual-data").value = hojeIso;
+            document.getElementById("manual-cliente").value = "";
+            document.getElementById("manual-telefone").value = "";
+            document.getElementById("manual-encaixe").checked = false;
+            
+            const containerHorario = document.getElementById("container-input-horario");
+            containerHorario.innerHTML = `<select id="manual-horario"><option value="">Selecione a data primeiro</option></select>`;
+            document.getElementById("label-horario-manual").textContent = "Horário Disponível:";
+
+            renderizarSeletorDinamico("manual-servicos-container", "manual-servico-chk", precosServicosTabela, () => {
+                calcularTotalManual();
+                if (!document.getElementById("manual-encaixe").checked) {
+                    atualizarHorariosManuaisDisponiveis();
+                }
+            });
+
+            calcularTotalManual();
+            atualizarHorariosManuaisDisponiveis();
+            document.getElementById("modal-agendamento-manual").classList.add("active");
+        }
+
+        function alternarModoEncaixe() {
+            const chk = document.getElementById("manual-encaixe");
+            const containerHorario = document.getElementById("container-input-horario");
+            const labelHorario = document.getElementById("label-horario-manual");
+
+            if (chk.checked) {
+                labelHorario.textContent = "Horário do Encaixe (Livre):";
+                containerHorario.innerHTML = `<input type="time" id="manual-horario" value="10:00" style="width: 100%; padding: 10px; background: #1A1A1A; border: 1px solid #FF6600; border-radius: 6px; color: #FFFFFF; font-size: 0.95rem; outline: none;">`;
+            } else {
+                labelHorario.textContent = "Horário Disponível:";
+                containerHorario.innerHTML = `<select id="manual-horario"><option value="">A carregar horários...</option></select>`;
+                atualizarHorariosManuaisDisponiveis();
+            }
+        }
+
+        function calcularTotalManual() {
+            let total = 0;
+            document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
+                total += Number(chk.dataset.preco);
+            });
+            document.getElementById("manual-preco-total").textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+        }
+
+        async function atualizarHorariosManuaisDisponiveis() {
+            if (document.getElementById("manual-encaixe").checked) return;
+
+            const dataSel = document.getElementById("manual-data").value;
+            const horarioSelect = document.getElementById("manual-horario");
+            if (!dataSel || !horarioSelect) return;
+
+            horarioSelect.innerHTML = "<option value=''>A carregar horários...</option>";
+
+            const allSlots = obterHorariosParaData(dataSel);
+            if (allSlots.length === 0) {
+                horarioSelect.innerHTML = "<option value=''>Barbeiro fechado neste dia</option>";
+                return;
+            }
+
+            let duracaoMinutos = 0;
+            document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
+                const nomeServ = chk.value;
+                duracaoMinutos += duracoesServicosTabela[nomeServ] || 30;
+            });
+            if (duracaoMinutos === 0) duracaoMinutos = 30;
+            const slotsNeeded = Math.ceil(duracaoMinutos / 30);
+
+            try {
+                const { data: ags } = await _supabase.from("agendamentos_barreto_v2")
+                    .select("horario, servico, status, data, barbeiro")
+                    .eq("data", dataSel)
+                    .ilike("barbeiro", `%${usuarioLogado}%`);
+
+                const { data: blqs } = await _supabase.from("bloqueios_barreto_v2")
+                    .select("horario, data, barbeiro")
+                    .eq("data", dataSel)
+                    .ilike("barbeiro", `%${usuarioLogado}%`);
+
+                if (blqs && blqs.some(b => b.horario === 'TODOS')) {
+                    horarioSelect.innerHTML = "<option value=''>Agenda fechada neste dia</option>";
+                    return;
+                }
+
+                const ocupados = new Set();
+                (ags || []).filter(a => a.status !== 'cancelado').forEach(a => {
+                    if (a.servico && a.servico.includes("[ENCAIXE]")) return;
+
+                    const horaF = String(a.horario).substring(0, 5);
+                    const [h, m] = horaF.split(":").map(Number);
+                    const min = h * 60 + m;
+                    let dur = 30;
+                    if (a.servico) {
+                        dur = 0;
+                        a.servico.split(",").forEach(s => dur += duracoesServicosTabela[s.trim()] || 30);
+                    }
+                    const slotsN = Math.max(1, Math.ceil(dur / 30));
+                    for (let k = 0; k < slotsN; k++) {
+                        ocupados.add(min + (30 * k));
+                    }
+                });
+
+                const bloqueiosAlmocoAutomaticos = {
+                    "Rafael": ["13:00", "13:30"],
+                    "Yann": ["12:00", "12:30", "13:00"],
+                    "Matheus": ["13:30", "14:00", "14:30"]
+                };
+                const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
+                const bloqueadosSet = new Set((blqs || []).filter(b => !String(b.horario).includes("_LIBERADO")).map(b => String(b.horario).substring(0, 5)));
+                const liberadosSet = new Set((blqs || []).filter(b => String(b.horario).includes("_LIBERADO")).map(b => String(b.horario).replace("_LIBERADO", "").substring(0, 5)));
+                
+                almocoPadrao.forEach(h => bloqueadosSet.add(h));
+
+                const gradeBase = new Set(allSlots.map(s => {
+                    const [h, m] = s.split(":").map(Number);
+                    return h * 60 + m;
+                }));
+
+                const agora = new Date();
+                const hojeIso = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+                const minutosAtuais = agora.getHours() * 60 + agora.getMinutes();
+
+                horarioSelect.innerHTML = "<option value='' disabled selected>Selecione um horário livre</option>";
+
+                const isSabado = diaDaSemana(dataSel) === 6;
+
+                allSlots.forEach(slotStr => {
+                    const [h, m] = slotStr.split(":").map(Number);
+                    const minSlot = h * 60 + m;
+                    
+                    let expirado = false;
+                    if (dataSel === hojeIso && minSlot < minutosAtuais) {
+                        expirado = true;
+                    }
+
+                    const ehApartirDas18 = h >= 18;
+                    let bloqueadoPor18 = ehApartirDas18 && isSabado && !liberadosSet.has(slotStr);
+
+                    let conflito = false;
+                    for (let i = 0; i < slotsNeeded; i++) {
+                        const s = minSlot + (30 * i);
+                        const horaStrCheck = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+                        const [hCheck] = horaStrCheck.split(":").map(Number);
+                        const eh18Check = hCheck >= 18;
+                        const bloqueadoCheck18 = eh18Check && isSabado && !liberadosSet.has(horaStrCheck);
+
+                        if (!gradeBase.has(s) || ocupados.has(s) || bloqueadosSet.has(horaStrCheck) || bloqueadoCheck18) {
+                            conflito = true;
+                            break;
+                        }
+                    }
+
+                    const opt = document.createElement("option");
+                    opt.value = slotStr;
+
+                    if (expirado) {
+                        opt.textContent = `${slotStr} - (Expirado)`;
+                        opt.disabled = true;
+                    } else if (conflito) {
+                        opt.textContent = `${slotStr} - (Ocupado/Bloqueado)`;
+                        opt.disabled = true;
+                    } else {
+                        opt.textContent = slotStr;
+                    }
+
+                    horarioSelect.appendChild(opt);
+                });
+
+            } catch (err) {
+                console.error(err);
+                horarioSelect.innerHTML = "<option value=''>Erro ao carregar horários</option>";
+            }
+        }
+
+        function fecharModalAgendamentoManual() {
+            document.getElementById("modal-agendamento-manual").classList.remove("active");
+        }
+
+        async function salvarAgendamentoManual(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const btn = document.getElementById("btn-salvar-manual");
+            const cliente = document.getElementById("manual-cliente").value.trim();
+            const telefone = document.getElementById("manual-telefone").value.trim();
+            const data = document.getElementById("manual-data").value;
+            const horarioEl = document.getElementById("manual-horario");
+            const horario = horarioEl ? horarioEl.value : "";
+            const ehEncaixe = document.getElementById("manual-encaixe").checked;
+
+            let servicosSelecionados = [];
+            let precoTotal = 0;
+            document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
+                servicosSelecionados.push(chk.value);
+                precoTotal += Number(chk.dataset.preco);
+            });
+
+            if (!cliente || !data || !horario || servicosSelecionados.length === 0) {
+                mostrarAlerta("Preencha o Nome, Data, Horário e selecione ao menos um serviço.", false);
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = "A salvar...";
+            }
+
+            try {
+                const servicoFinal = ehEncaixe ? `[ENCAIXE] ${servicosSelecionados.join(", ")}` : servicosSelecionados.join(", ");
+
+                const { error } = await _supabase.from("agendamentos_barreto_v2").insert([{
+                    barbeiro: usuarioLogado,
+                    cliente: cliente,
+                    telefone: telefone || "Balcão",
+                    servico: servicoFinal,
+                    preco_total: precoTotal,
+                    data: data,
+                    horario: horario,
+                    status: 'ativo'
+                }]);
+
+                if (error) throw error;
+
+                fecharModalAgendamentoManual();
+                mostrarAlerta("Agendamento adicionado à agenda com sucesso!", true);
+                carregarAgendaSemanal();
+            } catch (err) {
+                mostrarAlerta("Falha ao salvar: " + err.message, false);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = "Salvar Agendamento";
+                }
+            }
+        }
+
+        async function abrirGerenciadorAgendamento(id) {
+            try {
+                const { data } = await _supabase.from("agendamentos_barreto_v2").select("*").eq("id", id).single();
+                if (!data) return;
+
+                const modal = document.getElementById("custom-action-modal");
+                const detailsBox = document.getElementById("action-modal-details");
+                const paymentBox = document.getElementById("payment-box");
+                const rescheduleBox = document.getElementById("reschedule-box");
+                const buttonsBox = document.getElementById("action-modal-buttons");
+
+                const precoOriginal = Number(data.preco_total || 35);
+                detailsBox.innerHTML = `
+                    <strong>Cliente:</strong> ${data.cliente}<br>
+                    <strong>Telefone:</strong> ${data.telefone || 'Não informado'}<br>
+                    <strong>Serviço Atual:</strong> ${data.servico}<br>
+                    <strong>Valor Base:</strong> R$ ${precoOriginal.toFixed(2).replace(".", ",")}<br>
+                    <strong>Data/Hora:</strong> ${String(data.data).split("-").reverse().join("/")} às ${String(data.horario).substring(0,5)}
+                `;
+
+                paymentBox.style.display = "none";
+                rescheduleBox.style.display = "none";
+
+                renderizarSeletorDinamico("extras-servicos-container", "extra-servico-chk", precosServicosTabela, null);
+                renderizarSeletorDinamico("extras-produtos-container", "extra-produto-chk", produtosTabela, null);
+                
+                function renderizarBotoesPrincipais() {
+                    buttonsBox.innerHTML = "";
+
+                    if (data.status !== 'concluido') {
+                        const btnAtendido = document.createElement("button");
+                        btnAtendido.type = "button";
+                        btnAtendido.className = "custom-modal-btn btn-modal-atendido";
+                        btnAtendido.textContent = "Concluir e Confirmar Pgto";
+                        btnAtendido.onclick = () => {
+                            paymentBox.style.display = "block";
+                            rescheduleBox.style.display = "none";
+                            buttonsBox.innerHTML = "";
+
+                            const btnSalvarPg = document.createElement("button");
+                            btnSalvarPg.type = "button";
+                            btnSalvarPg.className = "custom-modal-btn btn-modal-confirmar";
+                            btnSalvarPg.textContent = "Salvar Atendimento e Pgto";
+                            btnSalvarPg.onclick = async () => {
+                                try {
+                                    btnSalvarPg.textContent = "A gravar...";
+                                    btnSalvarPg.disabled = true;
+                                    
+                                    const formaPgto = document.getElementById("select-forma-pagamento").value;
+                                    
+                                    let servicosSelecionadosList = data.servico ? data.servico.split(",").map(s => s.trim()) : [];
+                                    let acréscimoPreco = 0;
+
+                                    document.querySelectorAll(".extra-servico-chk:checked").forEach(chk => {
+                                        const nomeServ = chk.value;
+                                        const pServ = Number(chk.dataset.preco);
+                                        if (!servicosSelecionadosList.includes(nomeServ)) {
+                                            servicosSelecionadosList.push(nomeServ);
+                                            acréscimoPreco += pServ;
+                                        }
+                                    });
+
+                                    document.querySelectorAll(".extra-produto-chk:checked").forEach(chk => {
+                                        const nomeProd = chk.value;
+                                        const pProd = Number(chk.dataset.preco);
+                                        servicosSelecionadosList.push(`[Produto] ${nomeProd}`);
+                                        acréscimoPreco += pProd;
+                                    });
+
+                                    const novoPrecoTotal = precoOriginal + acréscimoPreco;
+                                    const novaStringServicos = servicosSelecionadosList.join(", ");
+
+                                    const { error } = await _supabase.from("agendamentos_barreto_v2")
+                                        .update({ 
+                                            status: 'concluido', 
+                                            pagamentos: formaPgto,
+                                            servico: novaStringServicos,
+                                            preco_total: novoPrecoTotal
+                                        })
+                                        .eq('id', data.id);
+
+                                    if (error) throw error;
+                                    
+                                    modal.classList.remove("active");
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    mostrarAlerta("Erro ao concluir: " + err.message, false);
+                                    btnSalvarPg.textContent = "Salvar Atendimento e Pgto";
+                                    btnSalvarPg.disabled = false;
+                                }
+                            };
+
+                            const btnVoltar = document.createElement("button");
+                            btnVoltar.type = "button";
+                            btnVoltar.className = "custom-modal-btn btn-modal-cancelar";
+                            btnVoltar.textContent = "Voltar";
+                            btnVoltar.onclick = () => {
+                                paymentBox.style.display = "none";
+                                renderizarBotoesPrincipais();
+                            };
+
+                            buttonsBox.appendChild(btnSalvarPg);
+                            buttonsBox.appendChild(btnVoltar);
+                        };
+
+                        const btnReagendar = document.createElement("button");
+                        btnReagendar.type = "button";
+                        btnReagendar.className = "custom-modal-btn btn-modal-reagendar";
+                        btnReagendar.textContent = "Reagendar Horário";
+                        btnReagendar.onclick = () => {
+                            rescheduleBox.style.display = "block";
+                            paymentBox.style.display = "none";
+                            document.getElementById("new-reschedule-date").value = data.data;
+                            document.getElementById("new-reschedule-time").value = String(data.horario).substring(0,5);
+                            buttonsBox.innerHTML = "";
+
+                            const btnSalvarReagendamento = document.createElement("button");
+                            btnSalvarReagendamento.type = "button";
+                            btnSalvarReagendamento.className = "custom-modal-btn btn-modal-confirmar";
+                            btnSalvarReagendamento.textContent = "Confirmar Novo Horário";
+                            btnSalvarReagendamento.onclick = async () => {
+                                const novaData = document.getElementById("new-reschedule-date").value;
+                                const novoHorario = document.getElementById("new-reschedule-time").value;
+
+                                if (!novaData || !novoHorario) {
+                                    mostrarAlerta("Preencha a nova data e horário.", false);
+                                    return;
+                                }
+
+                                try {
+                                    btnSalvarReagendamento.textContent = "A reagendar...";
+                                    btnSalvarReagendamento.disabled = true;
+
+                                    const { error } = await _supabase.from("agendamentos_barreto_v2")
+                                        .update({ data: novaData, horario: novoHorario })
+                                        .eq('id', data.id);
+
+                                    if (error) throw error;
+
+                                    modal.classList.remove("active");
+                                    mostrarAlerta("Agendamento reagendado com sucesso!", true);
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    mostrarAlerta("Erro ao reagendar: " + err.message, false);
+                                    btnSalvarReagendamento.textContent = "Confirmar Novo Horário";
+                                    btnSalvarReagendamento.disabled = false;
+                                }
+                            };
+
+                            const btnVoltarReag = document.createElement("button");
+                            btnVoltarReag.type = "button";
+                            btnVoltarReag.className = "custom-modal-btn btn-modal-cancelar";
+                            btnVoltarReag.textContent = "Voltar";
+                            btnVoltarReag.onclick = () => {
+                                rescheduleBox.style.display = "none";
+                                renderizarBotoesPrincipais();
+                            };
+
+                            buttonsBox.appendChild(btnSalvarReagendamento);
+                            buttonsBox.appendChild(btnVoltarReag);
+                        };
+
+                        const btnCancelar = document.createElement("button");
+                        btnCancelar.type = "button";
+                        btnCancelar.className = "custom-modal-btn btn-modal-excluir";
+                        btnCancelar.textContent = "Cancelar Agendamento";
+                        btnCancelar.onclick = () => {
+                            buttonsBox.innerHTML = `
+                                <p style="color: #e74c3c; font-weight: bold; margin-bottom: 12px; font-size: 0.9rem; text-align: center;">Tem a certeza que deseja cancelar esta reserva?</p>
+                            `;
+                            
+                            const btnConfirmarCancelamento = document.createElement("button");
+                            btnConfirmarCancelamento.type = "button";
+                            btnConfirmarCancelamento.className = "custom-modal-btn btn-modal-excluir";
+                            btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
+                            btnConfirmarCancelamento.onclick = async () => {
+                                try {
+                                    btnConfirmarCancelamento.textContent = "A cancelar...";
+                                    btnConfirmarCancelamento.disabled = true;
+                                    
+                                    const { error } = await _supabase
+                                        .from("agendamentos_barreto_v2")
+                                        .update({ status: 'cancelado' })
+                                        .eq('id', data.id);
+
+                                    if (error) throw error;
+                                    
+                                    modal.classList.remove("active");
+                                    mostrarAlerta("Reserva cancelada com sucesso!", true);
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    mostrarAlerta("Erro ao cancelar no banco: " + err.message, false);
+                                    btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
+                                    btnConfirmarCancelamento.disabled = false;
+                                }
+                            };
+
+                            const btnVoltarCancelamento = document.createElement("button");
+                            btnVoltarCancelamento.type = "button";
+                            btnVoltarCancelamento.className = "custom-modal-btn btn-modal-cancelar";
+                            btnVoltarCancelamento.textContent = "Não, Voltar";
+                            btnVoltarCancelamento.onclick = renderizarBotoesPrincipais;
+
+                            buttonsBox.appendChild(btnConfirmarCancelamento);
+                            buttonsBox.appendChild(btnVoltarCancelamento);
+                        };
+
+                        buttonsBox.appendChild(btnAtendido);
+                        buttonsBox.appendChild(btnReagendar);
+                        buttonsBox.appendChild(btnCancelar);
+                    }
+
+                    const btnLembrete = document.createElement("button");
+                    btnLembrete.type = "button";
+                    btnLembrete.className = "custom-modal-btn";
+                    btnLembrete.style.background = "#25D366";
+                    btnLembrete.style.color = "#FFFFFF";
+                    btnLembrete.innerHTML = `<i class="fa-brands fa-whatsapp"></i> Enviar Lembrete WhatsApp`;
+                    btnLembrete.onclick = () => {
+                        const telLimpo = (data.telefone || "").replace(/\D/g, "");
+                        if (!telLimpo || telLimpo === "Balcão" || telLimpo.length < 10) {
+                            mostrarAlerta("Este agendamento não possui um número de WhatsApp válido cadastrado.", false);
+                            return;
+                        }
+                        
+                        const dataFormatada = String(data.data).split("-").reverse().join("/");
+                        const horarioFormatado = String(data.horario).substring(0, 5);
+                        
+                        const mensagemLembrete = `Olá, *${data.cliente}*! Passando para lembrar do seu horário agendado na *Barreto Barbearia* com o profissional *${data.barbeiro}* para o dia *${dataFormatada}* às *${horarioFormatado}* (Serviço: ${data.servico}). Tudo certo para comparecer?`;
+                        
+                        window.open(`https://wa.me/55${telLimpo}?text=${encodeURIComponent(mensagemLembrete)}`, '_blank');
+                    };
+                    buttonsBox.appendChild(btnLembrete);
+
+                    const btnFechar = document.createElement("button");
+                    btnFechar.type = "button";
+                    btnFechar.className = "custom-modal-btn btn-modal-cancelar";
+                    btnFechar.textContent = "Fechar";
+                    btnFechar.onclick = () => modal.classList.remove("active");
+                    buttonsBox.appendChild(btnFechar);
+                }
+
+                renderizarBotoesPrincipais();
+                modal.classList.add("active");
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function carregarResumoAdmin() {
+            const dataInicio = document.getElementById("filter-date-start").value;
+            const dataFim = document.getElementById("filter-date-end").value;
+            const resumoBarbeirosDiv = document.getElementById("admin-resumo-barbeiros");
+            
+            if (!dataInicio || !dataFim) return;
+            
+            resumoBarbeirosDiv.innerHTML = "<p style='color: #888; text-align: center; font-size: 0.75rem;'>A calcular período...</p>";
+
+            try {
+                const { data } = await _supabase.from("agendamentos_barreto_v2")
+                    .select("*")
+                    .gte("data", dataInicio)
+                    .lte("data", dataFim)
+                    .order("data", { ascending: true })
+                    .order("horario", { ascending: true });
+                
+                const ativosOuConcluidos = (data || []).filter(a => a.status !== 'cancelado');
+
+                const statsBarbeiros = {
+                    "Matheus": { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] },
+                    "Yann": { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] },
+                    "Rafael": { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] }
+                };
+
+                ativosOuConcluidos.forEach(item => {
+                    const nomeBarbeiro = Object.keys(statsBarbeiros).find(b => item.barbeiro && item.barbeiro.toLowerCase().includes(b.toLowerCase())) || item.barbeiro;
+                    if (!statsBarbeiros[nomeBarbeiro]) {
+                        statsBarbeiros[nomeBarbeiro] = { qtd: 0, faturamento: 0, pix: 0, dinheiro: 0, debito: 0, credito: 0, atendimentos: [] };
+                    }
+                    statsBarbeiros[nomeBarbeiro].qtd++;
+                    statsBarbeiros[nomeBarbeiro].atendimentos.push(item);
+                    
+                    if (item.status === 'concluido') {
+                        const valor = Number(item.preco_total || 35);
+                        statsBarbeiros[nomeBarbeiro].faturamento += valor;
+                        
+                        if (item.pagamentos === 'Pix') statsBarbeiros[nomeBarbeiro].pix += valor;
+                        else if (item.pagamentos === 'Dinheiro') statsBarbeiros[nomeBarbeiro].dinheiro += valor;
+                        else if (item.pagamentos === 'Débito') statsBarbeiros[nomeBarbeiro].debito += valor;
+                        else if (item.pagamentos === 'Crédito') statsBarbeiros[nomeBarbeiro].credito += valor;
+                    }
+                });
+
+                resumoBarbeirosDiv.innerHTML = "";
+                
+                Object.keys(statsBarbeiros).forEach(barb => {
+                    const info = statsBarbeiros[barb];
+                    const containerBarb = document.createElement("div");
+                    containerBarb.style.cssText = "background: #222; border-radius: 6px; padding: 10px; margin-bottom: 6px; font-size: 0.75rem; border: 1px solid #333;";
+                    
+                    const header = document.createElement("div");
+                    header.className = "admin-barber-card";
+                    header.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <strong style="color: #FFF; font-size: 0.85rem; width: 80px;">${barb}</strong>
+                            <span style="color: #AAA;">Qtd: <strong>${info.qtd}</strong></span>
+                            <span style="color: #25D366; font-weight: bold; font-size: 0.85rem;">R$ ${info.faturamento.toFixed(2).replace(".", ",")}</span>
+                            <i class="fa-solid fa-chevron-down" style="color: #666; font-size: 0.8rem; margin-left: 10px;"></i>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.65rem; color: #AAA; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #333;">
+                            <div>💠 Pix: <span style="color:#FFF;">R$ ${info.pix.toFixed(2).replace(".", ",")}</span></div>
+                            <div>💵 Din: <span style="color:#FFF;">R$ ${info.dinheiro.toFixed(2).replace(".", ",")}</span></div>
+                            <div>💳 Déb: <span style="color:#FFF;">R$ ${info.debito.toFixed(2).replace(".", ",")}</span></div>
+                            <div>💳 Cré: <span style="color:#FFF;">R$ ${info.credito.toFixed(2).replace(".", ",")}</span></div>
+                        </div>
+                    `;
+                    
+                    const detailsContainer = document.createElement("div");
+                    detailsContainer.className = "admin-barber-details";
+                    
+                    if (info.atendimentos.length === 0) {
+                        detailsContainer.innerHTML = "<p style='color: #777; text-align: center; padding: 10px;'>Nenhum atendimento neste período.</p>";
+                    } else {
+                        info.atendimentos.forEach(item => {
+                            const card = document.createElement("div");
+                            card.className = "admin-appt-card";
+                            const isConcluido = item.status === 'concluido';
+                            card.style.borderLeft = "3px solid " + (isConcluido ? '#25D366' : '#FF6600');
+                            
+                            const dataFormatada = String(item.data).split("-").reverse().slice(0, 2).join("/");
+                            
+                            card.onclick = (e) => {
+                                e.stopPropagation();
+                                abrirModalEdicaoAdmin(item.id, item.cliente, item.preco_total);
+                            };
+
+                            card.innerHTML = `
+                                <div>
+                                    <strong style="font-size:0.8rem; color:#FFF;">${dataFormatada} às ${String(item.horario).substring(0,5)}</strong><br>
+                                    <span style="font-size:0.75rem; color:#CCC;">Cliente: ${item.cliente} | ${item.servico} | <strong style="color: #FF6600;">R$ ${Number(item.preco_total || 35).toFixed(2).replace(".", ",")}</strong> ${isConcluido ? `(Pago via ${item.pagamentos || 'Pix'})` : ''}</span>
+                                </div>
+                                <i class="fa-solid fa-pen-to-square" style="color: #666; font-size: 0.85rem; padding: 4px;" title="Editar Valor"></i>
+                            `;
+                            detailsContainer.appendChild(card);
+                        });
+                    }
+                    
+                    header.onclick = () => {
+                        detailsContainer.classList.toggle("active");
+                        const icone = header.querySelector("i");
+                        icone.classList.toggle("fa-chevron-down");
+                        icone.classList.toggle("fa-chevron-up");
+                    };
+
+                    containerBarb.appendChild(header);
+                    containerBarb.appendChild(detailsContainer);
+                    resumoBarbeirosDiv.appendChild(containerBarb);
+                });
+
+            } catch (err) {
+                resumoBarbeirosDiv.innerHTML = "<p style='color: #e74c3c; text-align: center;'>Erro ao carregar resumo do período.</p>";
+            }
+        }
+
+        let idAgendamentoEdicaoAdmin = null;
+
+        function abrirModalEdicaoAdmin(id, cliente, precoAtual) {
+            idAgendamentoEdicaoAdmin = id;
+            document.getElementById("edicao-admin-cliente").textContent = cliente;
+            document.getElementById("edicao-admin-valor").value = Number(precoAtual || 0).toFixed(2);
+            document.getElementById("modal-edicao-admin").classList.add("active");
+        }
+
+        function fecharModalEdicaoAdmin() {
+            document.getElementById("modal-edicao-admin").classList.remove("active");
+            idAgendamentoEdicaoAdmin = null;
+        }
+
+        async function salvarNovoValorAdmin() {
+            if (!idAgendamentoEdicaoAdmin) return;
+            
+            const novoValorStr = document.getElementById("edicao-admin-valor").value.replace(",", ".");
+            const novoValor = parseFloat(novoValorStr);
+            
+            if (isNaN(novoValor) || novoValor < 0) {
+                mostrarAlerta("Por favor, insira um valor numérico válido.", false);
+                return;
+            }
+
+            const btn = document.getElementById("btn-salvar-edicao-admin");
+            try {
+                btn.textContent = "A salvar...";
+                btn.disabled = true;
+
+                const { error } = await _supabase
+                    .from("agendamentos_barreto_v2")
+                    .update({ preco_total: novoValor })
+                    .eq('id', idAgendamentoEdicaoAdmin);
+
+                if (error) throw error;
+
+                fecharModalEdicaoAdmin();
+                mostrarAlerta("Valor ajustado com sucesso!", true);
+                carregarResumoAdmin();
+            } catch (err) {
+                mostrarAlerta("Erro ao atualizar valor: " + err.message, false);
+            } finally {
+                btn.textContent = "Salvar Novo Valor";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
