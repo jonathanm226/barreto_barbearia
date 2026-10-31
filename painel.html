@@ -185,6 +185,12 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 10px;">
                 <h2 style="font-size: 0.95rem; margin: 0; border: none; padding: 0;">Resumo Administrativo</h2>
                 <div style="display: flex; gap: 6px;">
+                    
+                    <!-- BOTÃO NOVO AQUI -->
+                    <button type="button" onclick="abrirModalConexaoWhatsApp()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #25D366; color: #FFF;" title="Conectar WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i> API
+                    </button>
+                    
                     <button type="button" onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;" title="Atualizar"><i class="fa-solid fa-rotate"></i></button>
                     <button type="button" onclick="abrirModalConfiguracoes()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #FF6600; color: #FFF;" title="Configurações"><i class="fa-solid fa-gear"></i></button>
                     <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;" title="Sair"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -352,6 +358,37 @@
             <h3 id="alerta-titulo" style="margin-bottom: 12px; font-size: 1.1rem;">Aviso</h3>
             <p id="alerta-mensagem" style="color: #FFF; font-size: 0.95rem; margin-bottom: 20px; text-align: center;"></p>
             <button type="button" class="custom-modal-btn btn-modal-confirmar" onclick="fecharAlerta()">OK</button>
+        </div>
+    </div>
+    
+    <!-- MODAL PARA LEITURA DO QR CODE DO WHATSAPP -->
+    <div id="modal-conexao-whatsapp" class="custom-modal-overlay">
+        <div class="custom-modal" style="max-width: 380px;">
+            <h3 style="color: #25D366;"><i class="fa-brands fa-whatsapp"></i> Conectar WhatsApp</h3>
+            
+            <p style="font-size: 0.85rem; color: #CCC; margin-bottom: 15px;">
+                Siga os passos pelo seu celular:<br>
+                1. Abra o WhatsApp<br>
+                2. Toque em Configurações > Aparelhos Conectados<br>
+                3. Toque em "Conectar um aparelho"<br>
+                4. Aponte a câmera para o código abaixo:
+            </p>
+            
+            <div id="qr-code-container" style="background: #FFF; padding: 15px; border-radius: 8px; margin: 0 auto 20px auto; width: 220px; height: 220px; display: flex; justify-content: center; align-items: center;">
+                <span id="qr-status-text" style="color: #333; font-size: 0.85rem; text-align: center; font-weight: bold;">
+                    Clique no botão abaixo para gerar o código...
+                </span>
+                <img id="qr-code-img" style="display: none; width: 100%; height: 100%;" />
+            </div>
+
+            <div class="custom-modal-buttons">
+                <button type="button" class="custom-modal-btn btn-modal-atendido" onclick="gerarQrCodeDaAPI()">
+                    <i class="fa-solid fa-qrcode"></i> Gerar QR Code Agora
+                </button>
+                <button type="button" class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalConexaoWhatsApp()">
+                    Fechar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1637,6 +1674,59 @@
             } finally {
                 btn.textContent = "Salvar Novo Valor";
                 btn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // INTEGRAÇÃO WHATSAPP API (QR CODE)
+        // ==========================================
+        function abrirModalConexaoWhatsApp() {
+            document.getElementById("modal-conexao-whatsapp").classList.add("active");
+            document.getElementById("qr-status-text").style.display = "block";
+            document.getElementById("qr-status-text").textContent = "Clique no botão abaixo para gerar o código...";
+            document.getElementById("qr-code-img").style.display = "none";
+        }
+
+        function fecharModalConexaoWhatsApp() {
+            document.getElementById("modal-conexao-whatsapp").classList.remove("active");
+        }
+
+        async function gerarQrCodeDaAPI() {
+            const statusText = document.getElementById("qr-status-text");
+            const qrImg = document.getElementById("qr-code-img");
+            
+            statusText.style.display = "block";
+            qrImg.style.display = "none";
+            statusText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Solicitando QR Code ao servidor...';
+
+            // 🔴 AQUI ENTRARÁ A URL DA SUA API QUANDO ELA ESTIVER NA VPS
+            const apiUrl = "http://IP_DA_SUA_VPS:8080/instance/create";
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': 'SUA_CHAVE_GLOBAL'
+                    },
+                    body: JSON.stringify({
+                        instanceName: "barreto_barbearia",
+                        qrcode: true
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data && data.qrcode && data.qrcode.base64) {
+                    statusText.style.display = "none";
+                    qrImg.style.display = "block";
+                    qrImg.src = data.qrcode.base64;
+                } else {
+                    statusText.innerHTML = "Erro ao gerar código. Verifique se o servidor da API está online.";
+                }
+            } catch (err) {
+                console.error("Erro na API:", err);
+                statusText.innerHTML = "Falha de conexão com a API Neologic. A API ainda não está no ar.";
             }
         }
     </script>
