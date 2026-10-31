@@ -1,7 +1,7 @@
 // ==========================================
 // CONFIGURAÇÕES INICIAIS E SUPABASE
 // ==========================================
-const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
+const SUPABASE_URL = "[https://doecoosuqibzdsyadsyg.supabase.co](https://doecoosuqibzdsyadsyg.supabase.co)";
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -375,7 +375,6 @@ async function checkAvailableTimes() {
         });
 
         if (!temAlgumLivre && timesGrid.innerHTML !== "") {
-            // Se todos os botões ficaram desativados (Ex: escolheu um serviço de 1h num buraco de 30min)
             const aviso = document.createElement("div");
             aviso.style.cssText = "grid-column: 1 / -1; text-align: center; color: #e74c3c; font-size: 0.85rem; margin-top: 10px;";
             aviso.textContent = "Não há horários suficientes para os serviços selecionados.";
@@ -437,8 +436,11 @@ async function confirmarEEnviar() {
     if (enviandoAgendamento) return;
     const btn = document.getElementById("btn-continuar");
     enviandoAgendamento = true; 
-    btn.disabled = true; 
-    btn.innerHTML = 'A agendar...';
+    
+    if (btn) {
+        btn.disabled = true; 
+        btn.innerHTML = 'A agendar...';
+    }
 
     const name = document.getElementById("client-name").value;
     const phone = document.getElementById("client-phone").value.replace(/\D/g, "");
@@ -469,16 +471,20 @@ async function confirmarEEnviar() {
         }
 
         fecharModalConfirmacao();
-        const num = telefonesBarbeiros[barbeiroLimpo] || "5531997193193";
-        const msg = `✅ *AGENDAMENTO CONFIRMADO* ✅\n\n👤 *Cliente:* ${name}\n📱 *Telefone:* ${phone}\n💈 *Barbeiro:* ${barbeiroLimpo}\n✂️ *Serviços:* ${servicosNome}\n📅 *Data:* ${date.split("-").reverse().join("/")}\n⏰ *Horário:* ${time}`;
         
-        window.location.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+        mostrarAlertaCliente("Agendamento realizado com sucesso! Você receberá o comprovante no seu WhatsApp em instantes.", true);
+        
+        setTimeout(() => {
+            window.location.reload();
+        }, 3500);
 
     } catch (err) {
         mostrarAlertaCliente("Aviso: " + err.message, false);
         enviandoAgendamento = false; 
-        btn.disabled = false; 
-        btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
+        if (btn) {
+            btn.disabled = false; 
+            btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
+        }
     }
 }
 
