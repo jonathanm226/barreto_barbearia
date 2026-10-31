@@ -187,6 +187,7 @@
                 <div style="display: flex; gap: 6px;">
                     <button type="button" onclick="carregarResumoAdmin()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem;" title="Atualizar"><i class="fa-solid fa-rotate"></i></button>
                     <button type="button" onclick="abrirModalConfiguracoes()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #FF6600; color: #FFF;" title="Configurações"><i class="fa-solid fa-gear"></i></button>
+                    <button type="button" onclick="abrirModalApi()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #25D366; color: #FFF;" title="Configurar API WhatsApp"><i class="fa-solid fa-plug"></i></button>
                     <button type="button" onclick="fazerLogout()" class="btn-acao" style="width: auto; padding: 6px 10px; font-size: 0.75rem; background: #2C1A1A; color: #e74c3c; border: 1px solid #e74c3c;" title="Sair"><i class="fa-solid fa-right-from-bracket"></i></button>
                 </div>
             </div>
@@ -241,6 +242,23 @@
             </div>
 
             <div class="custom-modal-buttons" id="action-modal-buttons"></div>
+        </div>
+    </div>
+
+    <!-- Modal API WhatsApp -->
+    <div id="modal-api" class="custom-modal-overlay">
+        <div class="custom-modal" style="max-width: 400px;">
+            <h3>Conexão WhatsApp (API)</h3>
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.8rem; color: #AAA; display: block; margin-bottom: 4px;">Nome da Instância:</label>
+                <input type="text" id="api-instance-name" placeholder="Ex: barbearia" value="barbearia">
+                
+                <button type="button" class="btn-acao" onclick="conectarApiWhatsApp()" style="background: #25D366; margin-top: 8px;">Gerar QR Code / Conectar</button>
+            </div>
+            <div id="api-qrcode-container" style="text-align: center; margin-top: 10px;"></div>
+            <div class="custom-modal-buttons" style="margin-top: 12px;">
+                <button type="button" class="custom-modal-btn btn-modal-cancelar" onclick="fecharModalApi()">Fechar</button>
+            </div>
         </div>
     </div>
 
@@ -370,6 +388,45 @@
         // EVOLUTION API URL (Corrigido para evitar Mixed Content)
         // ==========================================
         const evolutionApiUrl = window.ENV_EVOLUTION_URL || "https://seu-dominio-ssl.com:8080";
+
+        function abrirModalApi() {
+            document.getElementById("modal-api").classList.add("active");
+            document.getElementById("api-qrcode-container").innerHTML = "";
+        }
+
+        function fecharModalApi() {
+            document.getElementById("modal-api").classList.remove("active");
+        }
+
+        async function conectarApiWhatsApp() {
+            const instanceName = document.getElementById("api-instance-name").value.trim();
+            const qrContainer = document.getElementById("api-qrcode-container");
+
+            if (!instanceName) {
+                mostrarAlerta("Digite o nome da instância.", false);
+                return;
+            }
+
+            qrContainer.innerHTML = "<p style='color: #aaa; font-size: 0.8rem;'>A gerar QR Code...</p>";
+
+            try {
+                const response = await fetch(`${evolutionApiUrl}/instance/create`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ instanceName: instanceName })
+                });
+
+                const data = await response.json();
+                if (data && data.qrcode) {
+                    qrContainer.innerHTML = `<img src="${data.qrcode}" alt="QR Code WhatsApp" style="max-width: 200px; border-radius: 6px;">`;
+                } else {
+                    qrContainer.innerHTML = "<p style='color: #25D366; font-size: 0.85rem;'>Instância criada com sucesso / Conectada!</p>";
+                }
+            } catch (err) {
+                console.error(err);
+                qrContainer.innerHTML = "<p style='color: #e74c3c; font-size: 0.8rem;'>Erro ao conectar com a Evolution API.</p>";
+            }
+        }
 
         // ==========================================
         // FUNÇÃO DE OCULTAR / EXIBIR VALORES (ESTILO BANCO)
