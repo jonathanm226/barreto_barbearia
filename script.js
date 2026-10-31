@@ -5,6 +5,13 @@ const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co"; // Sem espaços
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// ==========================================
+// CREDENCIAIS DA EVOLUTION API (WHATSAPP)
+// ==========================================
+const evolutionApiUrl = "https://18-222-101-159.sslip.io";
+const evolutionApiKey = "troque_por_uma_chave_forte";
+const instanciaWhatsApp = "barbearia"; // Certifique-se de que é exatamente o mesmo nome que você conectou no painel
+
 const DIAS_ANTECEDENCIA_MAX = 21;
 
 // Variáveis globais declaradas no topo para evitar erros de inicialização
@@ -434,6 +441,7 @@ async function confirmarEEnviar() {
         const servicosNome = selectedServices.map(s => s.name).join(", ");
         const barbeiroLimpo = selectedBarber.trim();
 
+        // 1. Salva o agendamento no Supabase
         const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
             cliente: name,
             telefone: phone,
@@ -454,7 +462,37 @@ async function confirmarEEnviar() {
 
         fecharModalConfirmacao();
         
-        mostrarAlertaCliente("Agendamento realizado com sucesso! Você receberá o comprovante no seu WhatsApp em instantes.", true);
+        // 2. Dispara a mensagem via Evolution API para o WhatsApp do cliente
+        try {
+            // Adiciona o prefixo 55 (Brasil) ao telefone inserido pelo cliente
+            const numeroCliente = `55${phone}`; 
+            const dataFormatada = date.split("-").reverse().join("/");
+            
+            const mensagemWhatsApp = `Olá, *${name}*! Tudo bem?\n\nSeu agendamento foi confirmado com sucesso na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nTe esperamos lá!`;
+
+            await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "apikey": evolutionApiKey
+                },
+                body: JSON.stringify({
+                    number: numeroCliente,
+                    options: {
+                        delay: 1500, // Simula a digitação
+                        presence: "composing" 
+                    },
+                    textMessage: {
+                        text: mensagemWhatsApp
+                    }
+                })
+            });
+        } catch (apiErro) {
+            console.error("Erro ao enviar mensagem no WhatsApp, mas salvo no banco:", apiErro);
+        }
+
+        // 3. Mostra alerta de sucesso na tela e atualiza a página
+        mostrarAlertaCliente("Agendamento realizado com sucesso! Você receberá a confirmação no seu WhatsApp em instantes.", true);
         
         setTimeout(() => {
             window.location.reload();
