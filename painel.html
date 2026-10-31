@@ -139,7 +139,6 @@
                 </div>
             </div>
 
-            <!-- DASHBOARD COM O ÍCONE DE OLHO ADICIONADO -->
             <div class="dashboard-card">
                 <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 4px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px;">
                     Resumo da Semana (Fechamento)
@@ -211,7 +210,7 @@
 
     </div>
 
-    <!-- Modais e Restante do Layout -->
+    <!-- Modais -->
     <div id="custom-action-modal" class="custom-modal-overlay">
         <div class="custom-modal">
             <h3>Gerenciar Atendimento</h3>
@@ -385,9 +384,10 @@
         let offsetSemana = 0; 
 
         // ==========================================
-        // EVOLUTION API URL (Corrigido para evitar Mixed Content)
+        // CONFIGURAÇÃO DA EVOLUTION API (HTTPS + Apikey)
         // ==========================================
-        const evolutionApiUrl = window.ENV_EVOLUTION_URL || "https://seu-dominio-ssl.com:8080";
+        const evolutionApiUrl = "https://api.seudominio.com"; // Substitua pelo seu subdomínio configurado no Caddy
+        const evolutionApiKey = "SUA_AUTHENTICATION_API_KEY"; // Substitua pela sua apikey global da Evolution
 
         function abrirModalApi() {
             document.getElementById("modal-api").classList.add("active");
@@ -399,37 +399,48 @@
         }
 
         async function conectarApiWhatsApp() {
-            const instanceName = document.getElementById("api-instance-name").value.trim();
+            const instanceName = document.getElementById("api-instance-name").value.trim().toLowerCase().replace(/\s+/g, '-');
             const qrContainer = document.getElementById("api-qrcode-container");
 
             if (!instanceName) {
-                mostrarAlerta("Digite o nome da instância.", false);
-                return;
+                return mostrarAlerta("Digite o nome da instância sem espaços.", false);
             }
 
-            qrContainer.innerHTML = "<p style='color: #aaa; font-size: 0.8rem;'>A gerar QR Code...</p>";
+            qrContainer.innerHTML = "<p style='color:#aaa;font-size:0.8rem;'>A gerar QR Code...</p>";
+            const headers = { "Content-Type": "application/json", "apikey": evolutionApiKey };
 
             try {
-                const response = await fetch(`${evolutionApiUrl}/instance/create`, {
+                let resp = await fetch(`${evolutionApiUrl}/instance/create`, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ instanceName: instanceName })
+                    headers,
+                    body: JSON.stringify({
+                        instanceName,
+                        integration: "WHATSAPP-BAILEYS",
+                        qrcode: true
+                    })
                 });
+                let data = await resp.json();
+                let base64 = data?.qrcode?.base64;
 
-                const data = await response.json();
-                if (data && data.qrcode) {
-                    qrContainer.innerHTML = `<img src="${data.qrcode}" alt="QR Code WhatsApp" style="max-width: 200px; border-radius: 6px;">`;
+                if (!base64) {
+                    resp = await fetch(`${evolutionApiUrl}/instance/connect/${encodeURIComponent(instanceName)}`, { headers });
+                    data = await resp.json();
+                    base64 = data?.base64 || data?.qrcode?.base64;
+                }
+
+                if (base64) {
+                    qrContainer.innerHTML = `<img src="${base64}" alt="QR Code WhatsApp" style="max-width:220px;border-radius:6px;background:#fff;padding:6px;">`;
                 } else {
-                    qrContainer.innerHTML = "<p style='color: #25D366; font-size: 0.85rem;'>Instância criada com sucesso / Conectada!</p>";
+                    qrContainer.innerHTML = "<p style='color:#25D366;font-size:0.85rem;'>Instância já conectada ou pronta!</p>";
                 }
             } catch (err) {
                 console.error(err);
-                qrContainer.innerHTML = "<p style='color: #e74c3c; font-size: 0.8rem;'>Erro ao conectar com a Evolution API.</p>";
+                qrContainer.innerHTML = "<p style='color:#e74c3c;font-size:0.8rem;'>Erro ao conectar com a Evolution API.</p>";
             }
         }
 
         // ==========================================
-        // FUNÇÃO DE OCULTAR / EXIBIR VALORES (ESTILO BANCO)
+        // FUNÇÃO DE OCULTAR / EXIBIR VALORES
         // ==========================================
         let valoresOcultos = false;
         let valoresOriginaisCache = {};
@@ -464,7 +475,7 @@
         }
 
         // ==========================================
-        // DADOS E CONFIGURAÇÕES DA BARBEARIA
+        // CONFIGURAÇÕES GERAIS E CRUD DA BARBEARIA
         // ==========================================
         async function carregarConfiguracoesGerais() {
             const { data: servicos } = await _supabase.from('servicos_config').select('*').order('nome');
