@@ -1,23 +1,20 @@
 // ==========================================
-// CONFIGURAÇÕES INICIAIS E SUPABASE
+// CONFIGURAÇÕES INICIAIS E VARIÁVEIS GLOBAIS
 // ==========================================
-const SUPABASE_URL = "[https://doecoosuqibzdsyadsyg.supabase.co](https://doecoosuqibzdsyadsyg.supabase.co)";
+const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co"; // Sem espaços ou caracteres estranhos
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
-
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const DIAS_ANTECEDENCIA_MAX = 21;
-const telefonesBarbeiros = { 
-    "Matheus": "5531997193193", 
-    "Yann": "5531993789798", 
-    "Rafael": "5531975470879" 
-};
 
-// ==========================================
-// MÉTRICAS INDIVIDUAIS DOS BARBEIROS
-// ==========================================
-// Define a jornada de trabalho padrão de cada barbeiro (Hora de Início e Hora Final)
-// Ex: { inicio: 10, fim: 19 } significa que os slots vão de 10:00 até 19:30 (encerrando às 20h)
+// Variáveis globais declaradas no topo para evitar erros de inicialização
+let duracoesServicos = {}; 
+let selectedBarber = "Matheus"; // Barbeiro padrão inicial
+let selectedServices = [];
+let horarioSelecionado = null;
+let enviandoAgendamento = false;
+
+// Define a jornada de trabalho padrão de cada barbeiro
 const jornadaBarbeiros = {
     "Matheus": { inicio: 10, fim: 19 },
     "Yann": { inicio: 10, fim: 19 },
@@ -30,12 +27,6 @@ const bloqueiosAlmocoAutomaticos = {
     "Yann": ["12:00", "12:30", "13:00"],
     "Matheus": ["13:30", "14:00", "14:30"]
 };
-
-let duracoesServicos = {}; 
-let selectedBarber = "Matheus";
-let selectedServices = [];
-let horarioSelecionado = null;
-let enviandoAgendamento = false;
 
 // ==========================================
 // INICIALIZAÇÃO DA PÁGINA (DOM)
@@ -52,15 +43,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         dateInput.max = isoLocal(maximo);
         dateInput.value = isoLocal(hoje);
         
-        // Garante que a atualização ocorra independentemente do navegador/celular
         dateInput.addEventListener('change', checkAvailableTimes);
         dateInput.addEventListener('input', checkAvailableTimes);
     }
     
-    // 1º Puxa os serviços dinâmicos do banco
     await carregarServicosDoBanco();
-    
-    // 2º Garante que os horários carregam imediatamente ao abrir a tela
     await checkAvailableTimes();
 });
 
@@ -179,7 +166,6 @@ function isoLocal(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Normaliza qualquer formato de data do input para YYYY-MM-DD
 function padronizarData(valorInput) {
     if (!valorInput) return "";
     if (valorInput.includes("-")) return valorInput; 
@@ -227,19 +213,15 @@ function getTimesForDate(dateString, barbeiro) {
     const diaSem = diaDaSemana(dateString); 
     const barbTrim = barbeiro.trim();
     
-    // Folgas: Domingo fechado
     if (diaSem === 0) return []; 
-    // Folga Matheus: Quarta-feira
     if (barbTrim === "Matheus" && diaSem === 3) return []; 
-    // Folga Yann e Rafael: Segunda-feira
     if ((barbTrim === "Yann" || barbTrim === "Rafael") && diaSem === 1) return []; 
 
-    // Recupera a métrica do barbeiro selecionado (padrão 10h às 19:30)
     const config = jornadaBarbeiros[barbTrim] || { inicio: 10, fim: 19 };
     
     let horarios = [];
     let currentMin = config.inicio * 60;
-    let endMin = (config.fim * 60) + 30; // Último horário renderizado será as 19:30
+    let endMin = (config.fim * 60) + 30; 
     
     while (currentMin <= endMin) {
         const horaStr = fromMin(currentMin);
