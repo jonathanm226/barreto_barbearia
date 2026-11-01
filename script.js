@@ -465,7 +465,8 @@ async function confirmarEEnviar() {
             const numeroCliente = `55${phone}`; 
             const dataFormatada = date.split("-").reverse().join("/");
             
-            const mensagemWhatsApp = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos por si!`;
+            // Mensagem atualizada para "Esperamos você!"
+            const mensagemWhatsApp = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos você!`;
 
             const respostaApi = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
                 method: "POST",
@@ -475,7 +476,7 @@ async function confirmarEEnviar() {
                 },
                 body: JSON.stringify({
                     number: numeroCliente,
-                    text: mensagemWhatsApp, // Corrigido para enviar a propriedade "text" diretamente
+                    text: mensagemWhatsApp,
                     options: { 
                         delay: 1500, 
                         presence: "composing" 
