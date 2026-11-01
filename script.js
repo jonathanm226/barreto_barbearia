@@ -455,22 +455,19 @@ async function confirmarEEnviar() {
 
         if (insertError) {
             if (insertError.code === '23505') {
-                throw new Error("Este horário acabou de ser reservado por outra pessoa. Atualize a página e escolha outro horário.");
+                throw new Error("Este horário acabou de ser reservado por outra pessoa. Escolha outro horário.");
             }
             throw new Error(insertError.message);
         }
 
-        fecharModalConfirmacao();
-        
-        // 2. Dispara a mensagem via Evolution API para o WhatsApp do cliente
+        // 2. Dispara a mensagem via Evolution API (Não bloqueia se falhar)
         try {
-            // Adiciona o prefixo 55 (Brasil) ao telefone inserido pelo cliente
             const numeroCliente = `55${phone}`; 
             const dataFormatada = date.split("-").reverse().join("/");
             
-            const mensagemWhatsApp = `Olá, *${name}*! Tudo bem?\n\nSeu agendamento foi confirmado com sucesso na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nTe esperamos lá!`;
+            const mensagemWhatsApp = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos por si!`;
 
-            await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
+            const respostaApi = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -478,33 +475,46 @@ async function confirmarEEnviar() {
                 },
                 body: JSON.stringify({
                     number: numeroCliente,
-                    options: {
-                        delay: 1500, // Simula a digitação
-                        presence: "composing" 
-                    },
-                    textMessage: {
-                        text: mensagemWhatsApp
-                    }
+                    options: { delay: 1500, presence: "composing" },
+                    textMessage: { text: mensagemWhatsApp }
                 })
             });
+            
+            const dadosResposta = await respostaApi.json();
+            console.log("Resposta da API:", dadosResposta); // Apenas no Console, se precisar debugar depois
+
         } catch (apiErro) {
-            console.error("Erro ao enviar mensagem no WhatsApp, mas salvo no banco:", apiErro);
+            console.error("Erro de rede com a API:", apiErro);
         }
 
-        // 3. Mostra alerta de sucesso na tela e atualiza a página
-        mostrarAlertaCliente("Agendamento realizado com sucesso! Você receberá a confirmação no seu WhatsApp em instantes.", true);
-        
-        setTimeout(() => {
-            window.location.reload();
-        }, 3500);
+        // 3. TELA DE SUCESSO NA PRÓPRIA PÁGINA
+        document.querySelector('.app-container').innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; text-align: center; padding: 20px;">
+                <i class="fa-solid fa-circle-check" style="color: #25D366; font-size: 4rem; margin-bottom: 20px;"></i>
+                <h2 style="color: #FFF; margin-bottom: 10px; font-size: 1.8rem; border-left: none; text-transform: none;">Agendamento Concluído!</h2>
+                <p style="color: #AAA; font-size: 0.95rem; margin-bottom: 30px;">O seu horário foi marcado com sucesso e já está na agenda do profissional.</p>
+                
+                <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; text-align: left; margin-bottom: 30px;">
+                    <div style="margin-bottom: 8px; color: #FFF;"><strong>Profissional:</strong> ${barbeiroLimpo}</div>
+                    <div style="margin-bottom: 8px; color: #FFF;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
+                    <div style="margin-bottom: 8px; color: #FFF;"><strong>Serviço:</strong> ${servicosNome}</div>
+                    <div style="margin-top: 12px; border-top: 1px solid #333; padding-top: 8px;">
+                        <strong style="color: #FFF;">Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold; font-size: 1.1rem;">R$ ${precoTotal.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                </div>
+
+                <button onclick="window.location.reload()" style="background: #FF6600; color: #FFF; border: none; padding: 15px; width: 100%; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; text-transform: uppercase;">Realizar Novo Agendamento</button>
+            </div>
+        `;
+
+        // Limpa o modal caso estivesse aberto e finaliza
+        fecharModalConfirmacao();
+        enviandoAgendamento = false;
 
     } catch (err) {
         mostrarAlertaCliente("Aviso: " + err.message, false);
         enviandoAgendamento = false; 
-        if (btn) {
-            btn.disabled = false; 
-            btn.innerHTML = 'Continuar Agendamento <i class="fa-solid fa-arrow-right"></i>';
-        }
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Continuar Agendamento'; }
     }
 }
 
