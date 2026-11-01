@@ -475,13 +475,16 @@ async function confirmarEEnviar() {
                 },
                 body: JSON.stringify({
                     number: numeroCliente,
-                    options: { delay: 1500, presence: "composing" },
-                    textMessage: { text: mensagemWhatsApp }
+                    text: mensagemWhatsApp, // Corrigido para enviar a propriedade "text" diretamente
+                    options: { 
+                        delay: 1500, 
+                        presence: "composing" 
+                    }
                 })
             });
             
             const dadosResposta = await respostaApi.json();
-            console.log("Resposta da API:", dadosResposta); // Apenas no Console, se precisar debugar depois
+            console.log("Resposta da API:", dadosResposta);
 
         } catch (apiErro) {
             console.error("Erro de rede com a API:", apiErro);
@@ -507,7 +510,6 @@ async function confirmarEEnviar() {
             </div>
         `;
 
-        // Limpa o modal caso estivesse aberto e finaliza
         fecharModalConfirmacao();
         enviandoAgendamento = false;
 
