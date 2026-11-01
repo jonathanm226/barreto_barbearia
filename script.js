@@ -467,7 +467,7 @@ async function confirmarEEnviar() {
             throw new Error(insertError.message);
         }
 
-        // 2. Dispara as mensagens via Evolution API (Cliente + Barbeiro)
+        // 2. Dispara as mensagens via Evolution API com segurança e intervalo
         try {
             const numeroCliente = `55${phone}`; 
             const dataFormatada = date.split("-").reverse().join("/");
@@ -476,7 +476,7 @@ async function confirmarEEnviar() {
             const mensagemCliente = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos você!`;
 
             // Envia para o Cliente
-            await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
+            const resCliente = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "apikey": evolutionApiKey },
                 body: JSON.stringify({
@@ -485,13 +485,18 @@ async function confirmarEEnviar() {
                     options: { delay: 1000, presence: "composing" }
                 })
             });
+            const dadosCliente = await resCliente.json();
+            console.log("Resposta API (Cliente):", dadosCliente);
+
+            // Pausa de 1 segundo para evitar sobrecarga ou bloqueio de fila na API
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
             // Mensagem para o Barbeiro correspondente
             const telefoneBarbeiro = telefonesBarbeiros[barbeiroLimpo];
             if (telefoneBarbeiro) {
                 const mensagemBarbeiro = `🔔 *Novo Agendamento na Agenda!* 💈\n\n👤 *Cliente:* ${name}\n📞 *Telefone:* ${phone}\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor:* R$ ${precoTotal.toFixed(2).replace('.', ',')}`;
 
-                await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
+                const resBarbeiro = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "apikey": evolutionApiKey },
                     body: JSON.stringify({
@@ -500,10 +505,14 @@ async function confirmarEEnviar() {
                         options: { delay: 1000, presence: "composing" }
                     })
                 });
+                const dadosBarbeiro = await resBarbeiro.json();
+                console.log("Resposta API (Barbeiro):", dadosBarbeiro);
+            } else {
+                console.warn("Aviso: Nenhum telefone encontrado para o barbeiro:", barbeiroLimpo);
             }
 
         } catch (apiErro) {
-            console.error("Erro ao enviar mensagens no WhatsApp:", apiErro);
+            console.error("Erro de rede com a API ao enviar mensagens:", apiErro);
         }
 
         // 3. TELA DE SUCESSO NA PRÓPRIA PÁGINA
