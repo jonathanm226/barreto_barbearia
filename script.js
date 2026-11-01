@@ -14,6 +14,13 @@ const instanciaWhatsApp = "barbearia"; // Certifique-se de que é exatamente o m
 
 const DIAS_ANTECEDENCIA_MAX = 21;
 
+// Telefones dos barbeiros para notificação automática
+const telefonesBarbeiros = {
+    "Matheus": "5531997193193",
+    "Yann": "5531993789798",
+    "Rafael": "5531975470879"
+};
+
 // Variáveis globais declaradas no topo para evitar erros de inicialização
 let duracoesServicos = {}; 
 let selectedBarber = "Matheus"; // Barbeiro padrão inicial
@@ -460,35 +467,43 @@ async function confirmarEEnviar() {
             throw new Error(insertError.message);
         }
 
-        // 2. Dispara a mensagem via Evolution API (Não bloqueia se falhar)
+        // 2. Dispara as mensagens via Evolution API (Cliente + Barbeiro)
         try {
             const numeroCliente = `55${phone}`; 
             const dataFormatada = date.split("-").reverse().join("/");
             
-            // Mensagem atualizada para "Esperamos você!"
-            const mensagemWhatsApp = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos você!`;
+            // Mensagem para o Cliente
+            const mensagemCliente = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos você!`;
 
-            const respostaApi = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
+            // Envia para o Cliente
+            await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "apikey": evolutionApiKey
-                },
+                headers: { "Content-Type": "application/json", "apikey": evolutionApiKey },
                 body: JSON.stringify({
                     number: numeroCliente,
-                    text: mensagemWhatsApp,
-                    options: { 
-                        delay: 1500, 
-                        presence: "composing" 
-                    }
+                    text: mensagemCliente,
+                    options: { delay: 1000, presence: "composing" }
                 })
             });
-            
-            const dadosResposta = await respostaApi.json();
-            console.log("Resposta da API:", dadosResposta);
+
+            // Mensagem para o Barbeiro correspondente
+            const telefoneBarbeiro = telefonesBarbeiros[barbeiroLimpo];
+            if (telefoneBarbeiro) {
+                const mensagemBarbeiro = `🔔 *Novo Agendamento na Agenda!* 💈\n\n👤 *Cliente:* ${name}\n📞 *Telefone:* ${phone}\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor:* R$ ${precoTotal.toFixed(2).replace('.', ',')}`;
+
+                await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "apikey": evolutionApiKey },
+                    body: JSON.stringify({
+                        number: telefoneBarbeiro,
+                        text: mensagemBarbeiro,
+                        options: { delay: 1000, presence: "composing" }
+                    })
+                });
+            }
 
         } catch (apiErro) {
-            console.error("Erro de rede com a API:", apiErro);
+            console.error("Erro ao enviar mensagens no WhatsApp:", apiErro);
         }
 
         // 3. TELA DE SUCESSO NA PRÓPRIA PÁGINA
