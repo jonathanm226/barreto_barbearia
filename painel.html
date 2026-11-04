@@ -45,10 +45,11 @@
         .btn-modal-reagendar { background: #3498db; color: #FFFFFF; }
 
         .dashboard-card { background: #181818; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; font-size: 0.75rem; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
-        .metric-box { background: #222; border: 1px solid #333; border-radius: 4px; padding: 6px; text-align: center; }
-        .metric-box span { display: block; color: #888; font-size: 0.65rem; text-transform: uppercase; margin-bottom: 2px; }
-        .metric-box strong { font-size: 0.85rem; color: #25D366; }
+        .dashboard-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+        .metric-box { background: #222; border: 1px solid #333; border-radius: 4px; padding: 6px 4px; text-align: center; }
+        .metric-box span.metric-title { display: block; color: #888; font-size: 0.62rem; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
+        .metric-box strong { font-size: 0.85rem; color: #25D366; display: block; }
+        .metric-box span.metric-box-sub { font-size: 0.72rem; color: #FF6600; font-weight: bold; display: block; margin-top: 2px; }
 
         .week-horizontal-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; margin-top: 6px; width: 100%; overflow-x: hidden; }
         .day-column { background: #1A1A1A; border: 1px solid #333; border-radius: 4px; padding: 2px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -139,19 +140,27 @@
                 </div>
             </div>
 
+            <!-- Quadrante Superior de Resumo Financeiro Ajustado -->
             <div class="dashboard-card">
-                <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 4px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px;">
-                    Resumo da Semana (Fechamento)
+                <div style="font-weight: bold; color: #FF6600; text-transform: uppercase; margin-bottom: 6px; text-align: center; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.75rem;">
+                    Resumo de Atendimentos e Faturamento
                     <i id="toggleOlho" class="fa-solid fa-eye" onclick="alternarVisibilidadeValores()" style="cursor: pointer; color: #888; font-size: 0.9rem;" title="Ocultar/Exibir Valores"></i>
                 </div>
-                <div class="dashboard-grid">
+                <div class="dashboard-grid-3">
                     <div class="metric-box">
-                        <span>Atendimentos Concluídos</span>
-                        <strong id="barber-total-atendidos">0</strong>
+                        <span class="metric-title">Gerais</span>
+                        <strong id="barber-geral-atendidos">0</strong>
+                        <span id="barber-geral-faturamento" class="valor-sensivel metric-box-sub">R$ 0,00</span>
                     </div>
                     <div class="metric-box">
-                        <span>Total Faturado</span>
-                        <strong id="barber-total-faturamento" class="valor-sensivel" style="color: #FF6600;">R$ 0,00</strong>
+                        <span class="metric-title">Do Mês</span>
+                        <strong id="barber-mes-atendidos">0</strong>
+                        <span id="barber-mes-faturamento" class="valor-sensivel metric-box-sub">R$ 0,00</span>
+                    </div>
+                    <div class="metric-box" style="border-color: #FF6600;">
+                        <span class="metric-title">Da Semana</span>
+                        <strong id="barber-total-atendidos">0</strong>
+                        <span id="barber-total-faturamento" class="valor-sensivel metric-box-sub">R$ 0,00</span>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #AAA; margin-top: 8px; padding-top: 8px; border-top: 1px solid #333;">
@@ -448,7 +457,7 @@
         function alternarVisibilidadeValores() {
             valoresOcultos = !valoresOcultos;
             const iconeOlho = document.getElementById("toggleOlho");
-            const elementosValores = document.querySelectorAll('.valor-sensivel, #barber-total-faturamento, #faturamento-pix, #faturamento-dinheiro, #faturamento-debito, #faturamento-credito');
+            const elementosValores = document.querySelectorAll('.valor-sensivel');
 
             if (valoresOcultos) {
                 if (iconeOlho) {
@@ -819,35 +828,69 @@
                     return b.barbeiro.trim().toLowerCase() === usuarioLogado.trim().toLowerCase();
                 });
 
-                let qtdConcluidos = 0;
-                let faturamentoTotal = 0;
+                // Variáveis para Métricas (Geral, Mês e Semana)
+                let qtdConcluidosGeral = 0;
+                let faturamentoGeral = 0;
+
+                let qtdConcluidosMes = 0;
+                let faturamentoMes = 0;
+
+                let qtdConcluidosSemana = 0;
+                let faturamentoSemana = 0;
+
                 let faturamentoPix = 0;
                 let faturamentoDinheiro = 0;
                 let faturamentoDebito = 0;
                 let faturamentoCredito = 0;
 
+                const datasSemanaSet = new Set(diasSemana.map(d => d.iso));
+                const anoMesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+
                 (agendamentos || []).forEach(a => {
                     if (a.status === 'concluido') {
-                        qtdConcluidos++;
                         const valor = Number(a.preco_total || 35);
-                        faturamentoTotal += valor;
+                        const dataIso = String(a.data).substring(0, 10);
 
-                        if (a.pagamentos === 'Pix') faturamentoPix += valor;
-                        else if (a.pagamentos === 'Dinheiro') faturamentoDinheiro += valor;
-                        else if (a.pagamentos === 'Débito') faturamentoDebito += valor;
-                        else if (a.pagamentos === 'Crédito') faturamentoCredito += valor;
+                        // 1. Acumulado Geral
+                        qtdConcluidosGeral++;
+                        faturamentoGeral += valor;
+
+                        // 2. Acumulado do Mês Vigente
+                        if (dataIso.startsWith(anoMesAtualStr)) {
+                            qtdConcluidosMes++;
+                            faturamentoMes += valor;
+                        }
+
+                        // 3. Acumulado da Semana em Curso
+                        if (datasSemanaSet.has(dataIso)) {
+                            qtdConcluidosSemana++;
+                            faturamentoSemana += valor;
+
+                            if (a.pagamentos === 'Pix') faturamentoPix += valor;
+                            else if (a.pagamentos === 'Dinheiro') faturamentoDinheiro += valor;
+                            else if (a.pagamentos === 'Débito') faturamentoDebito += valor;
+                            else if (a.pagamentos === 'Crédito') faturamentoCredito += valor;
+                        }
                     }
                 });
 
-                document.getElementById("barber-total-atendidos").textContent = qtdConcluidos;
-                document.getElementById("barber-total-faturamento").textContent = `R$ ${faturamentoTotal.toFixed(2).replace(".", ",")}`;
+                // Atualização dos elementos no topo
+                document.getElementById("barber-geral-atendidos").textContent = qtdConcluidosGeral;
+                document.getElementById("barber-geral-faturamento").textContent = `R$ ${faturamentoGeral.toFixed(2).replace(".", ",")}`;
+
+                document.getElementById("barber-mes-atendidos").textContent = qtdConcluidosMes;
+                document.getElementById("barber-mes-faturamento").textContent = `R$ ${faturamentoMes.toFixed(2).replace(".", ",")}`;
+
+                document.getElementById("barber-total-atendidos").textContent = qtdConcluidosSemana;
+                document.getElementById("barber-total-faturamento").textContent = `R$ ${faturamentoSemana.toFixed(2).replace(".", ",")}`;
+
                 document.getElementById("faturamento-pix").textContent = `R$ ${faturamentoPix.toFixed(2).replace(".", ",")}`;
                 document.getElementById("faturamento-dinheiro").textContent = `R$ ${faturamentoDinheiro.toFixed(2).replace(".", ",")}`;
                 document.getElementById("faturamento-debito").textContent = `R$ ${faturamentoDebito.toFixed(2).replace(".", ",")}`;
                 document.getElementById("faturamento-credito").textContent = `R$ ${faturamentoCredito.toFixed(2).replace(".", ",")}`;
 
                 if (valoresOcultos) {
-                    const elementosValores = document.querySelectorAll('.valor-sensivel, #barber-total-faturamento, #faturamento-pix, #faturamento-dinheiro, #faturamento-debito, #faturamento-credito');
+                    const elementosValores = document.querySelectorAll('.valor-sensivel');
                     elementosValores.forEach((el, index) => {
                         valoresOriginaisCache[index] = el.textContent;
                         el.textContent = "R$ ••••••";
