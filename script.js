@@ -5,16 +5,9 @@ const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co"; // Sem espaços
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ==========================================
-// CREDENCIAIS DA EVOLUTION API (WHATSAPP)
-// ==========================================
-const evolutionApiUrl = "https://18-222-101-159.sslip.io";
-const evolutionApiKey = "troque_por_uma_chave_forte";
-const instanciaWhatsApp = "barbearia"; // Certifique-se de que é exatamente o mesmo nome que você conectou no painel
-
 const DIAS_ANTECEDENCIA_MAX = 21;
 
-// Telefones dos barbeiros para notificação automática
+// WhatsApp de destino da confirmação iniciada pelo cliente
 const telefonesBarbeiros = {
     "Matheus": "5531997193193",
     "Yann": "5531993789798",
@@ -430,6 +423,16 @@ function fecharModalConfirmacao() {
 
 async function confirmarEEnviar() {
     if (enviandoAgendamento) return;
+    const barbeiroLimpo = selectedBarber.trim();
+    const telefoneBarbeiro = telefonesBarbeiros[barbeiroLimpo];
+    if (!telefoneBarbeiro) {
+        mostrarAlertaCliente("Não foi possível localizar o WhatsApp do profissional selecionado.", false);
+        return;
+    }
+
+    const janelaWhatsApp = window.open("about:blank", "_blank");
+    if (janelaWhatsApp) janelaWhatsApp.opener = null;
+
     const btn = document.getElementById("btn-continuar");
     enviandoAgendamento = true; 
     
@@ -446,7 +449,6 @@ async function confirmarEEnviar() {
     try {
         const precoTotal = calcularTotal();
         const servicosNome = selectedServices.map(s => s.name).join(", ");
-        const barbeiroLimpo = selectedBarber.trim();
 
         // 1. Salva o agendamento no Supabase
         const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
@@ -467,60 +469,29 @@ async function confirmarEEnviar() {
             throw new Error(insertError.message);
         }
 
-        // 2. Dispara as mensagens via Evolution API com segurança e intervalo
-        try {
-            const numeroCliente = `55${phone}`; 
-            const dataFormatada = date.split("-").reverse().join("/");
-            
-            // Mensagem para o Cliente
-            const mensagemCliente = `Olá, *${name}*! Tudo bem?\n\nO seu agendamento foi confirmado na *Barreto Barbearia*.\n\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n💈 *Profissional:* ${barbeiroLimpo}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor Estimado:* R$ ${precoTotal.toFixed(2).replace('.', ',')}\n\nEsperamos você!`;
-
-            // Envia para o Cliente
-            const resCliente = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "apikey": evolutionApiKey },
-                body: JSON.stringify({
-                    number: numeroCliente,
-                    text: mensagemCliente,
-                    options: { delay: 1000, presence: "composing" }
-                })
-            });
-            const dadosCliente = await resCliente.json();
-            console.log("Resposta API (Cliente):", dadosCliente);
-
-            // Pausa de 1 segundo para evitar sobrecarga ou bloqueio de fila na API
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Mensagem para o Barbeiro correspondente
-            const telefoneBarbeiro = telefonesBarbeiros[barbeiroLimpo];
-            if (telefoneBarbeiro) {
-                const mensagemBarbeiro = `🔔 *Novo Agendamento na Agenda!* 💈\n\n👤 *Cliente:* ${name}\n📞 *Telefone:* ${phone}\n📅 *Data:* ${dataFormatada}\n⏰ *Horário:* ${time}\n✂️ *Serviço(s):* ${servicosNome}\n💵 *Valor:* R$ ${precoTotal.toFixed(2).replace('.', ',')}`;
-
-                const resBarbeiro = await fetch(`${evolutionApiUrl}/message/sendText/${instanciaWhatsApp}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "apikey": evolutionApiKey },
-                    body: JSON.stringify({
-                        number: telefoneBarbeiro,
-                        text: mensagemBarbeiro,
-                        options: { delay: 1000, presence: "composing" }
-                    })
-                });
-                const dadosBarbeiro = await resBarbeiro.json();
-                console.log("Resposta API (Barbeiro):", dadosBarbeiro);
-            } else {
-                console.warn("Aviso: Nenhum telefone encontrado para o barbeiro:", barbeiroLimpo);
+        // Abre uma mensagem pré-preenchida para o cliente enviar ao barbeiro escolhido.
+        const dataFormatada = date.split("-").reverse().join("/");
+        const mensagemBarbeiro = `Olá, ${barbeiroLimpo}! Acabei de fazer um agendamento na Barreto Barbearia e gostaria de confirmar:\n\n👤 Cliente: ${name}\n📞 Telefone: ${phone}\n📅 Data: ${dataFormatada}\n⏰ Horário: ${time}\n✂️ Serviço(s): ${servicosNome}\n💵 Valor estimado: R$ ${precoTotal.toFixed(2).replace(".", ",")}`;
+        const linkWhatsApp = `https://wa.me/${telefoneBarbeiro}?text=${encodeURIComponent(mensagemBarbeiro)}`;
+        let whatsappAberto = false;
+        if (janelaWhatsApp) {
+            try {
+                janelaWhatsApp.location.href = linkWhatsApp;
+                whatsappAberto = true;
+            } catch (erroWhatsApp) {
+                console.warn("Não foi possível abrir o WhatsApp automaticamente:", erroWhatsApp);
             }
-
-        } catch (apiErro) {
-            console.error("Erro de rede com a API ao enviar mensagens:", apiErro);
         }
 
-        // 3. TELA DE SUCESSO NA PRÓPRIA PÁGINA
+        // 2. TELA DE SUCESSO NA PRÓPRIA PÁGINA
         document.querySelector('.app-container').innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; text-align: center; padding: 20px;">
                 <i class="fa-solid fa-circle-check" style="color: #25D366; font-size: 4rem; margin-bottom: 20px;"></i>
                 <h2 style="color: #FFF; margin-bottom: 10px; font-size: 1.8rem; border-left: none; text-transform: none;">Agendamento Concluído!</h2>
-                <p style="color: #AAA; font-size: 0.95rem; margin-bottom: 30px;">O seu horário foi marcado com sucesso e já está na agenda do profissional.</p>
+                <p style="color: #AAA; font-size: 0.95rem; margin-bottom: 15px;">O seu horário foi marcado com sucesso e já está na agenda do profissional.</p>
+                ${whatsappAberto
+                    ? '<p style="color: #25D366; font-size: 0.95rem; margin-bottom: 20px;">O WhatsApp do profissional foi aberto com a mensagem pronta. Toque em Enviar para concluir a confirmação.</p>'
+                    : `<a href="${linkWhatsApp}" target="_blank" rel="noopener noreferrer" style="display: block; background: #25D366; color: #FFF; text-decoration: none; padding: 14px; width: 100%; border-radius: 6px; font-weight: bold; margin-bottom: 20px;"><i class="fa-brands fa-whatsapp"></i> Enviar confirmação ao ${barbeiroLimpo}</a>`}
                 
                 <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; text-align: left; margin-bottom: 30px;">
                     <div style="margin-bottom: 8px; color: #FFF;"><strong>Profissional:</strong> ${barbeiroLimpo}</div>
@@ -539,6 +510,7 @@ async function confirmarEEnviar() {
         enviandoAgendamento = false;
 
     } catch (err) {
+        if (janelaWhatsApp) janelaWhatsApp.close();
         mostrarAlertaCliente("Aviso: " + err.message, false);
         enviandoAgendamento = false; 
         if (btn) { btn.disabled = false; btn.innerHTML = 'Continuar Agendamento'; }
