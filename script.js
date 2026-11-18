@@ -471,7 +471,7 @@ async function confirmarEEnviar() {
 
         // Abre uma mensagem pré-preenchida para o cliente enviar ao barbeiro escolhido.
         const dataFormatada = date.split("-").reverse().join("/");
-        const mensagemBarbeiro = `Olá, ${barbeiroLimpo}! Acabei de fazer um agendamento na Barreto Barbearia e gostaria de confirmar:\n\n\u{1F464} Cliente: ${name}\n\u{1F4DE} Telefone: ${phone}\n\u{1F4C5} Data: ${dataFormatada}\n\u{23F0} Horário: ${time}\n\u{2702}\u{FE0F} Serviço(s): ${servicosNome}\n\u{1F4B5} Valor estimado: R$ ${precoTotal.toFixed(2).replace(".", ",")}`;
+        const mensagemBarbeiro = `Olá, ${barbeiroLimpo}! Acabei de fazer um agendamento na Barreto Barbearia e gostaria de confirmar:\n\nCliente: ${name}\nTelefone: ${phone}\nData: ${dataFormatada}\nHorário: ${time}\nServiço(s): ${servicosNome}\nValor estimado: R$ ${precoTotal.toFixed(2).replace(".", ",")}`;
         const linkWhatsApp = `https://wa.me/${telefoneBarbeiro}?text=${encodeURIComponent(mensagemBarbeiro)}`;
         let whatsappAberto = false;
         if (janelaWhatsApp) {
