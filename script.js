@@ -1,7 +1,7 @@
 // ==========================================
 // CONFIGURAÇÕES INICIAIS E VARIÁVEIS GLOBAIS
 // ==========================================
-const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co"; // Sem espaços ou caracteres estranhos
+const SUPABASE_URL = "https://doecoosuqibzdsyadsyg.supabase.co";
 const SUPABASE_KEY = "sb_publishable_-30z4xAhwJPYmy1bfSEjCw_loKUe8uL";
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -16,7 +16,7 @@ const telefonesBarbeiros = {
 
 // Variáveis globais declaradas no topo para evitar erros de inicialização
 let duracoesServicos = {}; 
-let selectedBarber = "Matheus"; // Barbeiro padrão inicial
+let selectedBarber = "Matheus";
 let selectedServices = [];
 let horarioSelecionado = null;
 let enviandoAgendamento = false;
@@ -166,6 +166,14 @@ function toggleService(element, serviceName, price) {
     checkAvailableTimes();
 }
 
+function alternarRepeticaoCliente() {
+    const rec = document.getElementById("client-recurrence")?.value || "none";
+    const groupMonths = document.getElementById("group-recurrence-months");
+    if (groupMonths) {
+        groupMonths.style.display = rec === "none" ? "none" : "flex";
+    }
+}
+
 // ==========================================
 // FUNÇÕES AUXILIARES DE TEMPO
 // ==========================================
@@ -210,6 +218,22 @@ function diaDaSemana(dateString) {
 
 function mostrarMensagemNoGrid(timesGrid, texto, erro = false) {
     timesGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 15px; color: ${erro ? '#e74c3c' : '#aaa'}; font-size: 0.95rem; font-weight: 500;">${texto}</div>`;
+}
+
+function gerarDatasRecorrentesCliente(dataInicialIso, modalidade, meses) {
+    if (!modalidade || modalidade === "none") return [dataInicialIso];
+
+    const passoDias = modalidade === "semanal" ? 7 : 14;
+    const [ano, mes, dia] = dataInicialIso.split("-").map(Number);
+    const dataAtual = new Date(ano, mes - 1, dia, 12, 0, 0);
+    const dataLimite = new Date(ano, mes - 1 + Number(meses), dia, 12, 0, 0);
+
+    const datas = [];
+    while (dataAtual <= dataLimite && datas.length < 24) {
+        datas.push(isoLocal(dataAtual));
+        dataAtual.setDate(dataAtual.getDate() + passoDias);
+    }
+    return datas;
 }
 
 // ==========================================
@@ -263,7 +287,7 @@ async function checkAvailableTimes() {
     horarioSelecionado = null;
 
     try {
-        const { data: agsDB, error: errAgs } = await _supabase.from("agendamentos_barreto_v2")
+        const { data: agsDB } = await _supabase.from("agendamentos_barreto_v2")
             .select("horario, servico, status, data, barbeiro");
 
         const agendamentos = (agsDB || []).filter(a => {
@@ -274,7 +298,7 @@ async function checkAvailableTimes() {
             return dataBanco === selDate && mesmoBarbeiro && ativo;
         });
 
-        const { data: bloqueiosDB, error: errBlq } = await _supabase.from("bloqueios_barreto_v2")
+        const { data: bloqueiosDB } = await _supabase.from("bloqueios_barreto_v2")
             .select("horario, data, barbeiro");
 
         const bloqueios = (bloqueiosDB || []).filter(b => {
@@ -405,10 +429,23 @@ function abrirModalConfirmacao() {
 
     const preco = calcularTotal();
     const servNomes = selectedServices.map(s => s.name);
+    const recorrencia = document.getElementById("client-recurrence")?.value || "none";
+    const mesesRec = document.getElementById("client-recurrence-months")?.value || "1";
+    const datasPlanejadas = gerarDatasRecorrentesCliente(date, recorrencia, mesesRec);
+
+    let textoFrequencia = "Agendamento único";
+    if (recorrencia === "semanal") textoFrequencia = `Toda semana (1x/sem - ${mesesRec} ${Number(mesesRec) === 1 ? 'mês' : 'meses'})`;
+    if (recorrencia === "quinzenal") textoFrequencia = `A cada 15 dias (${mesesRec} ${Number(mesesRec) === 1 ? 'mês' : 'meses'})`;
+
+    const listaDatasHtml = datasPlanejadas.length > 1
+        ? `<div style="margin-bottom: 8px; font-size: 0.85rem; color: #BBB;"><strong>Datas previstas (${datasPlanejadas.length}):</strong> ${datasPlanejadas.map(d => d.split("-").reverse().slice(0, 2).join("/")).join(", ")}</div>`
+        : "";
 
     document.getElementById("resumo-agendamento").innerHTML = `
         <div style="margin-bottom: 8px;"><strong>Barbeiro:</strong> ${selectedBarber}</div>
         <div style="margin-bottom: 8px;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${horarioSelecionado}</div>
+        <div style="margin-bottom: 8px;"><strong>Modalidade:</strong> ${textoFrequencia}</div>
+        ${listaDatasHtml}
         <div style="margin-bottom: 8px;"><strong>Serviços:</strong> ${servNomes.join(", ")}</div>
         <div style="margin-top: 12px; border-top: 1px solid #333333; padding-top: 8px; font-size: 1.1rem;">
             <strong>Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold;">R$ ${preco.toFixed(2).replace(".", ",")}</span>
@@ -445,22 +482,116 @@ async function confirmarEEnviar() {
     const phone = document.getElementById("client-phone").value.replace(/\D/g, "");
     const date = padronizarData(document.getElementById("date").value);
     const time = horarioSelecionado;
+    const recorrencia = document.getElementById("client-recurrence")?.value || "none";
+    const mesesRec = document.getElementById("client-recurrence-months")?.value || "1";
 
     try {
         const precoTotal = calcularTotal();
         const servicosNome = selectedServices.map(s => s.name).join(", ");
+        const durationMin = selectedServices.reduce((acc, s) => acc + s.duration, 0) || 30;
+        const slotsNeeded = Math.ceil(durationMin / 30);
 
-        // 1. Salva o agendamento no Supabase
-        const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert([{
+        const datasAlvo = gerarDatasRecorrentesCliente(date, recorrencia, mesesRec);
+        let datasLivres = [];
+        let datasConflito = [];
+
+        if (datasAlvo.length === 1) {
+            datasLivres = datasAlvo;
+        } else {
+            const { data: agsFuturos } = await _supabase.from("agendamentos_barreto_v2")
+                .select("horario, servico, status, data, barbeiro")
+                .in("data", datasAlvo);
+
+            const { data: blqsFuturos } = await _supabase.from("bloqueios_barreto_v2")
+                .select("horario, data, barbeiro")
+                .in("data", datasAlvo);
+
+            const almocoPadrao = bloqueiosAlmocoAutomaticos[barbeiroLimpo] || [];
+            const minSlot = toMin(time);
+
+            datasAlvo.forEach(dIso => {
+                const allSlots = getTimesForDate(dIso, barbeiroLimpo);
+                if (allSlots.length === 0) {
+                    datasConflito.push(dIso);
+                    return;
+                }
+
+                const blqsDia = (blqsFuturos || []).filter(b =>
+                    b.data && b.barbeiro &&
+                    String(b.data).substring(0, 10) === dIso &&
+                    b.barbeiro.trim().toLowerCase() === barbeiroLimpo.toLowerCase()
+                );
+
+                if (blqsDia.some(b => b.horario === "TODOS")) {
+                    datasConflito.push(dIso);
+                    return;
+                }
+
+                const ocupados = new Set();
+                (agsFuturos || [])
+                    .filter(a =>
+                        a.data && a.barbeiro && a.horario &&
+                        String(a.data).substring(0, 10) === dIso &&
+                        a.barbeiro.trim().toLowerCase() === barbeiroLimpo.toLowerCase() &&
+                        a.status !== 'cancelado'
+                    )
+                    .forEach(a => {
+                        if (a.servico && a.servico.includes("[ENCAIXE]")) return;
+                        const ini = toMin(String(a.horario).substring(0, 5));
+                        let dur = 30;
+                        if (a.servico) {
+                            dur = 0;
+                            a.servico.split(",").forEach(s => dur += duracoesServicos[s.trim()] || 30);
+                        }
+                        const nSlots = Math.max(1, Math.ceil(dur / 30));
+                        for (let k = 0; k < nSlots; k++) ocupados.add(ini + (30 * k));
+                    });
+
+                const bloqueados = new Set(blqsDia.filter(b => !String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).substring(0, 5))));
+                const liberadosMinSet = new Set(blqsDia.filter(b => String(b.horario).includes("_LIBERADO")).map(b => toMin(String(b.horario).replace("_LIBERADO", "").substring(0, 5))));
+
+                almocoPadrao.forEach(h => {
+                    const minH = toMin(h);
+                    if (!liberadosMinSet.has(minH)) bloqueados.add(minH);
+                });
+
+                const gradeBase = new Set(allSlots.map(s => toMin(s.valor)));
+                const isSabado = diaDaSemana(dIso) === 6;
+                let conflito = false;
+
+                for (let i = 0; i < slotsNeeded; i++) {
+                    const s = minSlot + (30 * i);
+                    const [hCheck] = fromMin(s).split(":").map(Number);
+                    const bloqueadoCheck18 = hCheck >= 18 && isSabado && !liberadosMinSet.has(s);
+
+                    if (!gradeBase.has(s) || ocupados.has(s) || bloqueados.has(s) || bloqueadoCheck18) {
+                        conflito = true;
+                        break;
+                    }
+                }
+
+                if (conflito) datasConflito.push(dIso);
+                else datasLivres.push(dIso);
+            });
+        }
+
+        if (datasLivres.length === 0) {
+            throw new Error("Este horário acabou de ser reservado por outra pessoa. Escolha outro horário.");
+        }
+
+        // 1. Salva o(s) agendamento(s) no Supabase
+        const registros = datasLivres.map(dIso => ({
             cliente: name,
             telefone: phone,
             barbeiro: barbeiroLimpo,
             servico: servicosNome,
             preco_total: precoTotal,
-            data: date,
+            data: dIso,
             horario: time,
             status: 'ativo'
-        }]);
+        }));
+
+        const { error: insertError } = await _supabase.from("agendamentos_barreto_v2").insert(registros);
 
         if (insertError) {
             if (insertError.code === '23505') {
@@ -471,7 +602,17 @@ async function confirmarEEnviar() {
 
         // Abre uma mensagem pré-preenchida para o cliente enviar ao barbeiro escolhido.
         const dataFormatada = date.split("-").reverse().join("/");
-        const mensagemBarbeiro = `Olá, ${barbeiroLimpo}! Acabei de fazer um agendamento na Barreto Barbearia e gostaria de confirmar:\n\nCliente: ${name}\nTelefone: ${phone}\nData: ${dataFormatada}\nHorário: ${time}\nServiço(s): ${servicosNome}\nValor estimado: R$ ${precoTotal.toFixed(2).replace(".", ",")}`;
+        const labelFrequencia = recorrencia === "semanal"
+            ? `Toda semana (1x/sem - ${datasLivres.length} datas)`
+            : recorrencia === "quinzenal"
+                ? `A cada 15 dias (${datasLivres.length} datas)`
+                : "Agendamento único";
+
+        const datasConfirmadasTexto = datasLivres.length > 1
+            ? `\nDatas confirmadas: ${datasLivres.map(d => d.split("-").reverse().slice(0, 2).join("/")).join(", ")}`
+            : "";
+
+        const mensagemBarbeiro = `Olá, ${barbeiroLimpo}! Acabei de fazer um agendamento na Barreto Barbearia e gostaria de confirmar:\n\nCliente: ${name}\nTelefone: ${phone}\nData: ${dataFormatada}\nHorário: ${time}\nModalidade: ${labelFrequencia}${datasConfirmadasTexto}\nServiço(s): ${servicosNome}\nValor estimado: R$ ${precoTotal.toFixed(2).replace(".", ",")}`;
         const linkWhatsApp = `https://wa.me/${telefoneBarbeiro}?text=${encodeURIComponent(mensagemBarbeiro)}`;
         let whatsappAberto = false;
         if (janelaWhatsApp) {
@@ -482,6 +623,10 @@ async function confirmarEEnviar() {
                 console.warn("Não foi possível abrir o WhatsApp automaticamente:", erroWhatsApp);
             }
         }
+
+        const avisoConflitoHtml = datasConflito.length > 0
+            ? `<div style="margin-bottom: 8px; color: #FF6600; font-size: 0.85rem;"><strong>Datas indisponíveis (puladas):</strong> ${datasConflito.map(d => d.split("-").reverse().slice(0, 2).join("/")).join(", ")}</div>`
+            : "";
 
         // 2. TELA DE SUCESSO NA PRÓPRIA PÁGINA
         document.querySelector('.app-container').innerHTML = `
@@ -496,6 +641,9 @@ async function confirmarEEnviar() {
                 <div style="background: #1A1A1A; border: 1px solid #333; padding: 15px; border-radius: 8px; width: 100%; text-align: left; margin-bottom: 30px;">
                     <div style="margin-bottom: 8px; color: #FFF;"><strong>Profissional:</strong> ${barbeiroLimpo}</div>
                     <div style="margin-bottom: 8px; color: #FFF;"><strong>Data:</strong> ${date.split("-").reverse().join("/")} às ${time}</div>
+                    <div style="margin-bottom: 8px; color: #FFF;"><strong>Modalidade:</strong> ${labelFrequencia}</div>
+                    ${datasLivres.length > 1 ? `<div style="margin-bottom: 8px; color: #CCC; font-size: 0.85rem;"><strong>Datas confirmadas:</strong> ${datasLivres.map(d => d.split("-").reverse().slice(0, 2).join("/")).join(", ")}</div>` : ""}
+                    ${avisoConflitoHtml}
                     <div style="margin-bottom: 8px; color: #FFF;"><strong>Serviço:</strong> ${servicosNome}</div>
                     <div style="margin-top: 12px; border-top: 1px solid #333; padding-top: 8px;">
                         <strong style="color: #FFF;">Total Estimado:</strong> <span style="color: #FF6600; font-weight: bold; font-size: 1.1rem;">R$ ${precoTotal.toFixed(2).replace(".", ",")}</span>
