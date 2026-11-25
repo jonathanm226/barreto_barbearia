@@ -305,6 +305,23 @@
                         <option value="">Selecione a data primeiro</option>
                     </select>
                 </div>
+
+                <label style="font-size: 0.75rem; color: #aaa; margin-top: 4px; display: block;">Modalidade de Repetição:</label>
+                <select id="manual-repeticao" onchange="alternarOpcoesRepeticaoManual()">
+                    <option value="none">Não repetir (Agendamento único)</option>
+                    <option value="semanal">Toda semana (1x por semana)</option>
+                    <option value="quinzenal">A cada 15 dias (Quinzenal)</option>
+                </select>
+
+                <div id="container-periodo-repeticao" style="display: none;">
+                    <label style="font-size: 0.75rem; color: #aaa;">Repetir por quanto tempo?</label>
+                    <select id="manual-repeticao-meses">
+                        <option value="1">1 mês</option>
+                        <option value="2">2 meses</option>
+                        <option value="3" selected>3 meses</option>
+                        <option value="6">6 meses</option>
+                    </select>
+                </div>
             </div>
 
             <div class="custom-modal-buttons" style="margin-top: 10px;">
@@ -1100,6 +1117,12 @@
             }
         }
 
+        function alternarOpcoesRepeticaoManual() {
+            const modalidade = document.getElementById("manual-repeticao").value;
+            const containerPeriodo = document.getElementById("container-periodo-repeticao");
+            containerPeriodo.style.display = modalidade === "none" ? "none" : "block";
+        }
+
         function abrirModalAgendamentoManual() {
             const hoje = new Date();
             const yyyy = hoje.getFullYear();
@@ -1111,6 +1134,9 @@
             document.getElementById("manual-cliente").value = "";
             document.getElementById("manual-telefone").value = "";
             document.getElementById("manual-encaixe").checked = false;
+            document.getElementById("manual-repeticao").value = "none";
+            document.getElementById("manual-repeticao-meses").value = "3";
+            document.getElementById("container-periodo-repeticao").style.display = "none";
 
             const containerHorario = document.getElementById("container-input-horario");
             containerHorario.innerHTML = `<select id="manual-horario"><option value="">Selecione a data primeiro</option></select>`;
@@ -1284,6 +1310,25 @@
             document.getElementById("modal-agendamento-manual").classList.remove("active");
         }
 
+        function gerarDatasRecorrentes(dataInicialIso, modalidade, meses) {
+            if (modalidade === "none") return [dataInicialIso];
+
+            const passoDias = modalidade === "semanal" ? 7 : 14;
+            const [ano, mes, dia] = dataInicialIso.split("-").map(Number);
+            const dataAtual = new Date(ano, mes - 1, dia, 12, 0, 0);
+            const dataLimite = new Date(ano, mes - 1 + Number(meses), dia, 12, 0, 0);
+
+            const datas = [];
+            while (dataAtual <= dataLimite && datas.length < 30) {
+                const y = dataAtual.getFullYear();
+                const m = String(dataAtual.getMonth() + 1).padStart(2, '0');
+                const d = String(dataAtual.getDate()).padStart(2, '0');
+                datas.push(`${y}-${m}-${d}`);
+                dataAtual.setDate(dataAtual.getDate() + passoDias);
+            }
+            return datas;
+        }
+
         async function salvarAgendamentoManual(event) {
             if (event) {
                 event.preventDefault();
@@ -1297,12 +1342,17 @@
             const horarioEl = document.getElementById("manual-horario");
             const horario = horarioEl ? horarioEl.value : "";
             const ehEncaixe = document.getElementById("manual-encaixe").checked;
+            const modalidadeRepeticao = document.getElementById("manual-repeticao").value;
+            const mesesRepeticao = document.getElementById("manual-repeticao-meses").value;
 
             let servicosSelecionados = [];
             let precoTotal = 0;
+            let duracaoMinutos = 0;
+
             document.querySelectorAll(".manual-servico-chk:checked").forEach(chk => {
                 servicosSelecionados.push(chk.value);
                 precoTotal += Number(chk.dataset.preco);
+                duracaoMinutos += duracoesServicosTabela[chk.value] || 30;
             });
 
             if (!cliente || !data || !horario || servicosSelecionados.length === 0) {
@@ -1310,29 +1360,131 @@
                 return;
             }
 
+            if (duracaoMinutos === 0) duracaoMinutos = 30;
+            const slotsNeeded = Math.ceil(duracaoMinutos / 30);
+
             if (btn) {
                 btn.disabled = true;
                 btn.textContent = "A salvar...";
             }
 
             try {
+                const datasAlvo = gerarDatasRecorrentes(data, modalidadeRepeticao, mesesRepeticao);
+                let datasLivres = [];
+                let datasConflito = [];
+
+                if (ehEncaixe || datasAlvo.length === 1) {
+                    datasLivres = datasAlvo;
+                } else {
+                    const { data: agsFuturos } = await _supabase.from("agendamentos_barreto_v2")
+                        .select("horario, servico, status, data")
+                        .in("data", datasAlvo)
+                        .ilike("barbeiro", `%${usuarioLogado}%`);
+
+                    const { data: blqsFuturos } = await _supabase.from("bloqueios_barreto_v2")
+                        .select("horario, data")
+                        .in("data", datasAlvo)
+                        .ilike("barbeiro", `%${usuarioLogado}%`);
+
+                    const bloqueiosAlmocoAutomaticos = {
+                        "Rafael": ["13:00", "13:30"],
+                        "Yann": ["12:00", "12:30", "13:00"],
+                        "Matheus": ["13:30", "14:00", "14:30"]
+                    };
+                    const almocoPadrao = bloqueiosAlmocoAutomaticos[usuarioLogado] || [];
+                    const [hSlot, mSlot] = horario.split(":").map(Number);
+                    const minSlot = hSlot * 60 + mSlot;
+
+                    datasAlvo.forEach(dIso => {
+                        const slotsDia = obterHorariosParaData(dIso);
+                        if (slotsDia.length === 0) {
+                            datasConflito.push(dIso);
+                            return;
+                        }
+
+                        const blqsDia = (blqsFuturos || []).filter(b => String(b.data).substring(0, 10) === dIso);
+                        if (blqsDia.some(b => b.horario === "TODOS")) {
+                            datasConflito.push(dIso);
+                            return;
+                        }
+
+                        const ocupados = new Set();
+                        (agsFuturos || [])
+                            .filter(a => String(a.data).substring(0, 10) === dIso && a.status !== "cancelado")
+                            .forEach(a => {
+                                if (a.servico && a.servico.includes("[ENCAIXE]")) return;
+                                const [h, m] = String(a.horario).substring(0, 5).split(":").map(Number);
+                                const ini = h * 60 + m;
+                                let dur = 30;
+                                if (a.servico) {
+                                    dur = 0;
+                                    a.servico.split(",").forEach(s => dur += duracoesServicosTabela[s.trim()] || 30);
+                                }
+                                const nSlots = Math.max(1, Math.ceil(dur / 30));
+                                for (let k = 0; k < nSlots; k++) ocupados.add(ini + (30 * k));
+                            });
+
+                        const bloqueadosSet = new Set(blqsDia.filter(b => !String(b.horario).includes("_LIBERADO")).map(b => String(b.horario).substring(0, 5)));
+                        const liberadosSet = new Set(blqsDia.filter(b => String(b.horario).includes("_LIBERADO")).map(b => String(b.horario).replace("_LIBERADO", "").substring(0, 5)));
+                        almocoPadrao.forEach(h => bloqueadosSet.add(h));
+
+                        const gradeBase = new Set(slotsDia.map(s => {
+                            const [h, m] = s.split(":").map(Number);
+                            return h * 60 + m;
+                        }));
+
+                        const isSabado = diaDaSemana(dIso) === 6;
+                        let conflito = false;
+
+                        for (let i = 0; i < slotsNeeded; i++) {
+                            const s = minSlot + (30 * i);
+                            const horaCheck = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+                            const [hCheck] = horaCheck.split(":").map(Number);
+                            const bloqueado18 = hCheck >= 18 && isSabado && !liberadosSet.has(horaCheck);
+
+                            if (!gradeBase.has(s) || ocupados.has(s) || bloqueadosSet.has(horaCheck) || bloqueado18) {
+                                conflito = true;
+                                break;
+                            }
+                        }
+
+                        if (conflito) datasConflito.push(dIso);
+                        else datasLivres.push(dIso);
+                    });
+                }
+
+                if (datasLivres.length === 0) {
+                    mostrarAlerta("Nenhuma das datas selecionadas está livre neste horário. Ative o Modo Encaixe se desejar forçar.", false);
+                    return;
+                }
+
                 const servicoFinal = ehEncaixe ? `[ENCAIXE] ${servicosSelecionados.join(", ")}` : servicosSelecionados.join(", ");
 
-                const { error } = await _supabase.from("agendamentos_barreto_v2").insert([{
+                const registros = datasLivres.map(dIso => ({
                     barbeiro: usuarioLogado,
                     cliente: cliente,
                     telefone: telefone || "Balcão",
                     servico: servicoFinal,
                     preco_total: precoTotal,
-                    data: data,
+                    data: dIso,
                     horario: horario,
                     status: 'ativo'
-                }]);
+                }));
 
+                const { error } = await _supabase.from("agendamentos_barreto_v2").insert(registros);
                 if (error) throw error;
 
                 fecharModalAgendamentoManual();
-                mostrarAlerta("Agendamento adicionado à agenda com sucesso!", true);
+
+                if (datasConflito.length > 0) {
+                    const datasPuladas = datasConflito.map(d => d.split("-").reverse().join("/")).join(", ");
+                    mostrarAlerta(`${datasLivres.length} horário(s) salvos! Datas puladas por conflito/bloqueio: ${datasPuladas}.`, true);
+                } else if (datasLivres.length > 1) {
+                    mostrarAlerta(`${datasLivres.length} agendamentos recorrentes salvos com sucesso!`, true);
+                } else {
+                    mostrarAlerta("Agendamento adicionado à agenda com sucesso!", true);
+                }
+
                 carregarAgendaSemanal();
             } catch (err) {
                 mostrarAlerta("Falha ao salvar: " + err.message, false);
@@ -1512,13 +1664,13 @@
                         btnCancelar.textContent = "Cancelar Agendamento";
                         btnCancelar.onclick = () => {
                             buttonsBox.innerHTML = `
-                                <p style="color: #e74c3c; font-weight: bold; margin-bottom: 12px; font-size: 0.9rem; text-align: center;">Tem a certeza que deseja cancelar esta reserva?</p>
+                                <p style="color: #e74c3c; font-weight: bold; margin-bottom: 12px; font-size: 0.9rem; text-align: center;">Deseja cancelar apenas esta data ou toda a sequência futura?</p>
                             `;
 
                             const btnConfirmarCancelamento = document.createElement("button");
                             btnConfirmarCancelamento.type = "button";
                             btnConfirmarCancelamento.className = "custom-modal-btn btn-modal-excluir";
-                            btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
+                            btnConfirmarCancelamento.textContent = "Sim, Cancelar Só Esta Data";
                             btnConfirmarCancelamento.onclick = async () => {
                                 try {
                                     btnConfirmarCancelamento.textContent = "A cancelar...";
@@ -1536,8 +1688,39 @@
                                     carregarAgendaSemanal();
                                 } catch (err) {
                                     mostrarAlerta("Erro ao cancelar no banco: " + err.message, false);
-                                    btnConfirmarCancelamento.textContent = "Sim, Cancelar Reserva";
+                                    btnConfirmarCancelamento.textContent = "Sim, Cancelar Só Esta Data";
                                     btnConfirmarCancelamento.disabled = false;
+                                }
+                            };
+
+                            const btnCancelarFuturos = document.createElement("button");
+                            btnCancelarFuturos.type = "button";
+                            btnCancelarFuturos.className = "custom-modal-btn btn-modal-excluir";
+                            btnCancelarFuturos.style.background = "#3D1818";
+                            btnCancelarFuturos.textContent = "Cancelar Esta e Futuras (Recorrente)";
+                            btnCancelarFuturos.onclick = async () => {
+                                try {
+                                    btnCancelarFuturos.textContent = "A cancelar série...";
+                                    btnCancelarFuturos.disabled = true;
+
+                                    const { error } = await _supabase
+                                        .from("agendamentos_barreto_v2")
+                                        .update({ status: 'cancelado' })
+                                        .eq('barbeiro', data.barbeiro)
+                                        .eq('cliente', data.cliente)
+                                        .eq('horario', data.horario)
+                                        .eq('status', 'ativo')
+                                        .gte('data', data.data);
+
+                                    if (error) throw error;
+
+                                    modal.classList.remove("active");
+                                    mostrarAlerta("Série de agendamentos futuros cancelada!", true);
+                                    carregarAgendaSemanal();
+                                } catch (err) {
+                                    mostrarAlerta("Erro ao cancelar série: " + err.message, false);
+                                    btnCancelarFuturos.textContent = "Cancelar Esta e Futuras (Recorrente)";
+                                    btnCancelarFuturos.disabled = false;
                                 }
                             };
 
@@ -1548,6 +1731,7 @@
                             btnVoltarCancelamento.onclick = renderizarBotoesPrincipais;
 
                             buttonsBox.appendChild(btnConfirmarCancelamento);
+                            buttonsBox.appendChild(btnCancelarFuturos);
                             buttonsBox.appendChild(btnVoltarCancelamento);
                         };
 
